@@ -1,0 +1,3169 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Akademia Diagnosty: Wyprawa po Złoty Stetoskop EBA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --panel-bg: #111827;
+      --panel-border: #374151;
+      --gold: #facc15;
+      --gold-dim: #b45309;
+      --accent-blue: #38bdf8;
+      --accent-green: #4ade80;
+      --accent-purple: #c084fc;
+      --accent-red: #f87171;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --font-pixel: 'Courier New', Courier, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+      touch-action: manipulation;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-pixel);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 4px;
+    }
+
+    #game-container {
+      position: relative;
+      width: 1000px;
+      max-width: 100%;
+      background: var(--panel-bg);
+      border: 3px solid var(--panel-border);
+      border-radius: 12px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.9), 0 0 24px rgba(56, 189, 248, 0.15);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #hud {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0b1120;
+      border-bottom: 2px solid var(--panel-border);
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: bold;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .hud-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .bar-container {
+      width: 72px;
+      height: 10px;
+      background: #030712;
+      border: 1px solid #4b5563;
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .stamina-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444, #22c55e);
+      width: 100%;
+      transition: width 0.25s ease;
+    }
+
+    .xp-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2563eb, #38bdf8);
+      width: 0%;
+      transition: width 0.25s ease;
+    }
+
+    .multiplier-tag {
+      background: var(--gold);
+      color: #000;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+
+    #canvas-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      max-height: 65vh;
+      background: #020617;
+      cursor: crosshair;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    #toast {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.96);
+      border: 2px solid var(--gold);
+      color: var(--gold);
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      z-index: 60;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+      text-align: center;
+      max-width: 90%;
+    }
+
+    #interact-prompt {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(2, 6, 23, 0.94);
+      border: 2px solid var(--accent-blue);
+      color: #fff;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      display: none;
+      animation: pulseGlow 1.2s infinite;
+      z-index: 40;
+      pointer-events: none;
+      text-align: center;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.95; border-color: var(--accent-blue); }
+      50% { transform: translateX(-50%) scale(1.04); opacity: 1; border-color: var(--gold); }
+    }
+
+    #bottom-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0b1120;
+      border-top: 2px solid var(--panel-border);
+      padding: 6px 10px;
+      font-size: 10px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .key-hint {
+      display: inline-block;
+      background: #1f2937;
+      color: #e5e7eb;
+      padding: 1px 5px;
+      border-radius: 3px;
+      border: 1px solid #4b5563;
+      font-weight: bold;
+      margin: 0 1px;
+    }
+
+    #mobile-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #090d16;
+      border-top: 1px solid #1f2937;
+      padding: 6px 12px;
+      gap: 8px;
+    }
+
+    .dpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 34px);
+      grid-template-rows: repeat(2, 32px);
+      gap: 3px;
+    }
+
+    .touch-btn {
+      background: #1f2937;
+      border: 1px solid #4b5563;
+      color: #fff;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .touch-btn:active {
+      background: #38bdf8;
+      color: #000;
+    }
+
+    .action-btn {
+      background: #1d4ed8;
+      border: 2px solid #3b82f6;
+      color: #fff;
+      font-weight: bold;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(29, 78, 216, 0.4);
+    }
+    .action-btn:active {
+      background: #2563eb;
+      transform: scale(0.96);
+    }
+
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+      padding: 8px;
+    }
+
+    .modal-content {
+      background: #172033;
+      border: 2px solid #475569;
+      border-radius: 8px;
+      width: 780px;
+      max-width: 98%;
+      max-height: 92%;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.95);
+      overflow: hidden;
+      animation: modalPop 0.18s ease-out;
+    }
+
+    @keyframes modalPop {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      background: #090f1d;
+      padding: 8px 14px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 13px;
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .modal-body {
+      padding: 12px 14px;
+      overflow-y: auto;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .modal-footer {
+      background: #090f1d;
+      padding: 8px 14px;
+      border-top: 1px solid #334155;
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: #334155;
+      color: var(--text-main);
+      border: 1px solid #64748b;
+      border-radius: 5px;
+      padding: 5px 12px;
+      font-family: var(--font-pixel);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .btn:hover {
+      background: #475569;
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    .btn-primary {
+      background: #1d4ed8;
+      border-color: #3b82f6;
+      color: #fff;
+      font-weight: bold;
+    }
+    .btn-primary:hover {
+      background: #2563eb;
+      border-color: var(--gold);
+    }
+
+    .btn-gold {
+      background: #b45309;
+      border-color: var(--gold);
+      color: #fff;
+      font-weight: bold;
+    }
+    .btn-gold:hover {
+      background: #d97706;
+    }
+
+    .class-card-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .class-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 10px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+    .class-card:hover {
+      border-color: var(--gold);
+      background: #1e293b;
+      transform: translateY(-2px);
+    }
+
+    .q-text {
+      font-size: 12px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 10px;
+      background: #090d16;
+      padding: 9px 12px;
+      border-left: 3px solid var(--accent-blue);
+      border-radius: 4px;
+    }
+
+    .answer-box {
+      width: 100%;
+      background: #080c16;
+      border: 1px solid #374151;
+      color: #fff;
+      font-family: var(--font-pixel);
+      font-size: 11px;
+      padding: 7px 10px;
+      border-radius: 5px;
+      resize: vertical;
+      min-height: 52px;
+      margin-bottom: 6px;
+    }
+    .answer-box:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    .feedback-panel {
+      margin-top: 8px;
+      padding: 9px;
+      border-radius: 5px;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .feedback-correct {
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid var(--accent-green);
+      color: #bbf7d0;
+    }
+    .feedback-wrong {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid var(--accent-red);
+      color: #fecaca;
+    }
+
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: linear-gradient(135deg, #4c1d95, #701a75);
+      border: 1px solid #c084fc;
+      color: #f5d0fe;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 7px;
+      border-radius: 9999px;
+      box-shadow: 0 0 10px rgba(192, 132, 252, 0.35);
+    }
+
+    .ai-pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background-color: #a855f7;
+      box-shadow: 0 0 8px #d8b4fe;
+      animation: aiPulse 1.5s infinite;
+    }
+
+    @keyframes aiPulse {
+      0%, 100% { opacity: 0.6; transform: scale(0.9); }
+      50% { opacity: 1; transform: scale(1.25); }
+    }
+
+    .chat-bubble-patient {
+      background: #1e293b;
+      border-left: 3px solid #f59e0b;
+      color: #f1f5f9;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+      max-width: 85%;
+      align-self: flex-start;
+      margin-bottom: 8px;
+      line-height: 1.45;
+    }
+
+    .chat-bubble-diagnostician {
+      background: #1e3a8a;
+      border-right: 3px solid #38bdf8;
+      color: #ffffff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+      max-width: 85%;
+      align-self: flex-end;
+      margin-bottom: 8px;
+      line-height: 1.45;
+    }
+
+    .chat-bubble-system {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px dashed #64748b;
+      color: #cbd5e1;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 10px;
+      align-self: center;
+      margin-bottom: 8px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="hud">
+    <div class="flex items-center gap-2 flex-wrap">
+      <div class="hud-item">
+        <span class="text-gray-400">Ranga:</span>
+        <span id="player-title" style="color: var(--gold);">Stażysta EBA</span>
+      </div>
+      <div class="hud-item">
+        <span class="text-gray-400">Klasa:</span>
+        <span id="player-class" style="color: var(--accent-blue);">-</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3 flex-wrap">
+      <div class="hud-item">
+        <span>XP:</span>
+        <div class="bar-container">
+          <div id="xp-bar" class="xp-fill"></div>
+        </div>
+        <span id="xp-val">0 XP</span>
+      </div>
+
+      <div class="hud-item">
+        <span>Stamina:</span>
+        <div class="bar-container">
+          <div id="stamina-bar" class="stamina-fill"></div>
+        </div>
+        <span id="stamina-val">100%</span>
+      </div>
+
+      <div class="hud-item">
+        <span>Seria:</span>
+        <span id="streak-tag" class="multiplier-tag">x1.0</span>
+      </div>
+
+      <button id="btn-ai-simulation" class="btn" style="padding: 2px 8px; font-size: 10px; background: #581c87; border-color: #a855f7; color: #f3e8ff;">
+        <span class="ai-pulse-dot inline-block mr-1"></span>🧠 Symulacja Pacjenta AI
+      </button>
+      <button id="btn-sync-cloud" class="btn" style="padding: 2px 8px; font-size: 10px; background: #1e3a8a; border-color: #3b82f6;">☁️ Zapis w chmurze</button>
+      <button id="btn-badges-menu" class="btn" style="padding: 2px 7px; font-size: 10px;">🏆 Odznaki (<span id="unlocked-badge-count">0/6</span>)</button>
+    </div>
+  </div>
+
+  <div id="canvas-wrapper">
+    <canvas id="gameCanvas" width="1024" height="640"></canvas>
+    <div id="toast">Komunikat</div>
+    <div id="interact-prompt">[SPACJA / ENTER] lub DOTKNIJ "AKCJA" aby rozmawiać</div>
+  </div>
+
+  <div id="bottom-bar">
+    <div class="hidden sm:block">
+      Klawisze: <span class="key-hint">W</span><span class="key-hint">A</span><span class="key-hint">S</span><span class="key-hint">D</span> / <span class="key-hint">Strzałki</span> | Rozmowa: <span class="key-hint">Spacja</span> / <span class="key-hint">Enter</span> | Możesz też <strong>klikać w punkt na mapie</strong>
+    </div>
+    <div>
+      Strefa: <span id="current-location-text" style="color: var(--text-main); font-weight: bold;">Aleja Główna Kampusu</span>
+    </div>
+    <div class="text-xs text-gray-400">
+      Zaliczono: <span id="total-answered-counter" class="text-yellow-400 font-bold">0</span> pytań
+    </div>
+  </div>
+
+  <!-- Touch On-Screen Controls for Mobile Phones -->
+  <div id="mobile-controls">
+    <div class="dpad-grid">
+      <div></div>
+      <button class="touch-btn" id="touch-up">▲</button>
+      <div></div>
+      <button class="touch-btn" id="touch-left">◀</button>
+      <button class="touch-btn" id="touch-down">▼</button>
+      <button class="touch-btn" id="touch-right">▶</button>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button class="action-btn" id="touch-action">💬 ROZMAWIAJ</button>
+    </div>
+  </div>
+
+  <!-- Modal Container -->
+  <div id="modal-container" class="modal-overlay" style="display: none;"></div>
+</div>
+
+<script>
+class SoundEngine {
+  constructor() {
+    this.ctx = null;
+  }
+  init() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+  playStep() {
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(120 + Math.random() * 20, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.04);
+      gain.gain.setValueAtTime(0.02, this.ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.04);
+    } catch(e) {}
+  }
+  playSuccess() {
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + i * 0.06);
+        gain.gain.setValueAtTime(0.09, now + i * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.28);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + i * 0.06);
+        osc.stop(now + i * 0.06 + 0.28);
+      });
+    } catch(e) {}
+  }
+  playError() {
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.linearRampToValueAtTime(70, now + 0.22);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } catch(e) {}
+  }
+  playLevelUp() {
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      [440, 554.37, 659.25, 880, 1108.73].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+        gain.gain.setValueAtTime(0.07, now + idx * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.07);
+        osc.stop(now + idx * 0.07 + 0.3);
+      });
+    } catch(e) {}
+  }
+  playCoffee() {
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.18);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch(e) {}
+  }
+}
+const audio = new SoundEngine();
+
+function normalizeText(str) {
+  if (!str) return "";
+  const polishMap = {
+    'ą':'a', 'ć':'c', 'ę':'e', 'ł':'l', 'ń':'n', 'ó':'o', 'ś':'s', 'ź':'z', 'ż':'z',
+    'Ą':'a', 'Ć':'c', 'Ę':'e', 'Ł':'l', 'Ń':'n', 'Ó':'o', 'Ś':'s', 'Ź':'z', 'Ż':'z'
+  };
+  const clean = str.replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, m => polishMap[m] || m);
+  return clean.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function levenshteinDistance(a, b) {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const m = [];
+  for (let i = 0; i <= b.length; i++) m[i] = [i];
+  for (let j = 0; j <= a.length; j++) m[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        m[i][j] = m[i - 1][j - 1];
+      } else {
+        m[i][j] = Math.min(
+          m[i - 1][j - 1] + 1,
+          m[i][j - 1] + 1,
+          m[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return m[b.length][a.length];
+}
+
+function matchesKeyword(token, targetKeyword) {
+  if (token === targetKeyword) return true;
+  if (token.length >= 3 && targetKeyword.length >= 3) {
+    if (token.includes(targetKeyword) || targetKeyword.includes(token)) return true;
+    const maxDist = targetKeyword.length > 5 ? 2 : 1;
+    if (levenshteinDistance(token, targetKeyword) <= maxDist) return true;
+  }
+  return false;
+}
+
+function verifyAnswer(userInput, expectedGroups) {
+  const normalizedInput = normalizeText(userInput);
+  const words = normalizedInput.split(" ").filter(w => w.length > 1);
+
+  let satisfiedGroups = 0;
+  for (const group of expectedGroups) {
+    let groupMatched = false;
+    for (const keyword of group) {
+      const normKeyword = normalizeText(keyword);
+      if (words.some(word => matchesKeyword(word, normKeyword))) {
+        groupMatched = true;
+        break;
+      }
+      if (normKeyword.includes(" ") && normalizedInput.includes(normKeyword)) {
+        groupMatched = true;
+        break;
+      }
+    }
+    if (groupMatched) satisfiedGroups++;
+  }
+
+  const threshold = expectedGroups.length <= 2 ? expectedGroups.length : Math.ceil(expectedGroups.length * 0.65);
+  return {
+    isCorrect: satisfiedGroups >= threshold,
+    matchedCount: satisfiedGroups,
+    totalRequired: threshold
+  };
+}
+
+const QUESTIONS_DB = [
+  // 1. INSTYTUT EBA & METODOLOGII
+  {
+    id: "eba_1",
+    locId: "eba",
+    location: "Instytut Metodologii & EBA",
+    topic: "3 Filary EBA (APA 2005/2006)",
+    question: "Wymień trzy fundamentalne 'nogi stolika' w definicji Evidence-Based Assessment (EBA):",
+    expectedGroups: [
+      ["badania", "dowody", "empiryczne", "naukowe", "wyniki"],
+      ["bieglosc", "praktyka", "kompetencje", "kliniczna", "ekspertyza"],
+      ["klient", "pacjent", "kultura", "preferencje", "indywidualnosc", "kontekst"]
+    ],
+    canonicalAnswer: "1. Najlepsze dowody empiryczne (wyniki badań), 2. Biegłość praktyczna/kliniczna, 3. Właściwości, preferencje i kultura klienta.",
+    explanation: "Raport APA Presidential Task Force definiuje EBA jako triadyczną integrację rygoru naukowego, kunsztu praktyka oraz podmiotowości klienta w jego kulturze.",
+    points: 25,
+    hint: "Triada: twarda nauka + biegłość praktyka + człowiek w swoim kontekście kulturowym."
+  },
+  {
+    id: "eba_2",
+    locId: "eba",
+    location: "Instytut Metodologii & EBA",
+    topic: "Kryteria Dauberta w Sądzie",
+    question: "Do czego służą 'Kryteria Dauberta' i jakie jest ich znaczenie dla opinii psychologa biegłego sądowego?",
+    expectedGroups: [
+      ["sad", "biegly", "dopuszczalnosc", "dowod", "opinia"],
+      ["naukowa", "rzetelnosc", "falsyfikowalnosc", "blad", "standard", "peer-review", "akceptacja"]
+    ],
+    canonicalAnswer: "To kryteria oceny naukowej rzetelności opinii biegłego (falsyfikowalność, znany poziom błędu, recenzje peer-review, akceptacja środowiska), warunkujące dopuszczenie dowodu w sądzie.",
+    explanation: "Wywodzą się ze sprawy Daubert v. Merrell Dow (1993). Zapobiegają opieraniu wyroków na pseudonauce i niesprawdzonych testach.",
+    points: 20,
+    hint: "Sąd Najwyższy USA, dopuszczalność dowodu naukowego, eliminacja szarlatanerii z sal sądowych."
+  },
+  {
+    id: "eba_3",
+    locId: "eba",
+    location: "Instytut Metodologii & EBA",
+    topic: "Twierdzenie Bayesa: Czułość a Swoistość",
+    question: "Zdefiniuj pojęcia czułości (sensitivity) oraz swoistości (specificity) testu diagnostycznego:",
+    expectedGroups: [
+      ["czulosc", "trafne wskazania", "wykrywa", "obecnosc", "chorych"],
+      ["swoistosc", "trafne odrzucenia", "zdrowych", "brak", "odrzucenie"]
+    ],
+    canonicalAnswer: "Czułość to prawdopodobieństwo wykrycia cechy/choroby gdy faktycznie występuje (trafne wskazania). Swoistość to prawdopodobieństwo niewykrycia cechy gdy jej brak (trafne odrzucenia).",
+    explanation: "Czułość to a/(a+c), swoistość to d/(b+d). Kluczowe parametry użyteczności diagnostycznej wg twierdzenia Bayesa.",
+    points: 20,
+    hint: "Jedno to trafne wykrycie chorych, drugie to bezbłędne odrzucenie zdrowych."
+  },
+  {
+    id: "eba_4",
+    locId: "eba",
+    location: "Instytut Metodologii & EBA",
+    topic: "Proporcja Podstawowa (Base Rate) a Ryzyko Samobójstwa",
+    question: "Dlaczego nawet przy teście o czułości 99% i swoistości 99% większość wskazań ryzyka samobójstwa w populacji to fałszywe alarmy (Kleespies & Dettmer)?",
+    expectedGroups: [
+      ["proporcja podstawowa", "base rate", "czestosc", "populacji", "rzadkie"],
+      ["falszywe", "alarmy", "wskazania", "blad", "wiekszosc"]
+    ],
+    canonicalAnswer: "Ponieważ samobójstwo ma skrajnie niską proporcję podstawową (base rate ok. 15 na 100 000); przy rzadkich zjawiskach nawet 1% błędu testu generuje masę fałszywych alarmów.",
+    explanation: "Kleespies i Dettmer (2000) wskazują, że niska proporcja podstawowa bezwzględnie ogranicza predykcję bayesowską w badaniach przesiewowych.",
+    points: 25,
+    hint: "Zjawisko to występuje w populacji niezwykle rzadko, czyli cechuje je niska..."
+  },
+  {
+    id: "eba_5",
+    locId: "eba",
+    location: "Instytut Metodologii & EBA",
+    topic: "Diagnoza Aktuarialna a Kliniczna (Meehl 1954)",
+    question: "Na czym polega kluczowa różnica między diagnozą mechaniczną (aktuarialną) a 'kliniczną' według Paula Meehla?",
+    expectedGroups: [
+      ["aktuarialna", "mechaniczna", "algorytm", "wzor", "formula", "statystyczna"],
+      ["kliniczna", "intuicja", "glowie", "nieformalna", "subiektywna"]
+    ],
+    canonicalAnswer: "W diagnozie aktuarialnej dane łączy ścisły, empiryczny algorytm lub wzór, a w klinicznej diagnosta integruje dane subiektywnie 'w głowie' na bazie intuicji.",
+    explanation: "Metaanalizy Meehla (1954) i Grove'a (2000) udowodniły, że algorytmy aktuarialne przewyższają lub dorównują intuicji klinicystów w ponad 95% przypadków.",
+    points: 25,
+    hint: "Algorytm matematyczny vs nieformalne myślenie subiektywne w umyśle diagnosty."
+  },
+  {
+    id: "eba_6",
+    locId: "eba",
+    location: "Instytut Metodologii & EBA",
+    topic: "Przypadek Złamanej Nogi Meehla",
+    question: "Co w metodologii wnioskowania diagnostycznego ilustruje słynny 'przypadek złamanej nogi' Paula Meehla?",
+    expectedGroups: [
+      ["zlamana noga", "wyjatkowy", "nietypowy", "fakt", "zdarzenie"],
+      ["algorytm", "model", "przewyzsza", "korygowac", "weryfikowac"]
+    ],
+    canonicalAnswer: "Sytuację, gdy człowiek przewyższa algorytm: wystąpienie rzadkiego, nietypowego faktu nieuwzględnionego we wzorze, który unieważnia predykcję statystyczną.",
+    explanation: "Jeśli profesor ma 90% szans pójścia do kina wg równania, ale złamał nogę, diagnosta wie, że nie pójdzie. Model mechaniczny tego nie wie.",
+    points: 20,
+    hint: "Rzadki, niespodziewany fakt zewnętrzny, którego matematyczna formuła nie uwzględnia."
+  },
+
+  // 2. KATEDRA MODELI PROCESU
+  {
+    id: "mod_1",
+    locId: "modele",
+    location: "Katedra Modeli Procesu",
+    topic: "Procedura 5 Kroków Teresy Szustrowej",
+    question: "Wymień 5 kolejnych etapów procedury Szustrowej oraz wyjaśnij jej 'dwukierunkowość':",
+    expectedGroups: [
+      ["cel", "teoria", "orientacja", "hipotezy", "pytania", "wskazniki", "operacjonalizacja"],
+      ["dwukierunkowosc", "odwrotny", "planowanie", "analiza", "interpretacja"]
+    ],
+    canonicalAnswer: "1. Cel, 2. Teoria, 3. Pytania/hipotezy, 4. Wskaźniki, 5. Operacjonalizacja. W planowaniu schodzimy 1->5, a w analizie wracamy od danych przez wskaźniki do hipotez 5->1.",
+    explanation: "Procedura Szustrowej to normatywny szkielet: dedukcyjne planowanie (cel do operacjonalizacji) i indukcyjna interpretacja (od danych do hipotez).",
+    points: 25,
+    hint: "Cel -> Teoria -> Hipotezy -> Wskaźniki -> Operacjonalizacja i powrót w górę."
+  },
+  {
+    id: "mod_2",
+    locId: "modele",
+    location: "Katedra Modeli Procesu",
+    topic: "Model Maloneya i Warda (Faza 5 i 6)",
+    question: "Co stanowi 5. oraz 6. fazę w 7-fazowym modelu wnioskowania diagnostycznego Maloneya i Warda?",
+    expectedGroups: [
+      ["konceptualizacja", "model", "dynamiczny", "osobowosci", "osoby"],
+      ["zmienne sytuacyjne", "sytuacyjne", "podstawienie", "warunki"]
+    ],
+    canonicalAnswer: "Faza 5 to konceptualizacja przypadku (dynamiczny model osoby), a faza 6 to podstawienie zmiennych sytuacyjnych do tego modelu przed predykcją (faza 7).",
+    explanation: "Faza 5 integruje hipotezy cząstkowe w całościowy model, a faza 6 konfrontuje go z konkretnymi warunkami sytuacyjnymi klienta.",
+    points: 20,
+    hint: "Faza 5 to dynamiczny model osoby (konceptualizacja), faza 6 to zmienne sytuacyjne."
+  },
+  {
+    id: "mod_3",
+    locId: "modele",
+    location: "Katedra Modeli Procesu",
+    topic: "Model Paluchowskiego (Etap 1 i 4)",
+    question: "Co wyróżnia etap 1 (prediagnostyczny) oraz etap 4 (interwencja) w cyklicznym modelu Paluchowskiego?",
+    expectedGroups: [
+      ["prediagnostyczny", "protodiagnoza", "autodiagnoza", "otoczenie"],
+      ["interwencja", "integralna", "zalecenia", "komunikowanie", "sprzezenie"]
+    ],
+    canonicalAnswer: "Etap prediagnostyczny obejmuje potoczną protodiagnozę otoczenia i autodiagnozę klienta; etap 4 włącza interwencję i komunikowanie wyników jako integralną część diagnozy.",
+    explanation: "Paluchowski akcentuje, że klient przychodzi z gotowym społecznym bagażem protodiagnozy, a cała diagnoza ma charakter iteracyjnego cyklu.",
+    points: 20,
+    hint: "Pojęcie protodiagnozy przed gabinetem oraz interwencji jako finału procesu."
+  },
+  {
+    id: "mod_4",
+    locId: "modele",
+    location: "Katedra Modeli Procesu",
+    topic: "Model GAP (Guidelines for Assessment Process)",
+    question: "Jaki unikalny etap, nieobecny w klasycznych ujęciach, wprowadza standard GAP Europejskiego Stowarzyszenia EAPA?",
+    expectedGroups: [
+      ["follow-up", "follow up", "ewaluacja", "odroczone", "monitorowanie", "ocena interwencji"]
+    ],
+    canonicalAnswer: "Etap 4: Ocena efektów interwencji i odroczone badanie kontrolne (follow-up).",
+    explanation: "Standard GAP (Fernández-Ballesteros, 2001) jako jedyny formalnie zamyka proces dopiero po ewaluacji i badaniu kontrolnym po terapii.",
+    points: 20,
+    hint: "Badanie kontrolne po upływie czasu od zakończenia interwencji (follow-up)."
+  },
+  {
+    id: "mod_5",
+    locId: "modele",
+    location: "Katedra Modeli Procesu",
+    topic: "Trzy Piętra Osobowości McAdamsa",
+    question: "Wymień trzy poziomy osobowości w metateoretycznym modelu Dana McAdamsa:",
+    expectedGroups: [
+      ["cechy", "dyspozycje", "wielka piatka"],
+      ["charakterystyczne adaptacje", "adaptacje", "cele", "motywy", "wartosci"],
+      ["historia zycia", "narracja", "autonarracja", "tozsamosc"]
+    ],
+    canonicalAnswer: "1. Cechy dyspozycyjne, 2. Charakterystyczne adaptacje (cele, motywy, wartości, plany), 3. Historia życia / autonarracja (tożsamość narracyjna).",
+    explanation: "Model McAdamsa łączy nomotetyczny pomiar cech z idiograficzną autonarracją tworzoną przez samego klienta.",
+    points: 25,
+    hint: "Cechy -> cele i motywy (adaptacje) -> osobista historia życia (autonarracja)."
+  },
+
+  // 3. GABINET WYWIADU I OBSERWACJI
+  {
+    id: "wyw_1",
+    locId: "wywiad",
+    location: "Gabinet Wywiadu i Obserwacji",
+    topic: "Kontakt Pozorny (Geller i Król)",
+    question: "Podaj 2 introspekcyjne wskaźniki świadczące o tym, że diagnosta tkwi w kontakcie pozornym:",
+    expectedGroups: [
+      ["nuda", "znudzenie", "brak zaangazowania", "brak istotnosci"],
+      ["wiem co powie", "przewidywalnosc", "stereotyp", "brak spojnosci", "nie moge zlozyc"]
+    ],
+    canonicalAnswer: "1. Uczucie nudy i braku wagi rozmowy. 2. Fałszywe poczucie 'wiem z góry, co powie' lub niemożność ułożenia spójnego całościowego obrazu.",
+    explanation: "Geller i Król wskazują, że gdy rozmowa staje się fasadą społeczną, diagnosta odczuwa znużenie lub złudną stuprocentową przewidywalność.",
+    points: 20,
+    hint: "Znużenie i brak wagi rozmowy oraz wrażenie stuprocentowej przewidywalności słów badanego."
+  },
+  {
+    id: "wyw_2",
+    locId: "wywiad",
+    location: "Gabinet Wywiadu i Obserwacji",
+    topic: "Technika Przyczółka przy Oporze",
+    question: "Na czym polega technika 'przyczółka' (foot-in-the-door) w radzeniu sobie z oporem badanego?",
+    expectedGroups: [
+      ["przyczolek", "stopniowe", "bezpieczny", "mniej zagrazajacy", "latwiejszy"],
+      ["foot in the door", "krok po kroku", "poglebianie", "zblizanie"]
+    ],
+    canonicalAnswer: "Na znalezieniu w trudnym temacie skrawka najmniej zagrażającego (bezpiecznego), w którym klient mówi swobodnie, i stopniowym posuwaniu się w głąb.",
+    explanation: "Zamiast frontalnego ataku diagnosta tworzy 'przyczółek' na bezpiecznym brzegu tematu i łagodnie rozszerza pole eksploracji.",
+    points: 20,
+    hint: "Zdobycie bezpiecznego punktu oparcia na skraju tematu i powolny marsz w głąb."
+  },
+  {
+    id: "wyw_3",
+    locId: "wywiad",
+    location: "Gabinet Wywiadu i Obserwacji",
+    topic: "Parafraza a Interpretacja",
+    question: "Jaka jest zasadnicza różnica funkcjonalna pomiędzy parafrazą a interpretacją wypowiedzi klienta?",
+    expectedGroups: [
+      ["parafraza", "wlasnymi slowami", "powtorzenie", "bez nowej teorii", "klient"],
+      ["interpretacja", "wyjasnienie", "nowa perspektywa", "wykracza", "teoria", "przyczyna"]
+    ],
+    canonicalAnswer: "Parafraza odtwarza treść słowami klienta bez dodawania nowej teorii; interpretacja wykracza poza słowa klienta, nadając im nowe ramy przyczynowo-skutkowe.",
+    explanation: "Parafraza upewnia o uważnym słuchaniu i zostawia kontrolę klientowi; interpretacja narzuca aparat pojęciowy diagnosty.",
+    points: 25,
+    hint: "Jedno to wierne lustro bez własnych teorii, drugie to tłumaczenie przyczyn zachowania."
+  },
+  {
+    id: "wyw_4",
+    locId: "wywiad",
+    location: "Gabinet Wywiadu i Obserwacji",
+    topic: "Wywiad Poznawczy (Fisher & Geiselman)",
+    question: "Wymień 4 podstawowe techniki wywiadu poznawczego (CI) wspomagające pamięć świadka:",
+    expectedGroups: [
+      ["kontekst", "odtworzenie kontekstu", "rekonstrukcja"],
+      ["opowiedz wszystko", "wszystko", "bez selekcji"],
+      ["odwrotna kolejnosc", "zmiana kolejnosci", "inna kolejnosc"],
+      ["inna perspektywa", "zmiana perspektywy"]
+    ],
+    canonicalAnswer: "1. Odtworzenie kontekstu zdarzenia, 2. Instrukcja 'opowiedz wszystko', 3. Zmiana kolejności relacji (od końca), 4. Zmiana perspektywy obserwatora.",
+    explanation: "Wywiad poznawczy opiera się na zasadzie specyficzności kodowania Tułvinga i wielości ścieżek dostępu do śladu pamięciowego.",
+    points: 25,
+    hint: "Kontekst, wszystko bez pomijania, od tyłu oraz oczyma innej osoby."
+  },
+  {
+    id: "wyw_5",
+    locId: "wywiad",
+    location: "Gabinet Wywiadu i Obserwacji",
+    topic: "Konstrukcja Lejkowa a Odwróconego Lejka",
+    question: "Kiedy w wywiadzie stosujemy konstrukcję lejkową, a kiedy odwróconego lejka?",
+    expectedGroups: [
+      ["lejek", "ogolne", "szczegolowe", "swobodne", "zamykanie"],
+      ["odwrocony", "szczegolowe do ogolnych", "lek", "dzieci", "niska inteligencja", "pobudzenie"]
+    ],
+    canonicalAnswer: "Lejek (od ogółu do szczegółu) stosujemy standardowo; odwrócony lejek (od detali do ogółu) przy silnym lęku, niskiej inteligencji lub trudności z werbalizacją.",
+    explanation: "Pytanie ogólne paraliżuje osobę zalęknioną; pytania konkretne dają oparcie i obniżają dystres.",
+    points: 20,
+    hint: "Od szerokich do wąskich pytań vs start od drobnych faktów dla osób zagubionych."
+  },
+  {
+    id: "wyw_6",
+    locId: "wywiad",
+    location: "Gabinet Wywiadu i Obserwacji",
+    topic: "Model Kontaktu Tickle-Degnen i Rosenthala",
+    question: "Wymień 3 składniki kontaktu wg Tickle-Degnen i Rosenthala oraz wskaż, który dominuje na początku, a który na końcu interakcji:",
+    expectedGroups: [
+      ["wzajemna uwaga", "pozytywne nastawienie", "koordynacja", "posturalna"],
+      ["poczatek", "pozytywne", "koniec", "koordynacja"]
+    ],
+    canonicalAnswer: "1. Wzajemna uwaga, 2. Pozytywne nastawienie, 3. Koordynacja. Na początku dominuje pozytywne nastawienie, a pod koniec kluczowa staje się koordynacja (synchronizacja).",
+    explanation: "Wzajemna uwaga jest stała, ciepło i uśmiech budują start, a zgranie posturalne decyduje o głębi dojrzałego kontaktu.",
+    points: 25,
+    hint: "Uwaga + nastawienie + koordynacja ruchów; ciepło na starcie, synchronizacja w finale."
+  },
+  {
+    id: "wyw_7",
+    locId: "wywiad",
+    location: "Gabinet Wywiadu i Obserwacji",
+    topic: "Przymierze w Działaniu (Bordin / Horvath WAI)",
+    question: "Wymień trzy konstytutywne elementy Przymierza Terapeutycznego (Working Alliance):",
+    expectedGroups: [
+      ["cele", "celow", "goals"],
+      ["zadania", "zadan", "tasks"],
+      ["wiez", "wiezi", "relacja", "bonds"]
+    ],
+    canonicalAnswer: "1. Uzgodnienie celów (goals), 2. Wyznaczenie zadań (tasks), 3. Rozwój więzi emocjonalnej i zaufania (bonds).",
+    explanation: "Bordin (1976) i Horvath wykazali, że przymierze jest najsilniejszym niespecyficznym predyktorem sukcesu każdej interwencji.",
+    points: 20,
+    hint: "Wspólne cele, ustalone zadania oraz emocjonalna więź zaufania."
+  },
+  {
+    id: "wyw_8",
+    locId: "wywiad",
+    location: "Gabinet Wywiadu i Obserwacji",
+    topic: "Recypatia i Błąd Minimalizacji Kontekstu",
+    question: "Czym jest recypatia diagnosty oraz na czym polega błąd minimalizacji kontekstu (Salzman)?",
+    expectedGroups: [
+      ["recypatia", "wlasne reakcje", "odczucia", "reprezentant otoczenia", "emocje diagnosty"],
+      ["minimalizacja kontekstu", "pomijanie otoczenia", "atrybucja", "patologia", "spoleczny", "opresja"]
+    ],
+    canonicalAnswer: "Recypatia to traktowanie własnych reakcji emocjonalnych jako próbki tego, jak otoczenie reaguje na klienta. Błąd minimalizacji kontekstu to przypisywanie zaburzeń psychice przy ignorowaniu opresyjnego środowiska.",
+    explanation: "Salzman wykazał, że lęk u grup marginalizowanych bywa zdrową reakcją na dyskryminację, a nie deficytem biologicznym.",
+    points: 25,
+    hint: "Własne odczucia jako lustro społeczne oraz ignorowanie wpływu opresyjnego otoczenia."
+  },
+
+  // 4. POLIGON PSYCHOMETRYCZNY & TESTY
+  {
+    id: "psy_1",
+    locId: "testy",
+    location: "Poligon Psychometryczny",
+    topic: "MMPI-2: Strategia Konstrukcji",
+    question: "Na czym polega empiryczna strategia konstrukcji MMPI-2 i jak należy interpretować uzyskany profil?",
+    expectedGroups: [
+      ["empiryczna", "kryterialna", "ateoretyczna", "roznicowanie", "grupy kryterialne"],
+      ["profilowa", "konfiguracja", "kody", "nie pojedyncza skala"]
+    ],
+    canonicalAnswer: "Pozycje włączano na bazie empirycznego różnicowania grup chorych od zdrowych (bez teorii); interpretuje się całościową konfigurację profilu (kody dwupunktowe), nigdy pojedynczą skalę.",
+    explanation: "Pojedyncza skala nie diagnozuje choroby. Dopiero układ wierzchołków profilu wraz ze skalami kontrolnymi (L, F, K) tworzy diagnozę.",
+    points: 25,
+    hint: "Różnicowanie grup klinicznych bez wstępnej teorii oraz analiza układu całego profilu."
+  },
+  {
+    id: "psy_2",
+    locId: "testy",
+    location: "Poligon Psychometryczny",
+    topic: "Test Matryc Ravena (TMS)",
+    question: "Jaki dokładnie rodzaj inteligencji według teorii Cattella mierzy klasyczny Test Matryc Ravena?",
+    expectedGroups: [
+      ["plynna", "inteligencja plynna", "czynnik g", "gf"]
+    ],
+    canonicalAnswer: "Mierzy wyłącznie inteligencję płynną (zdolność edukcji relacji na materiale geometrycznym), nie mierzy inteligencji skrystalizowanej.",
+    explanation: "Matryce Ravena abstrahują od nabytej wiedzy szkolnej, stanowiąc czystą miarę inteligencji płynnej (gf).",
+    points: 15,
+    hint: "Jeden z biegunów teorii Cattella: płynna vs skrystalizowana."
+  },
+  {
+    id: "psy_3",
+    locId: "testy",
+    location: "Poligon Psychometryczny",
+    topic: "TRE a INTE: Inteligencja Emocjonalna",
+    question: "Jaka jest zasadnicza różnica metodologiczna między testem TRE a kwestionariuszem INTE?",
+    expectedGroups: [
+      ["tre", "zadaniowy", "wykonawczy", "koreluje z iq", "poprawne bledne"],
+      ["inte", "samoopis", "samoopisowy", "przekonania", "nie koreluje z iq"]
+    ],
+    canonicalAnswer: "TRE to test zadaniowy/wykonawczy z poprawnymi odpowiedziami (koreluje z IQ), a INTE to kwestionariusz samoopisowy mierzący subiektywny wgląd w emocje.",
+    explanation: "Oba opierają się na modelu Saloveya i Mayera, ale TRE mierzy obiektywną zdolność poznawczą, a INTE przekonanie o sobie.",
+    points: 25,
+    hint: "Zadaniowy test z kluczem poprawności korelujący z IQ vs kwestionariusz samoopisowy."
+  },
+  {
+    id: "psy_4",
+    locId: "testy",
+    location: "Poligon Psychometryczny",
+    topic: "Skala Wartości Rokeacha (RVS)",
+    question: "Dlaczego dla Skali Wartości Rokeacha (RVS) nie można wyliczyć zgodności wewnętrznej alfa Cronbacha ani klasycznych norm?",
+    expectedGroups: [
+      ["rangowa", "porzadkowa", "rangowanie", "porzadkowanie", "wymuszona"],
+      ["zalezne", "suma stala", "brak niezaleznosci", "nie mozna alfy"]
+    ],
+    canonicalAnswer: "RVS to skala rangowa (ipsatywna) o stałej sumie rang: wybór wyższej pozycji jednej wartości wymusza spadek innej, co łamie założenie niezależności i alfy Cronbacha.",
+    explanation: "RVS mierzy relatywną hierarchię wartości ostatecznych i instrumentalnych, a nie bezwzględne nasilenie cech.",
+    points: 25,
+    hint: "Układanie rankingu kartoników (skala rangowa o stałej sumie, zależne pozycje)."
+  },
+  {
+    id: "psy_5",
+    locId: "testy",
+    location: "Poligon Psychometryczny",
+    topic: "Inwentarz FCZ-KT(R) Jana Strelaua",
+    question: "Co mierzy inwentarz FCZ-KT(R) i ile skal zawiera w ujęciu Regulacyjnej Teorii Temperamentu?",
+    expectedGroups: [
+      ["temperament", "formalny aspekt", "biologiczny", "regulacyjna teoria"],
+      ["7 skal", "siedem skal", "zwawosc", "wytrzymalosc", "perseweratywnosc"]
+    ],
+    canonicalAnswer: "Mierzy formalne, biologicznie zdeterminowane cechy temperamentu (nie treść zachowania) na 7 skalach (w tym Żwawość, Perseweratywność, Wytrzymałość).",
+    explanation: "Stworzony przez Strelaua i Zawadzkiego; zrewidowana wersja FCZ-KT(R) diagnozuje 7 wymiarów czasowych i energetycznych.",
+    points: 20,
+    hint: "Formalne cechy temperamentu badane na 7 skalach."
+  },
+  {
+    id: "psy_6",
+    locId: "testy",
+    location: "Poligon Psychometryczny",
+    topic: "Test Zdań Niedokończonych Rottera (RISB)",
+    question: "Do jakiej grupy należy RISB, co oblicza się w analizie ilościowej i dlaczego kluczowa jest analiza jakościowa?",
+    expectedGroups: [
+      ["polprojekcyjna", "projekcyjna", "zdan niedokonczonych", "ustrukturalizowana"],
+      ["wop", "wskaznik ogolnego przystosowania", "przystosowanie"],
+      ["jakosciowa", "opuszczenia", "poprawki", "konflikty", "obronne"]
+    ],
+    canonicalAnswer: "To technika półprojekcyjna. Wynikiem ilościowym jest Wskaźnik Ogólnego Przystosowania (WOP), a analiza jakościowa bada opuszczenia, poprawki i treści konfliktowe.",
+    explanation: "RISB Rottera omija mechanizmy obronne; ma polską normalizację Jaworowskiej i Matczak.",
+    points: 25,
+    hint: "Półprojekcja, Wskaźnik Ogólnego Przystosowania (WOP) oraz opuszczenia i poprawki."
+  },
+  {
+    id: "psy_7",
+    locId: "testy",
+    location: "Poligon Psychometryczny",
+    topic: "Metodologia Q-Sort (Stephenson)",
+    question: "Na czym polega procedura Q-sort i dlaczego wymusza rozkład quasi-normalny?",
+    expectedGroups: [
+      ["q-sort", "stephenson", "sortowanie", "kartoniki", "twierdzenia"],
+      ["wymuszony", "rozklad normalny", "quasi normalny", "zmusza do roznicowania", "eliminuje srodek"]
+    ],
+    canonicalAnswer: "Polega na sortowaniu stwierdzeń do przegródek o wymuszonej pojemności tworzącej rozkład normalny, co zmusza do głębokiego różnicowania i uniemożliwia ucieczkę w odpowiedzi neutralne.",
+    explanation: "Stephenson stworzył metodologię Q do badania 'operant subjectivity' (subiektywnych światów znaczeń, np. Ja realne vs Ja idealne u Rogersa).",
+    points: 25,
+    hint: "Sortowanie kartoników do przegródek tworzących wymuszony kształt dzwonu Gaussa."
+  },
+
+  // 5. KOMISJA ETYKI I PRAW PACJENTA
+  {
+    id: "ety_1",
+    locId: "etyka",
+    location: "Komisja Etyki",
+    topic: "Cztery Filary Metakodeksu Etycznego (EFPPA / PTP)",
+    question: "Wymień cztery fundamentalne wartości/filary metakodeksu etycznego psychologa (EFPPA):",
+    expectedGroups: [
+      ["poszanowanie", "godnosc", "praw", "praw i godnosci"],
+      ["kompetencja", "kwalifikacje"],
+      ["odpowiedzialnosc"],
+      ["prawosc", "uczciwosc", "integrity"]
+    ],
+    canonicalAnswer: "1. Poszanowanie praw i godności osoby, 2. Kompetencja, 3. Odpowiedzialność, 4. Prawość (integrity).",
+    explanation: "Wytyczne EFPPA (1995) stanowią fundament etyczny każdego kodeksu narodowego psychologów w Europie.",
+    points: 25,
+    hint: "Godność i prawa, kompetencja, odpowiedzialność oraz prawość (uczciwość)."
+  },
+  {
+    id: "ety_2",
+    locId: "etyka",
+    location: "Komisja Etyki",
+    topic: "Świadoma Zgoda na Badanie (13 Standardów)",
+    question: "Wymień co najmniej 4 kluczowe elementy świadomej zgody, o których diagnosta musi uprzedzić klienta:",
+    expectedGroups: [
+      ["cel", "charakter", "procedura"],
+      ["poufnosc", "granice poufnosci", "tajemnica"],
+      ["odmowa", "wycofanie", "dobrowolnosc"],
+      ["konsekwencje", "ryzyko", "oplata", "trzecia strona", "korzysci"]
+    ],
+    canonicalAnswer: "1. Cel i charakter badania, 2. Poufność i jej ograniczenia, 3. Prawo do odmowy i wycofania się w dowolnym momencie, 4. Opłaty i ewentualny udział strony trzeciej.",
+    explanation: "Zgodnie ze standardami APA 9.03 i CPA I.24, świadoma zgoda jest procesem partnerskiego kontraktu, a nie jednorazowym podpisem.",
+    points: 25,
+    hint: "Po co badamy, tajemnica i jej granice, prawo do rezygnacji, koszty i odbiorcy."
+  },
+  {
+    id: "ety_3",
+    locId: "etyka",
+    location: "Komisja Etyki",
+    topic: "Model Decyzyjny Gottlieba (Relacje Podwójne)",
+    question: "Jakie 3 wymiary relacji uwzględnia model Gottlieba w ocenie ryzyka uwikłania w relacje podwójne i wykorzystujące?",
+    expectedGroups: [
+      ["wladza", "rozklad wladzy", "wladzy", "power"],
+      ["czas", "czas trwania", "dlugosc", "duration"],
+      ["zakonczenie", "jednoznacznosc", "klarownosc zakonczenia", "termination"]
+    ],
+    canonicalAnswer: "1. Rozkład władzy w relacji, 2. Czas trwania relacji, 3. Jednoznaczność (klarowność) zakończenia relacji.",
+    explanation: "Gottlieb (1993) wskazuje, że im większa asymetria władzy, dłuższy czas kontaktu i mniej jasne zakończenie, tym większe ryzyko nadużycia.",
+    points: 25,
+    hint: "Władza diagnosty, długość trwania kontaktu oraz definitywność zakończenia."
+  },
+  {
+    id: "ety_4",
+    locId: "etyka",
+    location: "Komisja Etyki",
+    topic: "Zasady Opinii dla Odbiorcy Nieprofesjonalnego",
+    question: "Czego pod żadnym pozorem NIE wolno umieszczać w pisemnej opinii dla klienta nieprofesjonalnego (np. rodzica, pacjenta)?",
+    expectedGroups: [
+      ["zargon", "jezyk techniczny", "pojecia specjalistyczne"],
+      ["surowe wyniki", "steny", "iq", "pozycje testowe", "arkusze", "punkty surowe"]
+    ],
+    canonicalAnswer: "Nie wolno stosować specjalistycznego żargonu psychologicznego, podawać surowych wyników liczbowych (stenów, punktów) bez przystępnego wyjaśnienia ani cytować pozycji testowych.",
+    explanation: "Raport dla laika musi być napisany językiem zrozumiałym, opisywać mocne strony i zasoby, a ostatnie słowo w interpretacji pozostawić podmiotowości klienta.",
+    points: 25,
+    hint: "Żargon techniczny, niezrozumiałe steny/liczby i chronione pytania z testów."
+  },
+
+  // 6. ARCHIWUM SZARLATANERII & BŁĘDÓW
+  {
+    id: "arch_1",
+    locId: "archiwum",
+    location: "Archiwum Błędów i Szarlatanerii",
+    topic: "Narzędzia Zdyskredytowane (Sondaż Norcrossa)",
+    question: "Wymień co najmniej 3 narzędzia diagnostyczne uznane definitywnie za zdyskredytowane w badaniach Delphi Norcrossa:",
+    expectedGroups: [
+      ["luscher", "kolorow", "szondi"],
+      ["grafologia", "pismo", "pisma"],
+      ["bender", "lalki", "enneagram", "blacky", "frustracji rosenzweiga"]
+    ],
+    canonicalAnswer: "Test Kolorów Lüschera, Test Szondiego, grafologiczna analiza pisma (a także test Bender-Gestalt do osobowości, lalki anatomiczne do nadużyć).",
+    explanation: "Sondaż ekspertów Delphi (Norcross, Kocher, Garofalo, 2006) wykazał brak jakichkolwiek empirycznych dowodów trafności dla tych procedur.",
+    points: 25,
+    hint: "Kolory Lüschera, twarze Szondiego, analiza charakteru pisma."
+  },
+  {
+    id: "arch_2",
+    locId: "archiwum",
+    location: "Archiwum Błędów i Szarlatanerii",
+    topic: "Efekt Rumpelstilzchena",
+    question: "Na czym polega efekt Rumpelstilzchena w relacji pacjenta z diagnostą?",
+    expectedGroups: [
+      ["nazwa", "etykieta", "magiczna moc", "nazwanie choroby"],
+      ["zrzeczenie odpowiedzialnosci", "bierny", "lekarz wie", "terapeuta wie"]
+    ],
+    canonicalAnswer: "Na irracjonalnej wierze pacjenta w magiczną moc etykiety diagnostycznej i zrzeczeniu się odpowiedzialności za proces leczenia na diagnostę.",
+    explanation: "Zgodnie z baśnią braci Grimm pacjent wierzy, że skoro diagnosta zna 'tajemne imię' choroby, to ma nad nią pełną władzę.",
+    points: 20,
+    hint: "Oddanie steru lekarzowi pod wpływem samej magicznie brzmiącej nazwy choroby."
+  },
+  {
+    id: "arch_3",
+    locId: "archiwum",
+    location: "Archiwum Błędów i Szarlatanerii",
+    topic: "Zjawisko Reifikacji Pacjenta",
+    question: "Czym jest reifikacja w medycznym modelu diagnozy psychologicznej?",
+    expectedGroups: [
+      ["uprzedmiotowienie", "przedmiotowe", "opakowanie"],
+      ["jednostka chorobowa", "nozologiczna", "przypadek", "etykieta", "redukcja"]
+    ],
+    canonicalAnswer: "To uprzedmiotowienie pacjenta i zredukowanie go do jednostki nozologicznej (traktowanie człowieka jako 'opakowania' lub nosiciela choroby).",
+    explanation: "Kowalik i Brzeziński przestrzegają przed reifikacją: pacjent przestaje być osobą, a staje się 'przypadkiem schizofrenii'.",
+    points: 20,
+    hint: "Uprzedmiotowienie człowieka i sprowadzenie go wyłącznie do nazwy jego zaburzenia."
+  },
+  {
+    id: "arch_4",
+    locId: "archiwum",
+    location: "Archiwum Błędów i Szarlatanerii",
+    topic: "Błąd Koniunkcji (Conjunction Fallacy)",
+    question: "Na czym polega błąd koniunkcji w myśleniu diagnostów wg Howarda Garba?",
+    expectedGroups: [
+      ["koniunkcja", "wspolwystepowanie", "dwa zjawiska", "dwa objawy"],
+      ["wyzsze prawdopodobienstwo", "bardziej prawdopodobne", "pojedynczy", "niz pojedynczy"]
+    ],
+    canonicalAnswer: "Na ocenianiu prawdopodobieństwa współwystąpienia dwóch objawów łącznie jako wyższego niż prawdopodobieństwo wystąpienia któregokolwiek z nich osobno.",
+    explanation: "Złamanie rachunku prawdopodobieństwa pod wpływem heurystyki reprezentatywności (np. sądzenie, że depresja + próba samobójcza jest częstsza niż sama depresja).",
+    points: 20,
+    hint: "Uznanie, że dwa zdarzenia naraz są częstsze niż tylko jedno z nich."
+  },
+  {
+    id: "arch_5",
+    locId: "archiwum",
+    location: "Archiwum Błędów i Szarlatanerii",
+    topic: "Efekt Barnuma / Forera (Meehl)",
+    question: "Na czym polega efekt Barnuma (efekt horoskopowy) w przekazywaniu informacji zwrotnych?",
+    expectedGroups: [
+      ["barnum", "forer", "horoskop", "ogolnikowe", "niejednoznaczne"],
+      ["akceptacja", "pasuje do kazdego", "wierzy", "prawda o sobie", "trywialne"]
+    ],
+    canonicalAnswer: "Na bezkrytycznym uznawaniu ogólnikowych, trywialnych opisów (pasujących do każdego człowieka) za wysoce trafne i unikatowe charakterystyki własnej osobowości.",
+    explanation: "Forer (1949) i Meehl (1956) przestrzegali przed pisaniem opinii pełnych banałów, które klienci chwalą jako 'niesamowicie trafne'.",
+    points: 20,
+    hint: "Wiara, że banał pasujący do każdego człowieka jest naszą intymną diagnozą."
+  },
+
+  // 7. PRACOWNIA DIAGNOZY DZIECKA & ROZWOJU
+  {
+    id: "dziec_1",
+    locId: "dziecko",
+    location: "Pracownia Diagnozy Dziecka",
+    topic: "Skala Stanford-Binet 5 (SB5)",
+    question: "W jakim przedziale wiekowym stosuje się SB5 i jakie są jej unikalne zalety kliniczne?",
+    expectedGroups: [
+      ["2-69", "2 do 69", "wiek"],
+      ["wszystkie stopnie", "gleboka", "znacznaskrajne", "niepelnosprawnosc", "wybitne"]
+    ],
+    canonicalAnswer: "Zakres wieku: od 2 do 69 lat. Jako jedyna precyzyjnie różnicuje wszystkie stopnie niepełnosprawności intelektualnej (od lekkiego po głęboki) oraz wybitne zdolności.",
+    explanation: "SB5 bada 5 czynników poznawczych w wersjach werbalnych i niewerbalnych, posiadając unikalną rozpiętość pomiarową.",
+    points: 20,
+    hint: "Wiek od 2 lat do 69 oraz różnicowanie każdego stopnia niepełnosprawności intelektualnej."
+  },
+  {
+    id: "dziec_2",
+    locId: "dziecko",
+    location: "Pracownia Diagnozy Dziecka",
+    topic: "Bateria Leiter-3",
+    question: "Jaki rodzaj inteligencji, w jakim wieku i u jakich pacjentów bada Międzynarodowa Skala Leitera (Leiter-3)?",
+    expectedGroups: [
+      ["plynna", "inteligencja plynna", "niewerbalna", "bezslowna"],
+      ["wiek", "3-70", "3 do 70"],
+      ["autyzm", "brak mowy", "nieslyszacy", "rozwojowe", "drobne zmiany"]
+    ],
+    canonicalAnswer: "Mierzy bezsłownie inteligencję płynną (wiek 3–70+ lat), dedykowana osobom z autyzmem, niemówiącym i niesłyszącym; niezwykle czuła na drobne zmiany rozwojowe.",
+    explanation: "Zarówno instrukcja, jak i wykonanie Leitera nie wymagają użycia języka, eliminując obciążenia kulturowo-językowe.",
+    points: 25,
+    hint: "Inteligencja płynna, brak słów, wiek 3-70+ i pacjenci ze spektrum lub niemówiący."
+  },
+  {
+    id: "dziec_3",
+    locId: "dziecko",
+    location: "Pracownia Diagnozy Dziecka",
+    topic: "Dziecięca Skala Rozwojowa (DSR)",
+    question: "Dla kogo przeznaczona jest DSR i jaką ma postać techniczną?",
+    expectedGroups: [
+      ["male dzieci", "ponizej 3", "do 3", "niemowleta", "wczesnodzieciecy"],
+      ["walizeczka", "zabawki", "zabawa", "skala wykonaniowa", "obserwacyjna"]
+    ],
+    canonicalAnswer: "Dla małych dzieci (od 2 miesięcy do ukończenia 3 lat). Ma postać 'walizeczki z zabawkami' i łączy próby wykonawcze przez zabawę ze skalą obserwacyjną.",
+    explanation: "DSR autorstwa Matczak diagnozuje opóźnienia motoryczne, percepcyjne, manipulacyjne i językowe u najmłodszych.",
+    points: 20,
+    hint: "Dzieci poniżej 3 roku życia i badanie za pomocą walizeczki z zestawem zabawek."
+  },
+  {
+    id: "dziec_4",
+    locId: "dziecko",
+    location: "Pracownia Diagnozy Dziecka",
+    topic: "Rysunkowy Test Twórczego Myślenia (TCT-DP)",
+    question: "Na czym polega zadanie osoby badanej w teście TCT-DP Urbana i Jellena?",
+    expectedGroups: [
+      ["dokonczenie", "uzupelnienie", "rysowanie", "rysunek"],
+      ["elementy", "kwadratowa", "tworcze", "kreatywnosc"]
+    ],
+    canonicalAnswer: "Polega na dokończeniu niepełnego rysunku wewnątrz i na zewnątrz kwadratowej ramy z wykorzystaniem 6 wstępnych elementów graficznych.",
+    explanation: "TCT-DP mierzy twórcze myślenie za pomocą 14 kryteriów (nowe elementy, powiązania, humor, przełamywanie granic).",
+    points: 20,
+    hint: "Dokończenie rysunku z wykorzystaniem gotowych fragmentów graficznych."
+  },
+
+  // 8. PAWILON NEUROPSYCHOLOGII & EKSPERYMENTU
+  {
+    id: "neuro_1",
+    locId: "neuro",
+    location: "Pawilon Neuropsychologii",
+    topic: "Test Sortowania Kart z Wisconsin (WCST)",
+    question: "Co w diagnozie neuropsychologicznej mierzy Test Sortowania Kart z Wisconsin (WCST)?",
+    expectedGroups: [
+      ["funkcje wykonawcze", "wykonawcze", "elastycznosc poznawcza", "sztywnosc", "perseweracje"],
+      ["odkrywanie regul", "sortowanie", "karty", "plat czolowy"]
+    ],
+    canonicalAnswer: "Mierzy funkcje wykonawcze (kontrolę poznawczą, elastyczność myślenia, podatność na perseweracje przy uszkodzeniach płatów czołowych).",
+    explanation: "Badany sortuje 64 karty wg zmieniających się reguł na bazie informacji 'dobrze/źle'.",
+    points: 20,
+    hint: "Funkcje wykonawcze, podatność na perseweracje i praca płatów czołowych mózgu."
+  },
+  {
+    id: "neuro_2",
+    locId: "neuro",
+    location: "Pawilon Neuropsychologii",
+    topic: "Krótka Skala Oceny Stanu Umysłowego (MMSE)",
+    question: "Do czego służy skala MMSE i ile punktów wynosi w niej maksymalny wynik?",
+    expectedGroups: [
+      ["otepienie", "otepienne", "przesiewowe", "demencja", "poznawcze"],
+      ["30", "trzydziesci"]
+    ],
+    canonicalAnswer: "Służy do przesiewowej oceny procesów otępiennych i dysfunkcji poznawczych; maksymalny wynik wynosi 30 punktów (odcięcie <24 sugeruje otępienie).",
+    explanation: "MMSE (Folstein) bada orientację, zapamiętywanie, liczenie, nazywanie i praksję konstrukcyjną.",
+    points: 20,
+    hint: "Przesiew otępień i demencji z maksymalnym wynikiem 30 punktów."
+  },
+  {
+    id: "neuro_3",
+    locId: "neuro",
+    location: "Pawilon Neuropsychologii",
+    topic: "Skala SOAS-R w Obserwacji Agresji",
+    question: "Do jakiego rodzaju obserwacji należy skala SOAS-R i na czym polega metoda próbek zdarzeń?",
+    expectedGroups: [
+      ["probki zdarzen", "probkowanie zdarzen", "event sampling"],
+      ["soas-r", "agresja", "incydent", "epizod", "szpital"]
+    ],
+    canonicalAnswer: "SOAS-R to zbieranie próbek zdarzeń (event sampling): rejestracja zachowania uruchamiana wyłącznie w momencie wystąpienia incydentu agresji.",
+    explanation: "Próbkowanie czasowe przeoczyłoby rzadkie wybuchy złości; próbkowanie zdarzeń opisuje każdy incydent w szpitalu.",
+    points: 20,
+    hint: "Czekanie na wystąpienie konkretnego incydentu zamiast losowych odcinków czasu."
+  },
+  {
+    id: "neuro_4",
+    locId: "neuro",
+    location: "Pawilon Neuropsychologii",
+    topic: "Diagnoza Ambulatoryjna (Ambulatory Assessment)",
+    question: "Na czym polega diagnoza ambulatoryjna (experience sampling / monitoring 24/7) w psychologii?",
+    expectedGroups: [
+      ["naturalne srodowisko", "codzienne", "zyciu codziennym", "24h", "ciagly"],
+      ["urzadzenia", "elektroniczne", "beeper", "smartfon", "sensory", "rejestracja"]
+    ],
+    canonicalAnswer: "Na ciągłym lub sygnałowym monitorowaniu zachowań, emocji i parametrów fizjologicznych w naturalnym środowisku życia za pomocą przenośnych urządzeń elektronicznych.",
+    explanation: "Fahrenberg i Perrez wykazali, że diagnoza ambulatoryjna łączy wysoką trafność ekologiczną z precyzją pomiaru.",
+    points: 20,
+    hint: "Ciągły monitoring zachowań w normalnym życiu za pomocą elektroniki."
+  },
+
+  // 9. KLINIKA RELACJI I RODZINY
+  {
+    id: "rodz_1",
+    locId: "rodzina",
+    location: "Klinika Relacji i Rodziny",
+    topic: "Test Stosunków Rodzinnych (TSR)",
+    question: "W jaki sposób dziecko wykonuje badanie Testem Stosunków Rodzinnych (TSR) Bene i Anthony?",
+    expectedGroups: [
+      ["pudelka", "skrzynki", "postacie", "figurki"],
+      ["karteczki", "wiadomosci", "emocje", "wrzucanie"]
+    ],
+    canonicalAnswer: "Dziecko wrzuca karteczki z opisami emocji i zachowań do otworów w skrzynkach/pudełkach przypisanych konkretnym członkom rodziny (lub do skrzynki 'nikt').",
+    explanation: "TSR łączy zabawę z pomiarem projekcyjno-strukturalnym emocji pozytywnych i negatywnych w rodzinie.",
+    points: 20,
+    hint: "Wrzucanie karteczek z uczuciami do pudełek członków rodziny lub skrzynki 'nikt'."
+  },
+  {
+    id: "rodz_2",
+    locId: "rodzina",
+    location: "Klinika Relacji i Rodziny",
+    topic: "Kwestionariusz Komunikacji Małżeńskiej (KKM)",
+    question: "Jakie 3 wymiary zachowań komunikacyjnych bada kwestionariusz KKM Kaźmierczak i Plopy?",
+    expectedGroups: [
+      ["wsparcie"],
+      ["zaangazowanie"],
+      ["deprecjacja"]
+    ],
+    canonicalAnswer: "1. Wsparcie, 2. Zaangażowanie, 3. Deprecjacja (wzajemna ocena partnerów w wersji 'Ja' i 'Mój Partner').",
+    explanation: "KKM bada 3 główne składowe dialogu małżeńskiego, diagnozując obszary destrukcyjne (deprecjacja) i konstruktywne.",
+    points: 25,
+    hint: "Wsparcie, zaangażowanie oraz poniżanie/krytyka (deprecjacja)."
+  },
+  {
+    id: "rodz_3",
+    locId: "rodzina",
+    location: "Klinika Relacji i Rodziny",
+    topic: "Kwestionariusz CISS (Endler & Parker)",
+    question: "Wymień 3 podstawowe style radzenia sobie ze stresem mierzone kwestionariuszem CISS:",
+    expectedGroups: [
+      ["skoncentrowany na zadaniu", "zadaniowy", "zadanie"],
+      ["skoncentrowany na emocjach", "emocjonalny", "emocje"],
+      ["skoncentrowany na unikaniu", "unikaniowy", "unikanie"]
+    ],
+    canonicalAnswer: "1. Styl skoncentrowany na zadaniu (SSZ), 2. Styl skoncentrowany na emocjach (SSE), 3. Styl skoncentrowany na unikaniu (SSU).",
+    explanation: "SSU dzieli się dodatkowo na dwie podskale: angażowanie się w czynności zastępcze (ACZ) oraz poszukiwanie kontaktów towarzyskich (PKT).",
+    points: 20,
+    hint: "Zadanie, Emocje oraz Unikanie (CISS Endlera i Parkera)."
+  }
+];
+
+const BADGES_LIST = [
+  { id: "pogromca", name: "Pogromca Szarlatanerii", desc: "Zdemaskuj zdyskredytowane techniki diagnostyczne.", icon: "⚔️" },
+  { id: "piec_krokow", name: "Mistrz Pięciu Kroków", desc: "Wykaż się biegłością w procedurze Teresy Szustrowej.", icon: "📜" },
+  { id: "straznik_etyki", name: "Strażnik Etyki", desc: "Rozwiąż dylematy świadomej zgody, tajemnicy i granic.", icon: "⚖️" },
+  { id: "metodolog", name: "Architekt EBA", desc: "Opanuj 3 filary EBA i kryteria Dauberta.", icon: "🏛️" },
+  { id: "klinicysta", name: "Mistrz Przymierza", desc: "Rozwiąż zagadnienia wywiadu, kontaktu, oporu i recypatii.", icon: "🤝" },
+  { id: "psychometra", name: "Snajper Psychometrii", desc: "Rozróżnij MMPI-2, Leitera-3, TMS i testy rozwojowe.", icon: "🎯" }
+];
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'akademia-diagnosty';
+let db = null;
+let auth = null;
+let currentUserId = null;
+let unsubscribeLive = null;
+
+async function initFirebaseStorage() {
+  try {
+    if (typeof __firebase_config !== 'undefined') {
+      const firebaseConfig = JSON.parse(__firebase_config);
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      auth = getAuth(app);
+
+      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+        await signInWithCustomToken(auth, __initial_auth_token);
+      } else {
+        await signInAnonymously(auth);
+      }
+
+      currentUserId = auth.currentUser?.uid || crypto.randomUUID();
+      window.currentUserSyncId = currentUserId;
+      window.cloudStorageReady = true;
+
+      const privateDocRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'game_saves', 'profile');
+      unsubscribeLive = onSnapshot(privateDocRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (window.game && data && !window.game.isSyncing) {
+            window.game.applySavedData(data);
+          }
+        }
+      }, (error) => {
+        console.warn("Live snapshot notice:", error);
+      });
+
+      await loadFromCloud();
+    } else {
+      window.currentUserSyncId = 'sesja-lokalna-' + Math.random().toString(36).substring(2, 9);
+    }
+  } catch(err) {
+    console.warn("Inicjalizacja zapisu chmurowego powiodła się w trybie autonomicznym:", err);
+    window.currentUserSyncId = 'sesja-lokalna-' + Math.random().toString(36).substring(2, 9);
+  }
+}
+
+window.saveToCloud = async function(gameData, isManual = false) {
+  if (!db || !auth || !auth.currentUser) {
+    if (isManual && window.game) {
+      window.game.showToast("Postęp zachowany w bieżącej sesji.");
+    }
+    return;
+  }
+  try {
+    const payload = {
+      stats: gameData.stats,
+      charClass: gameData.charClass,
+      lastUpdated: new Date().toISOString(),
+      ownerId: currentUserId
+    };
+
+    const privateRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'game_saves', 'profile');
+    const publicSyncRef = doc(db, 'artifacts', appId, 'public', 'data', 'cloud_saves', currentUserId);
+
+    await Promise.all([
+      setDoc(privateRef, payload, { merge: true }),
+      setDoc(publicSyncRef, payload, { merge: true })
+    ]);
+
+    if (isManual && window.game) {
+      window.game.showToast("☁️ Postęp bezpiecznie zapisany w chmurze!");
+    }
+  } catch(e) {
+    console.error("Błąd zapisu:", e);
+    if (isManual && window.game) {
+      window.game.showToast("Zapisano stan w pamięci.");
+    }
+  }
+};
+
+window.loadFromCloud = async function() {
+  if (!db || !auth || !auth.currentUser) return;
+  try {
+    const privateRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'game_saves', 'profile');
+    const snap = await getDoc(privateRef);
+    if (snap.exists() && window.game) {
+      const data = snap.data();
+      window.game.applySavedData(data);
+      window.game.showToast("☁️ Przywrócono Twój postęp z chmury!");
+    }
+  } catch(e) {
+    console.warn("Błąd ładowania:", e);
+  }
+};
+
+window.syncFromDeviceKey = async function(targetKey) {
+  if (!targetKey || typeof targetKey !== 'string') {
+    return { success: false, message: "Nieprawidłowy klucz gracza." };
+  }
+  const cleanKey = targetKey.trim();
+  if (!db || !auth || !auth.currentUser) {
+    return { success: false, message: "Brak aktywnego połączenia sieciowego." };
+  }
+
+  try {
+    const syncDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'cloud_saves', cleanKey);
+    const snap = await getDoc(syncDocRef);
+    if (!snap.exists()) {
+      return { success: false, message: "Nie znaleziono zapisu dla podanego identyfikatora gracza." };
+    }
+
+    const remoteData = snap.data();
+    if (window.game && remoteData) {
+      window.game.isSyncing = true;
+      window.game.applySavedData(remoteData);
+      await window.saveToCloud({ stats: window.game.stats, charClass: window.game.player.charClass }, false);
+      window.game.isSyncing = false;
+      return { success: true, message: `Pomyślnie zsynchronizowano postęp! Poziom: ${remoteData.stats?.level || 1} (${remoteData.stats?.xp || 0} XP)` };
+    }
+    return { success: false, message: "Błąd formatu danych profilu." };
+  } catch(err) {
+    console.error("Błąd synchronizacji:", err);
+    return { success: false, message: "Wystąpił błąd podczas pobierania zapisu: " + err.message };
+  }
+};
+
+window.addEventListener('load', () => {
+  initFirebaseStorage();
+});
+</script>
+
+<script>
+class GameEngine {
+  constructor() {
+    this.canvas = document.getElementById('gameCanvas');
+    this.ctx = this.canvas.getContext('2d');
+
+    // Enlarged World Grid: 36 cols x 24 rows
+    this.tileSize = 32;
+    this.cols = 36; // 1152 px world width
+    this.rows = 24; // 768 px world height
+
+    this.player = {
+      x: 17 * 32,
+      y: 11 * 32, // Safe central plaza spawn near fountain
+      targetX: 17 * 32,
+      targetY: 11 * 32,
+      speed: 3.8,
+      dir: 'down',
+      isMoving: false,
+      animTimer: 0,
+      charClass: null
+    };
+
+    this.stats = {
+      xp: 0,
+      level: 1,
+      rankTitle: "Stażysta EBA",
+      stamina: 100,
+      streak: 0,
+      multiplier: 1.0,
+      answeredQuestions: {},
+      badges: {}
+    };
+
+    // 10 Distinct Academic Buildings on Campus
+    this.locations = [
+      { id: "eba", name: "Instytut Metodologii & EBA", x: 2, y: 2, w: 6, h: 4, color: "#1e3a8a", roofColor: "#3b82f6", npcName: "Prof. Metodiusz", npcRole: "Metodolog EBA", npcX: 5, npcY: 6, banner: "EBA", icon: "🏛️" },
+      { id: "modele", name: "Katedra Modeli Procesu", x: 10, y: 2, w: 6, h: 4, color: "#4c1d95", roofColor: "#8b5cf6", npcName: "Dr Szuster", npcRole: "Architekt Procesu", npcX: 13, npcY: 6, banner: "MODELE", icon: "📜" },
+      { id: "wywiad", name: "Gabinet Wywiadu i Obserwacji", x: 20, y: 2, w: 6, h: 4, color: "#78350f", roofColor: "#d97706", npcName: "Mgr Dialogowska", npcRole: "Klinicystka", npcX: 23, npcY: 6, banner: "WYWIAD", icon: "💬" },
+      { id: "rodzina", name: "Klinika Relacji i Rodziny", x: 28, y: 2, w: 6, h: 4, color: "#854d0e", roofColor: "#eab308", npcName: "Dr Więziewicz", npcRole: "Terapeuta Par", npcX: 31, npcY: 6, banner: "RODZINA", icon: "🤝" },
+
+      { id: "testy", name: "Poligon Psychometryczny", x: 2, y: 17, w: 6, h: 4, color: "#065f46", roofColor: "#10b981", npcName: "Doc. Psychometrzyk", npcRole: "Psychometra", npcX: 5, npcY: 16, banner: "TESTY", icon: "🎯" },
+      { id: "dziecko", name: "Pracownia Diagnozy Dziecka", x: 10, y: 17, w: 6, h: 4, color: "#0e7490", roofColor: "#06b6d4", npcName: "Dr Maluszkiewicz", npcRole: "Diagnosta Rozwoju", npcX: 13, npcY: 16, banner: "DZIECKO", icon: "🧸" },
+      { id: "bufet", name: "Bufet 'Złoty Stetoskop'", x: 19, y: 17, w: 5, h: 4, color: "#334155", roofColor: "#64748b", npcName: "Barista Zenon", npcRole: "Regeneracja", npcX: 21, npcY: 16, banner: "BUFET", icon: "☕" },
+      { id: "neuro", name: "Pawilon Neuropsychologii", x: 28, y: 17, w: 6, h: 4, color: "#155e75", roofColor: "#38bdf8", npcName: "Prof. Synapsa", npcRole: "Neuropsycholog", npcX: 31, npcY: 16, banner: "NEURO", icon: "🧠" },
+
+      { id: "etyka", name: "Komisja Etyki i Praw Pacjenta", x: 2, y: 10, w: 5, h: 4, color: "#831843", roofColor: "#ec4899", npcName: "Przewodniczący Etyk", npcRole: "Rzecznik Praw", npcX: 4, npcY: 9, banner: "ETYKA", icon: "⚖️" },
+      { id: "archiwum", name: "Archiwum Szarlatanerii", x: 29, y: 10, w: 5, h: 4, color: "#450a0a", roofColor: "#ef4444", npcName: "Kustosz Sceptyk", npcRole: "Łowca Pseudonauki", npcX: 31, npcY: 9, banner: "SZARLATANI", icon: "⚔️" }
+    ];
+
+    this.keys = {};
+    this.activeInteraction = null;
+    this.isModalOpen = false;
+
+    this.initMapCollision();
+    this.bindEvents();
+    this.updateHUD();
+
+    setTimeout(() => {
+      if (!this.player.charClass) {
+        this.showClassSelectModal();
+      }
+    }, 250);
+  }
+
+  initMapCollision() {
+    this.collisionGrid = Array.from({ length: this.rows }, () => Array(this.cols).fill(0));
+
+    // Outer campus boundary walls
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (r === 0 || r === this.rows - 1 || c === 0 || c === this.cols - 1) {
+          this.collisionGrid[r][c] = 1;
+        }
+      }
+    }
+
+    // Mark campus buildings as solid obstacles, leaving doorways open
+    this.locations.forEach(loc => {
+      const doorCol = loc.x + Math.floor(loc.w / 2);
+      const doorRow = loc.y + loc.h;
+      for (let r = loc.y; r < loc.y + loc.h; r++) {
+        for (let c = loc.x; c < loc.x + loc.w; c++) {
+          if (r < this.rows && c < this.cols) {
+            if (c === doorCol && r === doorRow - 1) continue;
+            this.collisionGrid[r][c] = 1;
+          }
+        }
+      }
+      if (loc.npcY < this.rows && loc.npcX < this.cols) {
+        this.collisionGrid[loc.npcY][loc.npcX] = 2;
+      }
+    });
+
+    // Central Fountain Obstacle
+    this.collisionGrid[11][17] = 1;
+    this.collisionGrid[11][18] = 1;
+    this.collisionGrid[12][17] = 1;
+    this.collisionGrid[12][18] = 1;
+  }
+
+  bindEvents() {
+    window.addEventListener('keydown', (e) => {
+      audio.init();
+      this.keys[e.code] = true;
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code) && !this.isModalOpen) {
+        e.preventDefault();
+      }
+      if ((e.code === 'Space' || e.code === 'Enter') && this.activeInteraction && !this.isModalOpen) {
+        this.triggerInteraction(this.activeInteraction);
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      this.keys[e.code] = false;
+    });
+
+    this.canvas.addEventListener('click', (e) => {
+      audio.init();
+      if (this.isModalOpen) return;
+      const rect = this.canvas.getBoundingClientRect();
+      const scaleX = this.canvas.width / rect.width;
+      const scaleY = this.canvas.height / rect.height;
+      const clickX = (e.clientX - rect.left) * scaleX;
+      const clickY = (e.clientY - rect.top) * scaleY;
+      
+      const cameraX = Math.max(0, Math.min(this.cols * 32 - this.canvas.width, this.player.x + 16 - this.canvas.width / 2));
+      const cameraY = Math.max(0, Math.min(this.rows * 32 - this.canvas.height, this.player.y + 16 - this.canvas.height / 2));
+
+      this.player.targetX = clickX + cameraX - 16;
+      this.player.targetY = clickY + cameraY - 20;
+    });
+
+    const setupTouch = (id, keyCode) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const onDown = (ev) => {
+        ev.preventDefault();
+        audio.init();
+        this.keys[keyCode] = true;
+      };
+      const onUp = (ev) => {
+        ev.preventDefault();
+        this.keys[keyCode] = false;
+      };
+      el.addEventListener('touchstart', onDown, { passive: false });
+      el.addEventListener('touchend', onUp, { passive: false });
+      el.addEventListener('mousedown', onDown);
+      el.addEventListener('mouseup', onUp);
+    };
+
+    setupTouch('touch-up', 'KeyW');
+    setupTouch('touch-down', 'KeyS');
+    setupTouch('touch-left', 'KeyA');
+    setupTouch('touch-right', 'KeyD');
+
+    const touchAct = document.getElementById('touch-action');
+    if (touchAct) {
+      touchAct.addEventListener('click', () => {
+        audio.init();
+        if (this.activeInteraction && !this.isModalOpen) {
+          this.triggerInteraction(this.activeInteraction);
+        }
+      });
+    }
+
+    document.getElementById('btn-badges-menu').addEventListener('click', () => {
+      this.showBadgesModal();
+    });
+
+    document.getElementById('btn-sync-cloud').addEventListener('click', () => {
+      this.showCloudSyncModal();
+    });
+
+    const aiSimBtn = document.getElementById('btn-ai-simulation');
+    if (aiSimBtn) {
+      aiSimBtn.addEventListener('click', () => {
+        audio.init();
+        this.showClinicalSimulationModal();
+      });
+    }
+  }
+
+  showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.style.opacity = '1';
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => {
+      t.style.opacity = '0';
+    }, 2800);
+  }
+
+  updateHUD() {
+    document.getElementById('player-class').innerText = this.player.charClass ? this.player.charClass.name : "Nie wybrano";
+    document.getElementById('player-title').innerText = this.stats.rankTitle;
+    document.getElementById('stamina-val').innerText = `${Math.round(this.stats.stamina)}%`;
+    document.getElementById('stamina-bar').style.width = `${Math.max(0, this.stats.stamina)}%`;
+
+    const curLvlXp = this.stats.xp % 100;
+    document.getElementById('xp-bar').style.width = `${(curLvlXp / 100) * 100}%`;
+    document.getElementById('xp-val').innerText = `${this.stats.xp} XP (Lvl ${this.stats.level})`;
+    document.getElementById('streak-tag').innerText = `x${this.stats.multiplier.toFixed(1)}`;
+
+    const answeredCount = Object.values(this.stats.answeredQuestions).filter(Boolean).length;
+    document.getElementById('total-answered-counter').innerText = `${answeredCount}/${QUESTIONS_DB.length}`;
+
+    const unlockedBadgeCount = Object.values(this.stats.badges).filter(Boolean).length;
+    document.getElementById('unlocked-badge-count').innerText = `${unlockedBadgeCount}/${BADGES_LIST.length}`;
+  }
+
+  applySavedData(data) {
+    if (data.stats) this.stats = Object.assign(this.stats, data.stats);
+    if (data.charClass) this.player.charClass = data.charClass;
+    this.updateHUD();
+  }
+
+  addXP(amount, locId) {
+    let finalAmount = amount * this.stats.multiplier;
+    if (this.player.charClass) {
+      if (this.player.charClass.id === 'adept' && ['eba', 'testy', 'modele', 'neuro'].includes(locId)) {
+        finalAmount *= 1.35;
+        this.showToast("Bonus Adepta EBA: +35% XP za rygor metodologiczny!");
+      } else if (this.player.charClass.id === 'klinicysta' && ['wywiad', 'rodzina', 'dziecko'].includes(locId)) {
+        finalAmount *= 1.35;
+        this.showToast("Bonus Klinicysty: +35% XP za kunszt wywiadu i relacji!");
+      } else if (this.player.charClass.id === 'etyk' && ['etyka', 'archiwum'].includes(locId)) {
+        finalAmount *= 1.35;
+        this.showToast("Bonus Rzecznika Etyki: +35% XP za ochronę praw pacjenta!");
+      }
+    }
+    this.stats.xp += Math.round(finalAmount);
+
+    const prevLevel = this.stats.level;
+    this.stats.level = Math.floor(this.stats.xp / 100) + 1;
+
+    if (this.stats.level >= 8) this.stats.rankTitle = "Wielki Mistrz Złotego Stetoskpu EBA";
+    else if (this.stats.level >= 5) this.stats.rankTitle = "Ekspert EBA & Superwizor";
+    else if (this.stats.level >= 3) this.stats.rankTitle = "Licencjonowany Psycholog";
+    else if (this.stats.level >= 2) this.stats.rankTitle = "Młodszy Diagnosta";
+
+    if (this.stats.level > prevLevel) {
+      audio.playLevelUp();
+      this.showToast(`AWANS NAUKOWY! Poziom ${this.stats.level}: ${this.stats.rankTitle}!`);
+    }
+
+    this.checkBadgesUnlock();
+    this.updateHUD();
+
+    if (window.saveToCloud) {
+      window.saveToCloud({ stats: this.stats, charClass: this.player.charClass });
+    }
+  }
+
+  reduceStamina(amount) {
+    let penalty = amount;
+    if (this.player.charClass && this.player.charClass.id === 'etyk') {
+      penalty *= 0.5;
+      this.showToast("Tarcza Etyczna: -50% utraty staminy!");
+    }
+    this.stats.stamina = Math.max(0, this.stats.stamina - penalty);
+    this.stats.streak = 0;
+    this.stats.multiplier = 1.0;
+    this.updateHUD();
+
+    if (window.saveToCloud) {
+      window.saveToCloud({ stats: this.stats, charClass: this.player.charClass });
+    }
+  }
+
+  restoreStamina(amount) {
+    this.stats.stamina = Math.min(100, this.stats.stamina + amount);
+    this.updateHUD();
+
+    if (window.saveToCloud) {
+      window.saveToCloud({ stats: this.stats, charClass: this.player.charClass });
+    }
+  }
+
+  unlockBadge(badgeId) {
+    if (!this.stats.badges[badgeId]) {
+      this.stats.badges[badgeId] = true;
+      const b = BADGES_LIST.find(i => i.id === badgeId);
+      audio.playLevelUp();
+      this.showToast(`ODBLOKOWANO ODZNAKĘ: ${b.icon} ${b.name}!`);
+      this.updateHUD();
+
+      if (window.saveToCloud) {
+        window.saveToCloud({ stats: this.stats, charClass: this.player.charClass });
+      }
+    }
+  }
+
+  checkBadgesUnlock() {
+    if (this.stats.answeredQuestions["arch_1"]) this.unlockBadge("pogromca");
+    if (this.stats.answeredQuestions["mod_1"]) this.unlockBadge("piec_krokow");
+    if (this.stats.answeredQuestions["ety_1"] && this.stats.answeredQuestions["ety_2"]) this.unlockBadge("straznik_etyki");
+    if (this.stats.answeredQuestions["eba_1"] && this.stats.answeredQuestions["eba_2"]) this.unlockBadge("metodolog");
+    if (this.stats.answeredQuestions["wyw_1"] && this.stats.answeredQuestions["wyw_3"]) this.unlockBadge("klinicysta");
+    if (this.stats.answeredQuestions["psy_1"] && this.stats.answeredQuestions["dziec_2"]) this.unlockBadge("psychometra");
+  }
+
+  showClassSelectModal() {
+    this.isModalOpen = true;
+    const container = document.getElementById('modal-container');
+    container.style.display = 'flex';
+    container.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>🎓 Wybierz Swoją Ścieżkę Naukową</h2>
+        </div>
+        <div class="modal-body">
+          <p class="text-gray-300 mb-2">Witaj w <strong>Akademii Diagnosty EBA</strong>. Przed rozpoczęciem wędrówki po kampusie zadeklaruj swoją orientację:</p>
+          <div class="class-card-list">
+            <div class="class-card" onclick="game.selectClass('adept')">
+              <h3 class="text-sky-400 font-bold">🔬 Adept EBA</h3>
+              <p class="text-gray-400 text-xs">Rygor empiryczny, twierdzenie Bayesa, psychometria i modele formalne.</p>
+              <div class="text-emerald-400 font-semibold text-xs mt-1">+35% XP w Instytucie EBA, Katedrze Modeli, Poligonie i Neuropsychologii.</div>
+            </div>
+            <div class="class-card" onclick="game.selectClass('klinicysta')">
+              <h3 class="text-amber-400 font-bold">💬 Klinicysta Narracyjny</h3>
+              <p class="text-gray-400 text-xs">Relacja diagnostyczna, wywiad pogłębiony, przymierze terapeutyczne i radzenie sobie z oporem.</p>
+              <div class="text-emerald-400 font-semibold text-xs mt-1">+35% XP w Gabinecie Wywiadu, Klinice Rodziny i Pracowni Dziecka.</div>
+            </div>
+            <div class="class-card" onclick="game.selectClass('etyk')">
+              <h3 class="text-pink-400 font-bold">⚖️ Rzecznik Etyki</h3>
+              <p class="text-gray-400 text-xs">Prawa pacjenta, świadoma zgoda, relacje podwójne i demistyfikacja pseudonauki.</p>
+              <div class="text-emerald-400 font-semibold text-xs mt-1">-50% utraty Staminy przy błędach + 35% XP w Komisji Etyki i Archiwum.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  selectClass(classId) {
+    const classDefs = {
+      adept: { id: 'adept', name: 'Adept EBA' },
+      klinicysta: { id: 'klinicysta', name: 'Klinicysta Narracyjny' },
+      etyk: { id: 'etyk', name: 'Rzecznik Etyki' }
+    };
+    this.player.charClass = classDefs[classId];
+    this.closeModal();
+    audio.playLevelUp();
+    this.showToast(`Wybrano ścieżkę: ${this.player.charClass.name}! Rozpocznij wyprawę.`);
+    this.updateHUD();
+
+    if (window.saveToCloud) {
+      window.saveToCloud({ stats: this.stats, charClass: this.player.charClass });
+    }
+  }
+
+  showBadgesModal() {
+    this.isModalOpen = true;
+    const container = document.getElementById('modal-container');
+    container.style.display = 'flex';
+
+    const badgesHTML = BADGES_LIST.map(b => {
+      const unlocked = !!this.stats.badges[b.id];
+      return `
+        <div class="bg-slate-900 border ${unlocked ? 'border-yellow-400 bg-yellow-950/20' : 'border-slate-700'} p-2 rounded flex items-center gap-3">
+          <div class="text-2xl ${unlocked ? '' : 'opacity-30 grayscale'}">${b.icon}</div>
+          <div>
+            <h4 class="font-bold text-xs ${unlocked ? 'text-yellow-400' : 'text-gray-300'}">${b.name}</h4>
+            <p class="text-gray-400 text-xs">${b.desc}</p>
+            <span class="text-xs font-bold ${unlocked ? 'text-emerald-400' : 'text-gray-500'}">
+              ${unlocked ? '✓ ZDOBYTE' : '🔒 Zablokowane'}
+            </span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>🏆 Galeria Osiągnięć Naukowych</h2>
+          <button class="btn" onclick="game.closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">${badgesHTML}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" onclick="game.closeModal()">Powrót do Kampusu</button>
+        </div>
+      </div>
+    `;
+  }
+
+  showCloudSyncModal() {
+    this.isModalOpen = true;
+    const container = document.getElementById('modal-container');
+    container.style.display = 'flex';
+    const playerFullId = window.currentUserSyncId || 'Ładowanie identyfikatora...';
+    const answeredCount = Object.values(this.stats.answeredQuestions).filter(Boolean).length;
+    const badgeCount = Object.values(this.stats.badges).filter(Boolean).length;
+
+    container.innerHTML = `
+      <div class="modal-content" style="max-width: 620px;">
+        <div class="modal-header">
+          <h2>☁️ Zapis w Chmurze i Synchronizacja Urządzeń</h2>
+          <button class="btn" onclick="game.closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-gray-300 text-xs mb-3">
+            Twoje postępy są automatycznie zabezpieczane. Aby kontynuować grę na innym urządzeniu (np. telefonie lub laptopie), skopiuj swój unikalny identyfikator gracza lub wklej klucz ze swojego drugiego urządzenia.
+          </p>
+
+          <div class="bg-slate-900 border border-slate-700 p-3 rounded mb-3">
+            <div class="flex justify-between items-center mb-1">
+              <span class="text-xs text-gray-400">Aktualny stan zapisu:</span>
+              <span class="text-xs font-bold text-emerald-400">Aktywny (Lvl ${this.stats.level})</span>
+            </div>
+            <div class="text-xs text-slate-300 grid grid-cols-2 gap-1">
+              <div>XP: <strong class="text-sky-400">${this.stats.xp}</strong></div>
+              <div>Ranga: <strong class="text-yellow-400">${this.stats.rankTitle}</strong></div>
+              <div>Zaliczone pytania: <strong>${answeredCount} / ${QUESTIONS_DB.length}</strong></div>
+              <div>Odznaki: <strong>${badgeCount} / 6</strong></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-sky-900/60 p-3 rounded mb-3">
+            <label class="block text-xs font-bold text-sky-400 mb-1">Twój Klucz Synchronizacji (Identyfikator Gracza):</label>
+            <div class="flex gap-2 items-center">
+              <input type="text" id="sync-my-key" readonly value="${playerFullId}" class="w-full bg-slate-950 border border-slate-700 text-xs text-yellow-300 font-mono p-2 rounded select-all" />
+              <button class="btn btn-primary text-xs shrink-0" onclick="game.copySyncKey()">📋 Kopiuj</button>
+            </div>
+            <div class="flex justify-between items-center mt-2">
+              <button class="btn btn-gold text-xs" onclick="game.triggerManualSave()">💾 Zapisz teraz do chmury</button>
+              <span id="save-feedback" class="text-xs text-emerald-400 italic"></span>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-700 p-3 rounded">
+            <label class="block text-xs font-bold text-gray-300 mb-1">Przenieś postęp z innego urządzenia:</label>
+            <p class="text-xs text-gray-400 mb-2">Wklej identyfikator gracza z drugiego urządzenia, aby wczytać zgromadzone punkty, odznaki i rangę:</p>
+            <div class="flex gap-2 items-center">
+              <input type="text" id="sync-remote-key" placeholder="Wklej identyfikator gracza..." class="w-full bg-slate-950 border border-slate-700 text-xs text-white font-mono p-2 rounded" />
+              <button class="btn text-xs shrink-0" style="background: #0284c7; color: white;" onclick="game.executeDeviceSync()">🔄 Pobierz</button>
+            </div>
+            <div id="sync-result-msg" class="text-xs mt-2" style="display: none;"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" onclick="game.closeModal()">Zamknij</button>
+        </div>
+      </div>
+    `;
+  }
+
+  copySyncKey() {
+    const input = document.getElementById('sync-my-key');
+    if (!input) return;
+    input.select();
+    try {
+      document.execCommand('copy');
+      audio.playStep();
+      this.showToast("📋 Skopiowano Twój klucz synchronizacji do schowka!");
+      const feedback = document.getElementById('save-feedback');
+      if (feedback) feedback.innerText = "Skopiowano do schowka!";
+    } catch(e) {
+      this.showToast("Zaznacz i skopiuj identyfikator ręcznie.");
+    }
+  }
+
+  async triggerManualSave() {
+    audio.playStep();
+    const feedback = document.getElementById('save-feedback');
+    if (feedback) feedback.innerText = "Zapisywanie...";
+    if (window.saveToCloud) {
+      await window.saveToCloud({ stats: this.stats, charClass: this.player.charClass }, true);
+      if (feedback) feedback.innerText = "✓ Zapisano w chmurze!";
+    }
+  }
+
+  async executeDeviceSync() {
+    const input = document.getElementById('sync-remote-key');
+    const msgEl = document.getElementById('sync-result-msg');
+    if (!input || !msgEl) return;
+    const key = input.value.trim();
+    if (!key) {
+      msgEl.style.display = 'block';
+      msgEl.className = 'text-xs mt-2 text-rose-400 font-bold';
+      msgEl.innerText = "Wprowadź poprawny klucz synchronizacji.";
+      return;
+    }
+
+    msgEl.style.display = 'block';
+    msgEl.className = 'text-xs mt-2 text-sky-300';
+    msgEl.innerText = "Pobieranie zapisu z chmury...";
+
+    if (window.syncFromDeviceKey) {
+      const res = await window.syncFromDeviceKey(key);
+      if (res.success) {
+        audio.playLevelUp();
+        msgEl.className = 'text-xs mt-2 text-emerald-400 font-bold';
+        msgEl.innerText = "✓ " + res.message;
+        this.updateHUD();
+        setTimeout(() => this.showCloudSyncModal(), 1200);
+      } else {
+        audio.playError();
+        msgEl.className = 'text-xs mt-2 text-rose-400 font-bold';
+        msgEl.innerText = "✕ " + res.message;
+      }
+    }
+  }
+
+  showBufetModal() {
+    this.isModalOpen = true;
+    const container = document.getElementById('modal-container');
+    container.style.display = 'flex';
+    container.innerHTML = `
+      <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+          <h2>☕ Bufet Akademicki „Złoty Stetoskop"</h2>
+          <button class="btn" onclick="game.closeModal()">✕</button>
+        </div>
+        <div class="modal-body text-center">
+          <div class="text-4xl mb-2">☕🥐🪴</div>
+          <p class="text-gray-300">Barista Zenon przygotowuje wybitne podwójne espresso, które regeneruje energię psychiczną i chroni przed wypaleniem poznawczym.</p>
+          <div class="mt-3 p-2 bg-slate-900 rounded border border-slate-700">
+            <p>Aktualna Energia Psychiczna (Stamina): <strong class="text-emerald-400">${Math.round(this.stats.stamina)}%</strong></p>
+          </div>
+        </div>
+        <div class="modal-footer justify-center">
+          <button class="btn btn-gold" onclick="game.takeCoffee()">Wypij Podwójne Espresso (+50% Staminy)</button>
+          <button class="btn" onclick="game.closeModal()">Wróć na kampus</button>
+        </div>
+      </div>
+    `;
+  }
+
+  takeCoffee() {
+    audio.playCoffee();
+    this.restoreStamina(50);
+    this.showToast("Zregenerowano Energię Psychiczną (+50% Staminy)!");
+    this.closeModal();
+  }
+
+  async callGemini(payload, retries = 3, delay = 1000) {
+    const apiKey = "";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+        return await response.json();
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+      }
+    }
+  }
+
+  showQuestionModal(location) {
+    const locQuestions = QUESTIONS_DB.filter(q => q.locId === location.id);
+    if (locQuestions.length === 0) {
+      this.showToast("W tym budynku trwają obecnie wykłady!");
+      return;
+    }
+
+    let targetQ = locQuestions.find(q => !this.stats.answeredQuestions[q.id]);
+    if (!targetQ) {
+      targetQ = locQuestions[Math.floor(Math.random() * locQuestions.length)];
+    }
+
+    this.currentActiveQuestion = targetQ;
+    this.isModalOpen = true;
+
+    const solvedCount = locQuestions.filter(q => this.stats.answeredQuestions[q.id]).length;
+    const container = document.getElementById('modal-container');
+    container.style.display = 'flex';
+    container.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>${location.icon} ${location.name} — ${location.npcName} (${location.npcRole})</h2>
+          <button class="btn" onclick="game.closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="flex justify-between items-center mb-1 text-xs text-gray-400">
+            <span class="text-yellow-400 font-bold uppercase tracking-wider">${targetQ.topic}</span>
+            <div class="flex items-center gap-2">
+              <span class="ai-badge"><span class="ai-pulse-dot"></span> Superwizor AI (Gemini)</span>
+              <span>Katedra: ${solvedCount}/${locQuestions.length}</span>
+            </div>
+          </div>
+          <div class="q-text">${targetQ.question}</div>
+          
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs text-gray-400 block">
+              Wpisz odpowiedź akademicką (oceniana semantycznie przez Superwizora AI):
+            </label>
+            <label class="text-xs text-purple-300 flex items-center gap-1 cursor-pointer select-none">
+              <input type="checkbox" id="toggle-gemini-eval" checked class="accent-purple-500 rounded" />
+              <span>Głęboka analiza AI</span>
+            </label>
+          </div>
+          <textarea id="answer-input" class="answer-box" placeholder="Wpisz definicję na podstawie podręczników prof. Stemplewskiej-Żakowicz i prof. Szustrowej..."></textarea>
+          
+          <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
+            <div class="flex gap-2">
+              <button id="btn-hint" class="btn text-xs py-1" onclick="game.revealHint()">
+                💡 Podpowiedź (-5 XP)
+              </button>
+              <button id="btn-ask-tutor" class="btn text-xs py-1" style="background: #3b0764; border-color: #a855f7; color: #f5d0fe;" onclick="game.askAiTutor()">
+                🎓 Zapytaj Profesora AI
+              </button>
+            </div>
+            <span id="hint-text" class="text-xs text-amber-300 italic"></span>
+          </div>
+
+          <div id="ai-loading-indicator" style="display: none;" class="p-3 bg-slate-900 border border-purple-500/50 rounded text-xs text-purple-300 flex items-center gap-2 my-2">
+            <div class="ai-pulse-dot"></div>
+            <span id="ai-loading-text">Superwizor EBA analizuje Twoją odpowiedź i weryfikuje rygor metodologiczny...</span>
+          </div>
+
+          <div id="feedback-area" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-submit-answer" class="btn btn-primary" onclick="game.submitAnswer()">Zatwierdź odpowiedź [ENTER]</button>
+          <button class="btn" onclick="game.closeModal()">Zamknij</button>
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => {
+      const input = document.getElementById('answer-input');
+      if (input) {
+        input.focus();
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            this.submitAnswer();
+          }
+        });
+      }
+    }, 80);
+  }
+
+  async askAiTutor() {
+    const q = this.currentActiveQuestion;
+    if (!q) return;
+    const feedbackArea = document.getElementById('feedback-area');
+    const loadingEl = document.getElementById('ai-loading-indicator');
+    const loadingText = document.getElementById('ai-loading-text');
+
+    if (!feedbackArea || !loadingEl) return;
+
+    loadingText.innerText = "Konsultacja z profesorem katedry (Gemini 2.5 Flash)...";
+    loadingEl.style.display = 'flex';
+    audio.playStep();
+
+    const systemPrompt = `Działasz jako profesor psychologii w Akademii Diagnosty EBA (autor podręczników psychodiagnostyki akademickiej).
+Wytłumacz studentowi w zwięzły, przystępny, ale rygorystyczny naukowo sposób zagadnienie: "${q.topic}" w kontekście pytania: "${q.question}".
+Odwołaj się do koncepcji EBA, metodologii i standardów APA/PTP. Nie podawaj od razu gotowej formułki do skopiowania na egzamin, lecz rozjaśnij mechanizm i podaj intuicyjny przykład kliniczny/metodologiczny (maksymalnie 2-3 zwięzłe akapity).`;
+
+    try {
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Drogi Profesorze, proszę o wyjaśnienie sedna tego zagadnienia: ${q.question}` }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+      const result = await this.callGemini(payload);
+      const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Nie udało się uzyskać odpowiedzi od profesora.";
+
+      loadingEl.style.display = 'none';
+      feedbackArea.style.display = 'block';
+      feedbackArea.className = 'feedback-panel';
+      feedbackArea.style.background = 'rgba(88, 28, 135, 0.25)';
+      feedbackArea.style.border = '1px solid #c084fc';
+      feedbackArea.style.color = '#f5d0fe';
+      feedbackArea.innerHTML = `
+        <div class="font-bold text-xs mb-1 flex items-center gap-1">
+          <span class="ai-badge">🎓 Konsultacja Profesorska</span>
+          <span>Wyjaśnienie mentora:</span>
+        </div>
+        <div class="text-xs leading-relaxed space-y-1">${text.replace(/\n\n/g, '<br><br>')}</div>
+      `;
+    } catch (err) {
+      loadingEl.style.display = 'none';
+      feedbackArea.style.display = 'block';
+      feedbackArea.className = 'feedback-panel feedback-wrong';
+      feedbackArea.innerHTML = `Wskazówka akademicka: ${q.hint} (Wzorzec: ${q.canonicalAnswer})`;
+    }
+  }
+
+  revealHint() {
+    if (!this.currentActiveQuestion) return;
+    const hintEl = document.getElementById('hint-text');
+    hintEl.innerText = `Wskazówka: ${this.currentActiveQuestion.hint}`;
+    this.stats.xp = Math.max(0, this.stats.xp - 5);
+    this.updateHUD();
+    document.getElementById('btn-hint').disabled = true;
+    audio.playStep();
+  }
+
+  async submitAnswer() {
+    const input = document.getElementById('answer-input');
+    const feedbackArea = document.getElementById('feedback-area');
+    const submitBtn = document.getElementById('btn-submit-answer');
+    const loadingEl = document.getElementById('ai-loading-indicator');
+    const toggleAi = document.getElementById('toggle-gemini-eval');
+
+    if (!input || !this.currentActiveQuestion) return;
+
+    const userText = input.value.trim();
+    if (userText.length < 2) {
+      this.showToast("Wpisz treść merytoryczną!");
+      return;
+    }
+
+    const q = this.currentActiveQuestion;
+    const useGemini = toggleAi && toggleAi.checked;
+
+    const localEval = verifyAnswer(userText, q.expectedGroups);
+
+    if (!useGemini) {
+      this.renderAnswerFeedback(localEval.isCorrect, q, null);
+      return;
+    }
+
+    if (loadingEl) {
+      document.getElementById('ai-loading-text').innerText = "Superwizor EBA (Gemini) weryfikuje rygor metodologiczny i niuanse Twojej odpowiedzi...";
+      loadingEl.style.display = 'flex';
+    }
+    submitBtn.disabled = true;
+
+    const systemPrompt = `Działasz jako Superwizor EBA i egzaminator z Diagnozy Psychologicznej na uniwersytecie (w oparciu o dzieła prof. K. Stemplewskiej-Żakowicz, prof. W.J. Paluchowskiego i prof. T. Szustrowej).
+Oceń merytorycznie odpowiedź studenta na poniższe pytanie egzaminacyjne.
+Pytanie: "${q.question}"
+Temat: "${q.topic}"
+Wzorcowa odpowiedź kanoniczna: "${q.canonicalAnswer}"
+Komentarz merytoryczny: "${q.explanation}"
+
+Bądź sprawiedliwym, ale rygorystycznym recenzentem EBA. Uznaj odpowiedź za poprawną (isCorrect: true), jeśli student oddał kluczowe relacje pojęciowe i sens akademicki (nawet własnymi słowami).
+Zwróć odpowiedź WYŁĄCZNIE jako obiekt JSON o polach:
+- isCorrect (boolean): czy zaliczono
+- scorePercentage (liczba 0-100): ocena precyzji merytorycznej
+- studentStrengths (string krótki, 1 zdanie): co student dobrze uchwycił
+- missingNuances (string krótki, 1-2 zdania): jakie niuanse lub pojęcia z podręcznika pominął lub przekręcił
+- professorNote (string, 1-2 zdania): osobisty, mentorski komentarz w tonie profesora psychologii.`;
+
+    try {
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Odpowiedź studenta: "${userText}"` }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              "isCorrect": { "type": "BOOLEAN" },
+              "scorePercentage": { "type": "NUMBER" },
+              "studentStrengths": { "type": "STRING" },
+              "missingNuances": { "type": "STRING" },
+              "professorNote": { "type": "STRING" }
+            },
+            required: ["isCorrect", "scorePercentage", "studentStrengths", "missingNuances", "professorNote"]
+          }
+        },
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+
+      const result = await this.callGemini(payload);
+      submitBtn.disabled = false;
+      if (loadingEl) loadingEl.style.display = 'none';
+
+      const partText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (partText) {
+        const evalData = JSON.parse(partText);
+        this.renderAnswerFeedback(evalData.isCorrect, q, evalData);
+      } else {
+        this.renderAnswerFeedback(localEval.isCorrect, q, null);
+      }
+    } catch (err) {
+      console.warn("AI Superwizor niedostępny, użyto parsera regułowego:", err);
+      submitBtn.disabled = false;
+      if (loadingEl) loadingEl.style.display = 'none';
+      this.renderAnswerFeedback(localEval.isCorrect, q, null);
+    }
+  }
+
+  renderAnswerFeedback(isCorrect, q, aiEval) {
+    const feedbackArea = document.getElementById('feedback-area');
+    const submitBtn = document.getElementById('btn-submit-answer');
+    if (!feedbackArea || !submitBtn) return;
+
+    feedbackArea.style.display = 'block';
+
+    if (isCorrect) {
+      audio.playSuccess();
+      this.stats.streak++;
+      this.stats.multiplier = this.stats.streak >= 3 ? 2.0 : (this.stats.streak >= 2 ? 1.5 : 1.0);
+      this.stats.answeredQuestions[q.id] = true;
+
+      const bonusPoints = aiEval && aiEval.scorePercentage > 85 ? Math.round(q.points * 1.2) : q.points;
+      this.addXP(bonusPoints, q.locId);
+
+      feedbackArea.className = 'feedback-panel feedback-correct';
+      feedbackArea.innerHTML = `
+        <div class="font-bold text-xs mb-1 flex items-center justify-between">
+          <span>✓ Odpowiedź Prawidłowa! (+${bonusPoints} XP, Seria: x${this.stats.multiplier.toFixed(1)})</span>
+          ${aiEval ? `<span class="ai-badge">Ocena precyzji: ${aiEval.scorePercentage}%</span>` : ''}
+        </div>
+        ${aiEval ? `
+          <div class="my-1 text-xs bg-emerald-950/40 p-2 rounded border border-emerald-500/30">
+            <p class="text-emerald-300"><strong>Docenione atuty:</strong> ${aiEval.studentStrengths}</p>
+            ${aiEval.missingNuances ? `<p class="text-emerald-200 mt-1"><strong>Dopełnienie metodologiczne:</strong> ${aiEval.missingNuances}</p>` : ''}
+            <p class="text-gray-300 italic mt-1 font-serif">„${aiEval.professorNote}"</p>
+          </div>
+        ` : ''}
+        <p class="mb-1"><strong>Wzorcowa definicja akademicka:</strong> ${q.canonicalAnswer}</p>
+        <div class="text-gray-300"><strong>Komentarz naukowy:</strong> ${q.explanation}</div>
+      `;
+
+      submitBtn.innerText = "Świetnie! Kontynuuj";
+      submitBtn.onclick = () => this.closeModal();
+    } else {
+      audio.playError();
+      this.reduceStamina(15);
+
+      feedbackArea.className = 'feedback-panel feedback-wrong';
+      feedbackArea.innerHTML = `
+        <div class="font-bold text-xs mb-1 flex items-center justify-between">
+          <span>✕ Niewystarczająca precyzja akademicka (-15% Staminy)</span>
+          ${aiEval ? `<span class="bg-rose-950 border border-rose-500/40 text-rose-300 text-xs px-2 py-0.5 rounded">Trafność: ${aiEval.scorePercentage}%</span>` : ''}
+        </div>
+        ${aiEval ? `
+          <div class="my-1 text-xs bg-rose-950/40 p-2 rounded border border-rose-500/30">
+            ${aiEval.studentStrengths ? `<p class="text-gray-300"><strong>Co było na właściwym tropie:</strong> ${aiEval.studentStrengths}</p>` : ''}
+            <p class="text-rose-200 mt-1"><strong>Braki i błędy:</strong> ${aiEval.missingNuances}</p>
+            <p class="text-gray-300 italic mt-1 font-serif">„${aiEval.professorNote}"</p>
+          </div>
+        ` : ''}
+        <p class="mb-1"><strong>Prawidłowe ujęcie z podręcznika:</strong> ${q.canonicalAnswer}</p>
+        <div class="text-gray-300"><strong>Wyjaśnienie:</strong> ${q.explanation}</div>
+        <p class="mt-1 text-xs italic text-gray-400">Pytanie powróci w ramach spaced repetition. Odwiedź Bufet, jeśli brakuje Ci staminy!</p>
+      `;
+
+      submitBtn.innerText = "Zrozumiałem, powrót";
+      submitBtn.onclick = () => this.closeModal();
+    }
+  }
+
+  showClinicalSimulationModal() {
+    this.isModalOpen = true;
+    const container = document.getElementById('modal-container');
+    container.style.display = 'flex';
+
+    this.activeSimPatient = {
+      name: "Adam K. (24 lata)",
+      caseSummary: "Student ekonomii skierowany po ostrym dyżurze szpitalnym (18 szwów na nadgarstku po samouszkodzeniu nożem w trakcie upojenia wódką). Zerwanie z narzeczoną 6 mies. wcześniej. Narastające kłopoty z koncentracją na studiach, anhedonia i poczucie bezsensu.",
+      history: []
+    };
+
+    container.innerHTML = `
+      <div class="modal-content" style="max-width: 820px; height: 90vh;">
+        <div class="modal-header">
+          <h2>
+            <span class="ai-badge mr-2"><span class="ai-pulse-dot"></span> GEMINI 2.5 FLASH</span>
+            🧠 Gabinet Symulacji Klinicznej: Wywiad z Pacjentem
+          </h2>
+          <button class="btn" onclick="game.closeModal()">✕</button>
+        </div>
+        <div class="modal-body flex flex-col flex-1 gap-2 p-3 overflow-hidden">
+          <div class="bg-slate-900 border border-amber-500/40 p-2.5 rounded text-xs">
+            <div class="flex justify-between items-center mb-1">
+              <strong class="text-amber-400">Przypadek: ${this.activeSimPatient.name}</strong>
+              <span class="text-gray-400">Podręcznik prof. Stemplewskiej-Żakowicz, s. 46</span>
+            </div>
+            <p class="text-gray-300 text-xs">${this.activeSimPatient.caseSummary}</p>
+            <div class="text-sky-300 text-xs mt-1">
+              <strong>Zadanie diagnosty:</strong> Przeprowadź profesjonalny wywiad (stosuj aktywne słuchanie, pytania otwarte, parafrazę, unikaj pytań sugerujących). Zbadaj ryzyko samobójcze, depresję i nadużywanie alkoholu.
+            </div>
+          </div>
+
+          <!-- Live Chat Area -->
+          <div id="sim-chat-log" class="flex flex-col flex-1 overflow-y-auto p-2 bg-slate-950 border border-slate-800 rounded">
+            <div class="chat-bubble-system">
+              Rozpoczęto sesję wstępną w gabinecie. Pacjent siedzi w fotelu, patrzy na opatrunek na nadgarstku.
+            </div>
+            <div class="chat-bubble-patient">
+              <strong>Adam:</strong> Dzień dobry... Lekarz ze szpitala kazał mi tu przyjść. Powiedział, że inaczej nie podpisze mi wypisu. Naprawdę nie wiem, o czym miałbym rozmawiać, to był po prostu wypadek po pijaku...
+            </div>
+          </div>
+
+          <!-- Diagnostic message input -->
+          <div class="flex gap-2">
+            <input type="text" id="sim-user-input" placeholder="Zadaj pytanie diagnostyczne lub sformułuj parafrazę (np. 'Słyszę, że czuje się Pan przymuszony...')..." class="w-full bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded focus:border-sky-400 outline-none" />
+            <button id="sim-send-btn" class="btn btn-primary text-xs shrink-0" onclick="game.sendSimulationMessage()">Wyślij 💬</button>
+          </div>
+
+          <!-- Conceptualization submission drawer -->
+          <div class="border-t border-slate-800 pt-2 flex justify-between items-center">
+            <span class="text-xs text-gray-400">Liczba wymian: <strong id="sim-turn-counter" class="text-sky-400">1</strong></span>
+            <button class="btn btn-gold text-xs" onclick="game.openConceptualizationSubmit()">
+              📋 Zakończ wywiad i sporządź Konceptualizację Przypadku
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    setTimeout(() => {
+      const inp = document.getElementById('sim-user-input');
+      if (inp) {
+        inp.focus();
+        inp.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.sendSimulationMessage();
+          }
+        });
+      }
+    }, 100);
+  }
+
+  async sendSimulationMessage() {
+    const input = document.getElementById('sim-user-input');
+    const chatLog = document.getElementById('sim-chat-log');
+    const sendBtn = document.getElementById('sim-send-btn');
+    if (!input || !chatLog || !this.activeSimPatient) return;
+
+    const userMsg = input.value.trim();
+    if (!userMsg) return;
+
+    input.value = '';
+    audio.playStep();
+
+    const userBubble = document.createElement('div');
+    userBubble.className = 'chat-bubble-diagnostician';
+    userBubble.innerHTML = `<strong>Ty (Diagnosta):</strong> ${userMsg}`;
+    chatLog.appendChild(userBubble);
+    chatLog.scrollTop = chatLog.scrollHeight;
+
+    this.activeSimPatient.history.push({ role: 'user', content: userMsg });
+    document.getElementById('sim-turn-counter').innerText = Math.floor(this.activeSimPatient.history.length / 2) + 1;
+
+    sendBtn.disabled = true;
+    const typingBubble = document.createElement('div');
+    typingBubble.className = 'chat-bubble-system flex items-center gap-1.5';
+    typingBubble.id = 'sim-typing-bubble';
+    typingBubble.innerHTML = `<span class="ai-pulse-dot"></span> <em>Pacjent Adam zastanawia się nad odpowiedź...</em>`;
+    chatLog.appendChild(typingBubble);
+    chatLog.scrollTop = chatLog.scrollHeight;
+
+    const conversationContext = this.activeSimPatient.history
+      .map(h => `${h.role === 'user' ? 'Diagnosta' : 'Pacjent Adam'}: ${h.content}`)
+      .join("\n");
+
+    const systemPrompt = `Jesteś aktorem symulującym pacjenta Adama (24 lata, student ekonomii z ramki 2.4 podręcznika prof. Stemplewskiej-Żakowicz).
+Profil psychologiczny Adama:
+- Głęboki wstyd wokół incydentu samookaleczenia (rozciął tętnicę nadgarstka, 18 szwów).
+- Socjalizacja do roli 'twardego mężczyzny': 'facet nie okazuje słabości', 'tylko maminsynek płacze'. Uważa, że sam powinien rozwiązywać problemy.
+- Nadużywa alkoholu (ok. pół litra wódki dziennie po zajęciach, aby 'odpłynąć').
+- Ciężka depresja objawiająca się anhedonią, zaburzeniami snu, brakiem koncentracji, rezygnacją z pasji i zerwaniem przez narzeczoną.
+- Reakcja na styl diagnosty:
+  * Jeśli diagnosta jest oceniający, mentorski, atakuje pytaniami zamkniętymi lub żargonem: Adam staje się chłodny, zamyka się w sobie i bagatelizuje problem.
+  * Jeśli diagnosta stosuje aktywne słuchanie, parafrazy, empatię, normalizuje wstyd (technika przyczółka): Adam powoli otwiera się, zdradza głęboki ból i bezsilność.
+
+Odpowiedz naturalnie, w pierwszej osobie ("Adam: ..."), dodając w nawiasach kwadratowych subtelne reakcje niewerbalne (np. [spuszcza wzrok], [pociąga za rękaw opatrunku], [milknie na 3 sekundy]). Twoja odpowiedź powinna mieć 2-4 zdania.`;
+
+    try {
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Dotychczasowy dialog:\n${conversationContext}\n\nOdpowiedz jako Adam na ostatnie słowa diagnosty.` }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+
+      const result = await this.callGemini(payload);
+      const reply = result?.candidates?.[0]?.content?.parts?.[0]?.text || "[wzdycha ciężko] Nie wiem... Może po prostu jestem beznadziejny.";
+
+      const typingEl = document.getElementById('sim-typing-bubble');
+      if (typingEl) typingEl.remove();
+      sendBtn.disabled = false;
+
+      const patientBubble = document.createElement('div');
+      patientBubble.className = 'chat-bubble-patient';
+      patientBubble.innerHTML = `<strong>Adam:</strong> ${reply.replace(/^Adam:\s*/i, '')}`;
+      chatLog.appendChild(patientBubble);
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+      this.activeSimPatient.history.push({ role: 'assistant', content: reply });
+    } catch (err) {
+      const typingEl = document.getElementById('sim-typing-bubble');
+      if (typingEl) typingEl.remove();
+      sendBtn.disabled = false;
+
+      const fallbackBubble = document.createElement('div');
+      fallbackBubble.className = 'chat-bubble-patient';
+      fallbackBubble.innerHTML = `<strong>Adam:</strong> [patrzy w podłogę] Nie wiem, co mam powiedzieć... Po prostu czuję, że wszystko wymyka mi się z rąk.`;
+      chatLog.appendChild(fallbackBubble);
+    }
+  }
+
+  openConceptualizationSubmit() {
+    const chatLog = document.getElementById('sim-chat-log');
+    if (!this.activeSimPatient || this.activeSimPatient.history.length < 2) {
+      this.showToast("Zadaj pacjentowi co najmniej 2-3 pytania przed konceptualizacją!");
+      return;
+    }
+
+    const container = document.getElementById('modal-container');
+    container.innerHTML = `
+      <div class="modal-content" style="max-width: 760px;">
+        <div class="modal-header">
+          <h2>📋 Konceptualizacja Przypadku Pacjenta Adama</h2>
+          <button class="btn" onclick="game.closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-xs text-gray-300 mb-2">
+            Na podstawie przeprowadzonego wywiadu sformułuj całościowy model problemu Adama w oparciu o model Maloneya i Warda (Faza 5) oraz standardy EBA:
+          </p>
+          <div class="space-y-2 text-xs">
+            <div>
+              <label class="font-bold text-sky-400 block mb-1">1. Hipoteza nozologiczna i kliniczna (co dolega Adamowi?):</label>
+              <textarea id="conc-hypotheses" class="answer-box" style="min-height: 44px;" placeholder="Np. Epizod ciężkiej depresji z wysokim ostrym ryzykiem samobójczym, uzależnienie od alkoholu w mechanizmie samoleczenia..."></textarea>
+            </div>
+            <div>
+              <label class="font-bold text-amber-400 block mb-1">2. Mechanizmy psychologiczne i kontekst kulturowy męskości:</label>
+              <textarea id="conc-mechanisms" class="answer-box" style="min-height: 44px;" placeholder="Np. Konflikt z normą męskości (wstyd przed zależnością), anhedonia, brak strategii radzenia sobie, izolacja społeczna..."></textarea>
+            </div>
+            <div>
+              <label class="font-bold text-emerald-400 block mb-1">3. Rekomendacje i plan interwencji EBA (faza GAP):</label>
+              <textarea id="conc-interventions" class="answer-box" style="min-height: 44px;" placeholder="Np. Natychmiastowy kontrakt bezpieczeństwa na życie, konsultacja psychiatryczna, psychoterapia poznawczo-behawioralna, terapia uzależnień..."></textarea>
+            </div>
+          </div>
+
+          <div id="conc-ai-loading" style="display: none;" class="p-3 bg-slate-900 border border-purple-500/50 rounded text-xs text-purple-300 flex items-center gap-2 my-2">
+            <div class="ai-pulse-dot"></div>
+            <span>Rada Naukowa EBA ocenia Twoją konceptualizację przypadku...</span>
+          </div>
+
+          <div id="conc-eval-feedback" style="display: none;" class="mt-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="btn-eval-conc" class="btn btn-primary" onclick="game.evaluateConceptualizationWithGemini()">Zatwierdź i oceń konceptualizację 🎓</button>
+          <button class="btn" onclick="game.closeModal()">Zamknij</button>
+        </div>
+      </div>
+    `;
+  }
+
+  async evaluateConceptualizationWithGemini() {
+    const hInput = document.getElementById('conc-hypotheses')?.value.trim() || '';
+    const mInput = document.getElementById('conc-mechanisms')?.value.trim() || '';
+    const iInput = document.getElementById('conc-interventions')?.value.trim() || '';
+    const loadingEl = document.getElementById('conc-ai-loading');
+    const feedbackEl = document.getElementById('conc-eval-feedback');
+    const submitBtn = document.getElementById('btn-eval-conc');
+
+    if (hInput.length < 5 || mInput.length < 5) {
+      this.showToast("Wypełnij poszczególne punkty konceptualizacji!");
+      return;
+    }
+
+    if (loadingEl) loadingEl.style.display = 'flex';
+    if (submitBtn) submitBtn.disabled = true;
+    audio.playStep();
+
+    const studentReport = `
+1. Hipotezy: ${hInput}
+2. Mechanizmy i kontekst: ${mInput}
+3. Interwencje: ${iInput}
+    `;
+
+    const interviewHistory = this.activeSimPatient.history
+      .map(h => `${h.role === 'user' ? 'Diagnosta' : 'Pacjent'}: ${h.content}`)
+      .join("\n");
+
+    const systemPrompt = `Działasz jako Przewodniczący Komisji Superwizyjnej EBA (ekspert od modeli procesu Maloneya i Warda, Paluchowskiego oraz GAP).
+Oceń konceptualizację przypadku pacjenta Adama przygotowaną przez studenta na podstawie wywiadu klinicznego.
+Oryginalny przypadek: Adam, 24 lata, samookaleczenie po alkoholu, ciężka depresja męska, anhedonia, wysokie ryzyko samobójcze, schematy męskości blokujące pomoc.
+
+Zwróć odpowiedź w formacie JSON z polami:
+- grade (string: "Doskonały", "Pozytywny", "Wymaga poprawy")
+- awardedXp (liczba od 30 do 70)
+- evaluationSummary (string: 2-3 zdania podsumowujące trafność diagnozy i planu leczenia)
+- clinicalAdvice (string: 2 zdania na temat tego, co w praktyce szpitalnej/ambulatoryjnej byłoby kluczowe)`;
+
+    try {
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: `Zapis wywiadu zebranego przez studenta:\n${interviewHistory}\n\nKonceptualizacja studenta:\n${studentReport}` }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              "grade": { "type": "STRING" },
+              "awardedXp": { "type": "NUMBER" },
+              "evaluationSummary": { "type": "STRING" },
+              "clinicalAdvice": { "type": "STRING" }
+            },
+            required: ["grade", "awardedXp", "evaluationSummary", "clinicalAdvice"]
+          }
+        },
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+
+      const result = await this.callGemini(payload);
+      if (loadingEl) loadingEl.style.display = 'none';
+
+      const data = JSON.parse(result?.candidates?.[0]?.content?.parts?.[0]?.text);
+      this.addXP(data.awardedXp || 40, 'modele');
+      audio.playLevelUp();
+
+      feedbackEl.style.display = 'block';
+      feedbackEl.className = 'feedback-panel feedback-correct';
+      feedbackEl.innerHTML = `
+        <div class="font-bold text-xs mb-1 flex justify-between items-center">
+          <span>🎓 Ocena Superwizora: ${data.grade} (+${data.awardedXp} XP)</span>
+          <span class="ai-badge">Standard EBA / GAP</span>
+        </div>
+        <p class="text-xs text-gray-200 mb-1">${data.evaluationSummary}</p>
+        <p class="text-xs text-emerald-300 font-semibold">Zalecenie kliniczne: ${data.clinicalAdvice}</p>
+      `;
+
+      submitBtn.innerText = "Zakończ i wróć na Kampus";
+      submitBtn.onclick = () => this.closeModal();
+    } catch (err) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      this.addXP(35, 'modele');
+      feedbackEl.style.display = 'block';
+      feedbackEl.className = 'feedback-panel feedback-correct';
+      feedbackEl.innerHTML = `
+        <div class="font-bold text-xs mb-1">✓ Konceptualizacja przyjęta do akt (+35 XP)</div>
+        <p class="text-xs text-gray-300">Pomyślnie powiązano objawy z kontekstem kulturowym męskości i ryzykiem samobójczym.</p>
+      `;
+      submitBtn.innerText = "Powrót do Kampusu";
+      submitBtn.onclick = () => this.closeModal();
+    }
+  }
+
+  closeModal() {
+    document.getElementById('modal-container').style.display = 'none';
+    this.isModalOpen = false;
+    this.currentActiveQuestion = null;
+  }
+
+  triggerInteraction(interaction) {
+    if (interaction.type === 'location') {
+      if (interaction.data.id === 'bufet') {
+        this.showBufetModal();
+      } else {
+        this.showQuestionModal(interaction.data);
+      }
+    }
+  }
+
+  update() {
+    if (this.isModalOpen) return;
+
+    let dx = 0;
+    let dy = 0;
+
+    if (this.keys['ArrowUp'] || this.keys['KeyW']) { dy -= 1; this.player.dir = 'up'; }
+    if (this.keys['ArrowDown'] || this.keys['KeyS']) { dy += 1; this.player.dir = 'down'; }
+    if (this.keys['ArrowLeft'] || this.keys['KeyA']) { dx -= 1; this.player.dir = 'left'; }
+    if (this.keys['ArrowRight'] || this.keys['KeyD']) { dx += 1; this.player.dir = 'right'; }
+
+    const distToTarget = Math.hypot(this.player.targetX - this.player.x, this.player.targetY - this.player.y);
+    if (distToTarget > 6 && dx === 0 && dy === 0) {
+      const angle = Math.atan2(this.player.targetY - this.player.y, this.player.targetX - this.player.x);
+      dx = Math.cos(angle);
+      dy = Math.sin(angle);
+      if (Math.abs(dx) > Math.abs(dy)) {
+        this.player.dir = dx > 0 ? 'right' : 'left';
+      } else {
+        this.player.dir = dy > 0 ? 'down' : 'up';
+      }
+    } else if (distToTarget <= 6) {
+      this.player.targetX = this.player.x;
+      this.player.targetY = this.player.y;
+    }
+
+    if (dx !== 0 && dy !== 0) {
+      dx *= 0.7071;
+      dy *= 0.7071;
+    }
+
+    if (dx !== 0 || dy !== 0) {
+      const nextX = this.player.x + dx * this.player.speed;
+      const nextY = this.player.y + dy * this.player.speed;
+      this.player.isMoving = true;
+      this.player.animTimer += 0.2;
+
+      if (!this.checkCollision(nextX, this.player.y)) {
+        this.player.x = nextX;
+      } else {
+        this.player.targetX = this.player.x;
+      }
+
+      if (!this.checkCollision(this.player.x, nextY)) {
+        this.player.y = nextY;
+      } else {
+        this.player.targetY = this.player.y;
+      }
+
+      if (Math.floor(this.player.animTimer) % 6 === 0) {
+        audio.playStep();
+      }
+    } else {
+      this.player.isMoving = false;
+    }
+
+    this.checkInteractions();
+  }
+
+  checkCollision(x, y) {
+    const pBox = { x: x + 8, y: y + 20, w: 16, h: 10 };
+    const minC = Math.floor(pBox.x / this.tileSize);
+    const maxC = Math.floor((pBox.x + pBox.w) / this.tileSize);
+    const minR = Math.floor(pBox.y / this.tileSize);
+    const maxR = Math.floor((pBox.y + pBox.h) / this.tileSize);
+
+    for (let r = minR; r <= maxR; r++) {
+      for (let c = minC; c <= maxC; c++) {
+        if (r < 0 || r >= this.rows || c < 0 || c >= this.cols) return true;
+        if (this.collisionGrid[r][c] > 0) return true;
+      }
+    }
+    return false;
+  }
+
+  checkInteractions() {
+    const pCenter = { x: this.player.x + 16, y: this.player.y + 16 };
+    let found = null;
+
+    for (const loc of this.locations) {
+      const npcPos = { x: loc.npcX * 32 + 16, y: loc.npcY * 32 + 16 };
+      const dist = Math.hypot(pCenter.x - npcPos.x, pCenter.y - npcPos.y);
+      if (dist < 46) {
+        found = { type: 'location', data: loc };
+        break;
+      }
+    }
+
+    const promptEl = document.getElementById('interact-prompt');
+    const locTextEl = document.getElementById('current-location-text');
+
+    if (found) {
+      this.activeInteraction = found;
+      promptEl.style.display = 'block';
+      promptEl.innerText = `[ROZMOWA] ${found.data.icon} ${found.data.npcName} (${found.data.npcRole})`;
+      locTextEl.innerText = `${found.data.name}`;
+    } else {
+      this.activeInteraction = null;
+      promptEl.style.display = 'none';
+      locTextEl.innerText = "Plac Główny Kampusu EBA";
+    }
+  }
+
+  render() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    const cameraX = Math.max(0, Math.min(this.cols * 32 - this.canvas.width, this.player.x + 16 - this.canvas.width / 2));
+    const cameraY = Math.max(0, Math.min(this.rows * 32 - this.canvas.height, this.player.y + 16 - this.canvas.height / 2));
+
+    this.ctx.save();
+    this.ctx.translate(-cameraX, -cameraY);
+
+    this.drawGround();
+    this.drawFountain();
+    this.locations.forEach(loc => this.drawBuilding(loc));
+    this.locations.forEach(loc => this.drawDetailedNPC(loc));
+    this.drawDetailedPlayer();
+
+    this.ctx.restore();
+  }
+
+  drawGround() {
+    this.ctx.fillStyle = "#121b18";
+    this.ctx.fillRect(0, 0, this.cols * 32, this.rows * 32);
+
+    this.ctx.fillStyle = "#1c2c26";
+    for (let i = 0; i < 75; i++) {
+      const gx = (i * 97) % (this.cols * 32);
+      const gy = (i * 83) % (this.rows * 32);
+      this.ctx.fillRect(gx, gy, 3, 2);
+      this.ctx.fillRect(gx + 2, gy - 2, 2, 2);
+    }
+
+    this.ctx.fillStyle = "#253141";
+    this.ctx.fillRect(0, 11 * 32, this.cols * 32, 2 * 32);
+
+    this.ctx.fillRect(17 * 32, 0, 2 * 32, this.rows * 32);
+
+    this.ctx.fillStyle = "#1f2937";
+    this.ctx.fillRect(0, 5 * 32, this.cols * 32, 32);
+    this.ctx.fillRect(0, 16 * 32, this.cols * 32, 32);
+
+    this.locations.forEach(loc => {
+      const doorX = (loc.x + loc.w / 2) * 32;
+      const doorY = (loc.y + loc.h) * 32;
+      this.ctx.fillStyle = "#334155";
+      if (loc.y < 10) {
+        this.ctx.fillRect(doorX - 16, doorY, 32, 11 * 32 - doorY);
+      } else if (loc.y > 14) {
+        this.ctx.fillRect(doorX - 16, 13 * 32, 32, loc.y * 32 - 13 * 32);
+      }
+    });
+
+    this.ctx.strokeStyle = "#37475d";
+    this.ctx.lineWidth = 1;
+    for (let c = 0; c < this.cols; c++) {
+      this.ctx.strokeRect(c * 32 + 1, 11 * 32 + 1, 30, 30);
+      this.ctx.strokeRect(c * 32 + 1, 12 * 32 + 1, 30, 30);
+    }
+  }
+
+  drawFountain() {
+    const fx = 17 * 32;
+    const fy = 11 * 32;
+
+    this.ctx.fillStyle = "#1f2937";
+    this.ctx.beginPath();
+    this.ctx.arc(fx + 32, fy + 32, 32, 0, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.strokeStyle = "#94a3b8";
+    this.ctx.lineWidth = 3;
+    this.ctx.stroke();
+
+    this.ctx.fillStyle = "#0284c7";
+    this.ctx.beginPath();
+    this.ctx.arc(fx + 32, fy + 32, 26, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    const wave = (Date.now() / 250) % 12;
+    this.ctx.strokeStyle = "rgba(224, 242, 254, 0.75)";
+    this.ctx.lineWidth = 1.5;
+    this.ctx.beginPath();
+    this.ctx.arc(fx + 32, fy + 32, 4 + wave, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    this.ctx.fillStyle = "#facc15";
+    this.ctx.fillRect(fx + 30, fy + 22, 4, 18);
+    this.ctx.beginPath();
+    this.ctx.arc(fx + 32, fy + 20, 6, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  drawBuilding(loc) {
+    const bx = loc.x * this.tileSize;
+    const by = loc.y * this.tileSize;
+    const bw = loc.w * this.tileSize;
+    const bh = loc.h * this.tileSize;
+
+    this.ctx.fillStyle = "rgba(0,0,0,0.55)";
+    this.ctx.fillRect(bx + 4, by + bh - 4, bw, 8);
+
+    this.ctx.fillStyle = loc.color;
+    this.ctx.fillRect(bx, by + 24, bw, bh - 24);
+
+    this.ctx.fillStyle = "#0f172a";
+    this.ctx.fillRect(bx + 4, by + 24, 8, bh - 24);
+    this.ctx.fillRect(bx + bw - 12, by + 24, 8, bh - 24);
+
+    this.ctx.fillStyle = loc.roofColor;
+    this.ctx.beginPath();
+    this.ctx.moveTo(bx - 4, by + 24);
+    this.ctx.lineTo(bx + bw / 2, by - 6);
+    this.ctx.lineTo(bx + bw + 4, by + 24);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.strokeStyle = "#090d16";
+    this.ctx.lineWidth = 2;
+    this.ctx.stroke();
+
+    const dw = 26;
+    const dh = 30;
+    const dx = bx + bw / 2 - dw / 2;
+    const dy = by + bh - dh;
+    this.ctx.fillStyle = "#1c1917";
+    this.ctx.fillRect(dx, dy, dw, dh);
+    this.ctx.strokeStyle = "#d97706";
+    this.ctx.lineWidth = 1.8;
+    this.ctx.strokeRect(dx, dy, dw, dh);
+
+    this.ctx.fillStyle = "#38bdf8";
+    this.ctx.fillRect(bx + 16, by + 34, 16, 20);
+    this.ctx.fillRect(bx + bw - 32, by + 34, 16, 20);
+    this.ctx.strokeStyle = "#0f172a";
+    this.ctx.strokeRect(bx + 16, by + 34, 16, 20);
+    this.ctx.strokeRect(bx + bw - 32, by + 34, 16, 20);
+
+    this.ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+    this.ctx.fillRect(bx + 6, by + 6, bw - 12, 14);
+    this.ctx.strokeStyle = "#facc15";
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeRect(bx + 6, by + 6, bw - 12, 14);
+
+    this.ctx.fillStyle = "#facc15";
+    this.ctx.font = "bold 9px monospace";
+    this.ctx.textAlign = "center";
+    this.ctx.fillText(loc.banner, bx + bw / 2, by + 17);
+  }
+
+  drawDetailedNPC(loc) {
+    const nx = loc.npcX * this.tileSize;
+    const ny = loc.npcY * this.tileSize;
+
+    this.ctx.fillStyle = "rgba(0,0,0,0.45)";
+    this.ctx.beginPath();
+    this.ctx.ellipse(nx + 16, ny + 30, 11, 4, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = "#1f2937";
+    this.ctx.fillRect(nx + 10, ny + 22, 4, 8);
+    this.ctx.fillRect(nx + 18, ny + 22, 4, 8);
+
+    this.ctx.fillStyle = loc.roofColor;
+    this.ctx.fillRect(nx + 8, ny + 10, 16, 13);
+
+    if (loc.id === 'bufet') {
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.fillRect(nx + 10, ny + 12, 12, 10);
+      this.ctx.fillStyle = "#facc15";
+      this.ctx.fillRect(nx + 21, ny + 14, 5, 5);
+    } else if (loc.id === 'eba') {
+      this.ctx.fillStyle = "#f8fafc";
+      this.ctx.fillRect(nx + 13, ny + 13, 6, 7);
+    } else if (loc.id === 'etyka') {
+      this.ctx.fillStyle = "#facc15";
+      this.ctx.beginPath();
+      this.ctx.arc(nx + 16, ny + 16, 3, 0, Math.PI * 2);
+      this.ctx.fill();
+    } else if (loc.id === 'dziecko') {
+      this.ctx.fillStyle = "#f43f5e";
+      this.ctx.fillRect(nx + 20, ny + 16, 6, 6);
+    }
+
+    this.ctx.fillStyle = "#fed7aa";
+    this.ctx.beginPath();
+    this.ctx.arc(nx + 16, ny + 8, 7, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    if (loc.id === 'eba' || loc.id === 'modele' || loc.id === 'neuro') {
+      this.ctx.fillStyle = "#0f172a";
+      this.ctx.fillRect(nx + 7, ny - 1, 18, 4);
+      this.ctx.fillStyle = "#facc15";
+      this.ctx.fillRect(nx + 22, ny + 1, 2, 6);
+    } else {
+      this.ctx.fillStyle = loc.id === 'bufet' ? "#451a03" : "#64748b";
+      this.ctx.beginPath();
+      this.ctx.arc(nx + 16, ny + 5, 7, Math.PI, Math.PI * 2);
+      this.ctx.fill();
+    }
+
+    this.ctx.fillStyle = "#0f172a";
+    this.ctx.fillRect(nx + 13, ny + 7, 2, 2);
+    this.ctx.fillRect(nx + 17, ny + 7, 2, 2);
+
+    this.ctx.fillStyle = "#ffffff";
+    this.ctx.font = "bold 9px monospace";
+    this.ctx.textAlign = "center";
+    this.ctx.fillText(loc.npcName, nx + 16, ny - 6);
+
+    if (this.activeInteraction && this.activeInteraction.data.id === loc.id) {
+      const bounce = Math.sin(Date.now() / 150) * 3;
+      this.ctx.fillStyle = "#facc15";
+      this.ctx.font = "bold 13px monospace";
+      this.ctx.fillText("!", nx + 16, ny - 16 + bounce);
+    }
+  }
+
+  drawDetailedPlayer() {
+    const px = this.player.x;
+    const py = this.player.y;
+
+    this.ctx.fillStyle = "rgba(0,0,0,0.5)";
+    this.ctx.beginPath();
+    this.ctx.ellipse(px + 16, py + 30, 11, 4, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    const legOffset = this.player.isMoving ? Math.sin(this.player.animTimer) * 4 : 0;
+    this.ctx.fillStyle = "#0f172a";
+    this.ctx.fillRect(px + 9, py + 22 + legOffset, 5, 8);
+    this.ctx.fillRect(px + 18, py + 22 - legOffset, 5, 8);
+
+    this.ctx.fillStyle = "#334155";
+    this.ctx.fillRect(px + 8, py + 28 + legOffset, 6, 3);
+    this.ctx.fillRect(px + 18, py + 28 - legOffset, 6, 3);
+
+    this.ctx.fillStyle = "#f8fafc";
+    this.ctx.fillRect(px + 7, py + 10, 18, 14);
+
+    let classColor = "#38bdf8";
+    if (this.player.charClass) {
+      if (this.player.charClass.id === 'klinicysta') classColor = "#f59e0b";
+      if (this.player.charClass.id === 'etyk') classColor = "#ec4899";
+    }
+    this.ctx.fillStyle = classColor;
+    this.ctx.fillRect(px + 11, py + 12, 10, 11);
+
+    this.ctx.strokeStyle = "#facc15";
+    this.ctx.lineWidth = 1.8;
+    this.ctx.beginPath();
+    this.ctx.arc(px + 16, py + 14, 5, 0, Math.PI);
+    this.ctx.stroke();
+
+    this.ctx.fillStyle = "#e2e8f0";
+    this.ctx.beginPath();
+    this.ctx.arc(px + 16, py + 19, 2, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = "#fed7aa";
+    this.ctx.beginPath();
+    this.ctx.arc(px + 16, py + 7, 7, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = "#3b1d11";
+    this.ctx.beginPath();
+    this.ctx.arc(px + 16, py + 4, 7, Math.PI, Math.PI * 2);
+    this.ctx.fill();
+    this.ctx.fillRect(px + 9, py + 3, 3, 5);
+
+    this.ctx.fillStyle = "#090d16";
+    if (this.player.dir === 'down') {
+      this.ctx.fillRect(px + 13, py + 6, 2, 2);
+      this.ctx.fillRect(px + 17, py + 6, 2, 2);
+    } else if (this.player.dir === 'left') {
+      this.ctx.fillRect(px + 11, py + 6, 2, 2);
+    } else if (this.player.dir === 'right') {
+      this.ctx.fillRect(px + 19, py + 6, 2, 2);
+    } else if (this.player.dir === 'up') {
+      this.ctx.fillStyle = "#3b1d11";
+      this.ctx.beginPath();
+      this.ctx.arc(px + 16, py + 6, 6, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
+  }
+}
+
+let game = null;
+window.addEventListener('load', () => {
+  game = new GameEngine();
+  window.game = game;
+
+  function gameLoop() {
+    game.update();
+    game.render();
+    requestAnimationFrame(gameLoop);
+  }
+  requestAnimationFrame(gameLoop);
+});
+</script>
+
+</body>
+</html>
