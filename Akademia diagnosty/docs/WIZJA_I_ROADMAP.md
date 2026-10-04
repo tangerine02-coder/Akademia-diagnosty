@@ -1,6 +1,6 @@
 # 🎯 Akademia Diagnosty — Wizja i Roadmapa
 
-*Dokument żywy. Ostatnia aktualizacja: 2026-10-01.*
+*Dokument żywy. Ostatnia aktualizacja: 2026-10-04.*
 *Sesja brainstorm z AI — decyzje autorki gry.*
 
 > **Jak czytać ten dokument:**
@@ -8,6 +8,56 @@
 > - 🔨 = do zbudowania (decyzja podjęta, kod jeszcze nie)
 > - 💭 = do przegadania w sesji brainstorm
 > - ⚡ = już istnieje w kodzie
+
+---
+
+## 🗺️ Roadmapa realizacji (zaakceptowana 2026-10-04)
+
+Źródło zadań: tablica POPRAWKI w Notion („Gra Akademia Diagnosty”).
+Kolejność: od najmniejszego ryzyka do największych systemów. Każdy etap kończy się
+wersją do przetestowania. Szczegóły zrobionych rzeczy odhaczamy w Notion.
+
+### Etap 0 · Porządki
+- 🔨 Stare kopie `przed_*.html` i `backup` zostają tylko w historii Gita; w repo jeden plik gry.
+- ⚡ Zapis do pliku i wczytanie z pliku już istnieją (💾 Zapis → ⬇️ Pobierz / 📂 Wczytaj). Cały postęp siedzi w jednym kluczu, więc plik zapisu zawiera wszystko.
+- 🔨 Przegląd decyzji oznaczonych **[do przejrzenia]** z nocy 1.10 (lista w `docs/DO_PRZEJRZENIA.md`).
+- 🔨 Jedno źródło prawdy: wgrać do repo najnowszy plik gry z komputera oraz ukryte foldery `.profil-work/` i `.noc-work/` (źródła modułów i testy). Blok `PROFIL` w HTML jest generowany z `.profil-work/src/` — bez tych źródeł zmiany w nim zrobione w repo nadpisze następny `build.js`.
+
+### Etap 1 · Szybkie wygrane
+- 🔨 Więcej easter eggów, totalnie niespodziewanych.
+- 🔨 Błonia Rozkładu Normalnego: więcej statystyki.
+- 🔨 Zróżnicowanie domów z zewnątrz; różne układy i dekoracje wnętrz na wyspach.
+- 🔨 Nowa muzyka.
+
+### Etap 2 · Systemy świata
+- 🔨 4 pory roku wg daty gry (✅ 28 dni gry na porę, rok = 112 dni). Najpierw, bo zmieniają grafikę wszędzie, a nowe miejsca powstaną od razu z wariantami sezonowymi.
+- 🔨 Jeden mechanizm „znajdź / co się zmieniło”: zadania poboczne od postaci + zadania w treningu snu.
+- 🔨 Wyspa Snu: na niskim poziomie miasto zamglone i poprzestawiane, limit czasu, wcześniejsze wybudzenie, zadania z bonusem, coraz dłuższy trening.
+
+### Etap 3 · Nowe miejsca
+- 🔨 Ogród Uważności (mindfulness i medytacja).
+- 🔨 Dom Żyrafy w mieście (✅ NVC) — dom dla istniejących rozmów w stylach.
+- 🔨 Dom Muzyki — poznawcza nauka muzyki; fundator pianina na Bulwarze Empatii.
+- 🔨 Dzielnica Pamięci (✅ nowa dzielnica na mapie; pamięć długotrwała przenosi się z Portu).
+- 🔨 Archiwum Szarlatanerii 2.0 — dla laika przegląd zdyskredytowanych testów i technik, nie testowanie.
+- 💭 Katedra Teologii i Płci — treść do ustalenia z autorką.
+
+### Etap 4 · Długa gra
+- 🔨 Ogródek i poletko; sprzedaż warzyw daje Dopaminki.
+- 🔨 Powiększanie domku: trudna misja odblokowuje nowe pomieszczenie (rzadko), balans razem z zarobkami z poletka.
+- 🔨 Osobowość z wyborów: zakładka 🧠 Osobowość już istnieje — domykamy brakujące źródła danych.
+
+### Etap 5 · Wersja akademicka
+- 🔨 Podział na BAZĘ i ROZSZERZENIE; testy tylko w wersji dla studentów. Warunek przed publikacją gry.
+- 🔨 Promotor (magisterka, praca roczna) i mentor postaci.
+- 🔨 Mini gry i kompendium wiedzy w każdym budynku.
+
+### Później
+- 💭 Rodzina postaci.
+
+### Otwarte pytania
+- 💭 Mentor i promotor: jedna postać czy dwie?
+- 💭 Katedra Teologii i Płci: co ma w niej być?
 
 ---
 
