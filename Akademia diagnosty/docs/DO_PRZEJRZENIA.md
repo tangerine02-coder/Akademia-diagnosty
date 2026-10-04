@@ -40,7 +40,7 @@
 27. **Dom gracza** nie dostał nakładek z zewnątrz — jego wygląd ustawiasz sama w kreatorze.
 
 ## Etap 2 (4.10)
-28. **Dzień 1 = jesień** (jak początek roku akademickiego), potem zima, wiosna, lato — po 28 dni. Ręcznie: panel testerki (F9).
+28. **Dzień 1 = jesień** (jak początek roku akademickiego), potem zima, wiosna, lato — po 28 dni. Ręcznie: panel testerki (F9, na telefonie 💾 Zapis → 🧪 Otwórz).
 29. **Wygląd pór roku**: jesienią rude drzewa i liście na ziemi, zimą śnieg na trawie, dachach i drzewach (bez kwiatów), wiosną jasna trawa, stokrotki i płatki w powietrzu. Śnieg pada w 2 na 3 zimowe dni. Wnętrza i sen nie zmieniają się z porą roku.
 30. **Zdanie przy zmianie pory** (np. zimą: „Poranne światło pomaga nastawić zegar biologiczny — warto wyjść na spacer przed południem”).
 31. **Zadania „znajdź” i nagrody**: Listonosz — 4 listy, 25 🟡 + 10 XP; Rybak — 3 spławiki, 20 🟡 + 10 XP; Ida — chowany raz dziennie, 10 🟡 + 10 XP, potem 3 🟡 + 3 XP; Morfeusza — 3 senne motyle, 15 🟡 + 10 XP + 10 LP. Propozycja pada od 2. dnia (w 1. dniu po pierwszej zwykłej rozmowie); „Nie teraz” chowa ją do jutra.

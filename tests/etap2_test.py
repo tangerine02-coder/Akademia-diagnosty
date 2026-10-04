@@ -324,7 +324,11 @@ async def main():
         await pg.screenshot(path=f'{OUT}/e2_po_snie.png')
 
         # ================= 4) PANEL TESTERKI, ZAPIS =================
-        await pg.evaluate("() => game.openTesterPanel()")
+        await pg.evaluate("() => { game.closeModal(true); game.closeDialog(true); game.showSaveMenu(); }")
+        btn = await pg.evaluate("() => !!document.getElementById('e2-tester-btn')")
+        check(btn, 'okno zapisu ma przycisk panelu testerki (telefon bez F9)')
+        await pg.evaluate("() => document.getElementById('e2-tester-btn').click()")
+        await pg.wait_for_timeout(200)
         has = await pg.evaluate("() => document.querySelectorAll('#modal [data-e2season]').length")
         check(has == 5, 'panel testerki: przełącznik pór roku')
         await pg.evaluate("() => document.querySelector('#modal [data-e2season=\"zima\"]').click()")

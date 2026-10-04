@@ -17682,7 +17682,7 @@ window.addEventListener('load', () => {
 
   const base = {};
   ['setZone', 'useSpot', 'spotPrompt', 'talkTo', 'npcVisible', 'drawObjAnim', 'updateHUD', 'update', 'updatePrompt',
-    'drawDreamSprite', 'drawDreamEffects', 'trigger', 'openDreamTasks', 'openDreamModulation', 'openTesterPanel'].forEach(k => { base[k] = Game.prototype[k]; });
+    'drawDreamSprite', 'drawDreamEffects', 'trigger', 'openDreamTasks', 'openDreamModulation', 'openTesterPanel', 'showSaveMenu'].forEach(k => { base[k] = Game.prototype[k]; });
 
   Object.assign(Game.prototype, {
     setZone(id) {
@@ -17947,6 +17947,19 @@ window.addEventListener('load', () => {
         this.e2Data().q = {}; this.e2PlaceItems(); this.e2UpdateChip(); this.save();
         this.toast('🔎 Zadania szukania wyczyszczone.'); this.openTesterPanel();
       });
+    },
+    // na telefonie nie ma klawisza F9: przycisk panelu testerki w oknie zapisu
+    showSaveMenu(...args) {
+      const r = base.showSaveMenu.apply(this, args);
+      try {
+        const m = document.getElementById('modal');
+        const p = m && [...m.querySelectorAll('p')].find(x => x.textContent.includes('Panel testerki'));
+        if (p && !m.querySelector('#e2-tester-btn')) {
+          p.innerHTML = '🧪 Panel testerki: klawisz F9 albo <button class="btn btn-sm" id="e2-tester-btn">🧪 Otwórz</button>';
+          m.querySelector('#e2-tester-btn').addEventListener('click', () => { audio.click(); this.closeModal(true); this.openTesterPanel(); });
+        }
+      } catch (e) {}
+      return r;
     }
   });
 
