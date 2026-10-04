@@ -30,6 +30,15 @@
 18. Numery pomocowe w grze: 116 123, 800 70 2222, 116 111, 112, Niebieska Linia 800 120 002, Rzecznik Praw Pacjenta 800 190 590.
     *Sprawdzone 4.10.2026 z listą Warszawa 19115 (aktualizacja 08.2025): numery i opisy się zgadzają. Uwaga: infolinia RPP działa pn–pt 8–18, pozostałe całodobowo.*
 
+## Etap 1 (4.10)
+21. **Kod Konami**: za pierwszym razem +7 🟡, potem raz dziennie losowo 0–3 🟡 (żeby pokazać zmienny harmonogram wzmocnień).
+22. **Butelka z listem** pojawia się na Plaży co 4 dni (dzień 2, 6, 10…), 5 listów od przyszłego „ja”, +3 XP za list.
+23. **Fontanna Barnuma** kosztuje 1 🟡 (jak studnia życzeń na Osiedlu); pierwsze odkrycie efektu daje +5 XP.
+24. **Marzenie na jawie** po 80 s bezruchu na zewnątrz, raz dziennie; co któryś raz myśl o sieci stanu spoczynkowego (DMN).
+25. **Przydział motywów wnętrz** (np. Wieża Babel = biblioteka, Arka = statek z bulajami, Dom Neuroróżnorodności = wyciszone wnętrze z jednym meblem na pokój). Lista w kodzie: `SUBJ_THEME`.
+26. **Perkusja** w muzyce Plaży, Błoni, Rynku, Bulwaru i Portu; nocą milknie, a melodia zwalnia i łagodnieje.
+27. **Dom gracza** nie dostał nakładek z zewnątrz — jego wygląd ustawiasz sama w kreatorze.
+
 ## Relacje, wątki, Momenty (projekt z 1.10, po południu)
 Ten moduł (🫂 Ludzie, 📸 Album, 📈 Mój tydzień, 6 małych wątków) **nie występuje w pliku gry na GitHubie**. Albo nie został jeszcze wbudowany, albo plik w repo jest starszy niż ten na komputerze. Do sprawdzenia przed dalszą pracą.
 19. Progi bliskości w relacjach z mieszkańcami.

@@ -23,11 +23,13 @@ wersją do przetestowania. Szczegóły zrobionych rzeczy odhaczamy w Notion.
 - 🔨 Przegląd decyzji oznaczonych **[do przejrzenia]** z nocy 1.10 (lista w `docs/DO_PRZEJRZENIA.md`).
 - 🔨 Jedno źródło prawdy: wgrać do repo najnowszy plik gry z komputera oraz ukryte foldery `.profil-work/` i `.noc-work/` (źródła modułów i testy). Blok `PROFIL` w HTML jest generowany z `.profil-work/src/` — bez tych źródeł zmiany w nim zrobione w repo nadpisze następny `build.js`.
 
-### Etap 1 · Szybkie wygrane
-- 🔨 Więcej easter eggów, totalnie niespodziewanych.
-- 🔨 Błonia Rozkładu Normalnego: więcej statystyki.
-- 🔨 Zróżnicowanie domów z zewnątrz; różne układy i dekoracje wnętrz na wyspach.
-- 🔨 Nowa muzyka.
+### Etap 1 · Szybkie wygrane — ⚡ zrobione 2026-10-04
+Kod: osobny `<script>` „ETAP 1 · 2026-10-04” (przed blokiem PROFIL). Test: `tests/etap1_test.py`.
+- ⚡ Easter eggi: kod Konami, zawrót głowy (3 obroty w miejscu), marzenie na jawie (długi bezruch), gumowa kaczka na kanale Bulwaru, butelka z listem od przyszłego „ja” na Plaży, Fontanna Barnuma na Rynku.
+- ⚡ Błonia: Deska Galtona, Budka „Lody i oparzenia” (korelacja ≠ przyczyna), Ławka Średniej Płacy (średnia vs mediana), Automat z Monetą (złudzenie gracza), Pomnik Regresji do Średniej; +15 XP za wszystkie.
+- ⚡ Domy z zewnątrz: dachówka-łuska, łupek, strzecha, mech, szachulec, bluszcz, podmurówka, okiennice, lukarny, daszki, latarenki, donice.
+- ⚡ Wnętrza domów-przedmiotów: 27 motywów (podłoga, ściana, okno, hol, meble, obrazy, dywany) i różny układ (drzwi pokoi, stanowiska, kolumny, ławki, rośliny).
+- ⚡ Muzyka: pogłos, akordy w tle, delikatna perkusja, druga linia melodii, nokturn nocą, własny motyw wnętrz na każdej wyspie.
 
 ### Etap 2 · Systemy świata
 - 🔨 4 pory roku wg daty gry (✅ 28 dni gry na porę, rok = 112 dni). Najpierw, bo zmieniają grafikę wszędzie, a nowe miejsca powstaną od razu z wariantami sezonowymi.
