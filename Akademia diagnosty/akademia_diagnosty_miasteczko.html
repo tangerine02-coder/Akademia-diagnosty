@@ -17146,6 +17146,819 @@ window.addEventListener('load', () => {
 })();
 </script>
 
+<script>
+/* =====================================================================
+   ETAP 2 · 2026-10-04 — osobny skrypt (owija funkcje i Game.prototype).
+   Roadmapa: docs/WIZJA_I_ROADMAP.md → Etap 2 „Systemy świata”.
+   Notion/GRAFIKA: „Dodaj 4 pory roku w zależności od dat gry”.
+   Notion/OGÓLNE: „zadania poboczne od postaci: coś znaleźć na całym obszarze”.
+   Notion/WYSPA SNU: „widok snu na niskim poziomie: zamglony, poprzestawiany,
+   dziwny; ograniczony czas, wcześniejsze wybudzenie; zadania porozrzucane
+   po dzielnicy — odszukać, co zmieniło się względem jawy (kolor, napis,
+   włosy postaci); czas treningu się wydłuża; bonus za zadania”.
+   1) pory roku: 28 dni gry na porę, rok = 112 dni (decyzja autorki);
+      dzień 1 = jesień, jak początek roku akademickiego [do przejrzenia],
+   2) wspólny silnik „znajdź”: zadania poboczne od mieszkańców i zadania
+      „co się zmieniło” we śnie,
+   3) trening snu: mgła i poprzestawiane drzewa na niskim poziomie,
+      limit czasu rosnący z treningiem, zmiany do wypatrzenia, bonusy.
+   Stan gry: state.e2 i state.dream.session.e2 (zapis w pliku zapisu).
+   ===================================================================== */
+(() => {
+  'use strict';
+
+  const E2 = window.ETAP2 = {};
+  const RND = s => mulberry(hashStr('e2|' + s));
+  const E1 = window.ETAP1 || { objSprites: {} };
+  if (!E1.objSprites) E1.objSprites = {};
+
+  Game.prototype.e2Data = function () {
+    const s = this.state;
+    if (!s.e2 || typeof s.e2 !== 'object') s.e2 = {};
+    return s.e2;
+  };
+
+  /* =================================================================
+     1) PORY ROKU
+     ================================================================= */
+  const SEASONS = [
+    { id: 'jesien', name: 'Jesień', icon: '🍂' },
+    { id: 'zima', name: 'Zima', icon: '❄️' },
+    { id: 'wiosna', name: 'Wiosna', icon: '🌸' },
+    { id: 'lato', name: 'Lato', icon: '☀️' }
+  ];
+  const SEASON_LEN = 28, YEAR = 112;
+  const seasonIndex = day => Math.floor(((((day - 1) % YEAR) + YEAR) % YEAR) / SEASON_LEN);
+  E2.SEASONS = SEASONS;
+  E2.seasonOfDay = day => SEASONS[seasonIndex(day)];
+  Game.prototype.e2Season = function () {
+    const s = this.state;
+    if (!s) return SEASONS[3];
+    const o = s.e2 && s.e2.seasonOverride, f = o && SEASONS.find(x => x.id === o);
+    return f || SEASONS[seasonIndex(s.day || 1)];
+  };
+  Game.prototype.e2SeasonDay = function () { return ((((this.state.day || 1) - 1) % SEASON_LEN) + SEASON_LEN) % SEASON_LEN + 1; };
+  // E2.g: gra ustawiana w setZone/update — window.game powstaje dopiero po konstruktorze
+  const curSeason = () => { const g = E2.g || window.game; return g && g.state ? g.e2Season() : SEASONS[3]; };
+  // śnieg pada w 2 na 3 zimowe dni (leży całą zimę)
+  E2.snowing = day => hashStr('e2snieg|' + day) % 3 !== 0;
+  const outdoorId = id => { id = String(id || ''); return !id.startsWith('dream:') && !id.startsWith('in:') && id !== 'dom' && id !== 'halina'; };
+
+  const SNOW = '#e9eff4';
+  function seasonPal(pal, id) {
+    const P = Object.assign({}, pal), m = (k, c, t) => { if (P[k]) P[k] = mix(P[k], c, t); };
+    if (id === 'jesien') {
+      m('grass', '#b8963e', 0.45); m('field', '#b8963e', 0.45); m('grass2', '#9a6a32', 0.45); m('moss', '#7a6a34', 0.35);
+      m('path', '#9a7a50', 0.12); m('water', '#577788', 0.25); m('dead', '#8a6a40', 0.2);
+    } else if (id === 'zima') {
+      m('grass', SNOW, 0.84); m('field', SNOW, 0.84); m('grass2', '#d2dde6', 0.8); m('moss', '#d8e2ea', 0.78); m('dead', '#dfe6ec', 0.72);
+      m('path', '#d6dfe6', 0.5); m('sand', '#eef2f4', 0.55); m('wetsand', '#c8d4dc', 0.45); m('soil', '#c8d0d8', 0.5); m('water', '#7d9ab8', 0.45);
+      ['cobble', 'plaza', 'asphalt', 'concrete', 'brick', 'planks', 'track'].forEach(k => m(k, '#f0f4f8', 0.28));
+    } else if (id === 'wiosna') {
+      m('grass', '#8fd46a', 0.3); m('field', '#8fd46a', 0.3); m('grass2', '#6fbf52', 0.25); m('moss', '#5aa060', 0.2); m('water', '#65a9b7', 0.15);
+    }
+    return P;
+  }
+  E2.seasonPal = seasonPal;
+
+  // teren dzielnic: paleta pory roku, zimą bez kwiatów, jesienią opadłe liście, wiosną stokrotki
+  const WINTER_HIDE = new Set(['flowers', 'wildflowers', 'crop', 'lily', 'fern', 'dunegrass']);
+  const GRASSY = new Set(['grass', 'grass2', 'field', 'moss']);
+  const bg0 = bakeGround;
+  bakeGround = function (Z) {
+    const se = curSeason().id;
+    if (se === 'lato' || !Z || Z.interior || !outdoorId(Z.id)) return bg0(Z);
+    const Z2 = Object.assign({}, Z, { pal: seasonPal(Object.assign({}, DEFAULT_PAL, Z.pal || {}), se) });
+    if (se === 'zima') Z2.flats = (Z.flats || []).filter(f => !WINTER_HIDE.has(f.type));
+    const c = bg0(Z2);
+    try {
+      const g = c.getContext('2d'), rnd = RND(se + '|' + Z.id), T = (x, y) => Z.terrain ? Z.terrain[y * Z.w + x] : null;
+      if (se === 'zima') {
+        (Z.hedges || []).forEach(h => { R(g, h.x * 16 + 2, h.y * 16 + 2, 12, 2, '#f4f8fb'); for (let i = 0; i < 5; i++) P(g, h.x * 16 + 1 + Math.floor(rnd() * 14), h.y * 16 + 4 + Math.floor(rnd() * 6), '#f4f8fb'); });
+        for (let i = 0; i < Z.w * Z.h / 3; i++) { const x = Math.floor(rnd() * Z.w), y = Math.floor(rnd() * Z.h); if (GRASSY.has(T(x, y))) P(g, x * 16 + rnd() * 15, y * 16 + rnd() * 15, '#ffffff'); }
+      } else if (se === 'jesien') {
+        for (let i = 0; i < Z.w * Z.h / 5; i++) { const x = Math.floor(rnd() * Z.w), y = Math.floor(rnd() * Z.h); if (!GRASSY.has(T(x, y)) && T(x, y) !== 'path') continue; const px = x * 16 + rnd() * 14, py = y * 16 + rnd() * 14, c2 = pick(rnd, ['#c8762f', '#a8542a', '#e09a44', '#8a4a22']); P(g, px, py, c2); P(g, px + 1, py, c2); }
+      } else if (se === 'wiosna') {
+        for (let i = 0; i < Z.w * Z.h / 7; i++) { const x = Math.floor(rnd() * Z.w), y = Math.floor(rnd() * Z.h); if (!GRASSY.has(T(x, y))) continue; const px = x * 16 + 1 + rnd() * 13, py = y * 16 + 1 + rnd() * 13; P(g, px, py, '#fff8f0'); P(g, px + 1, py, rnd() < 0.5 ? '#ffd23f' : '#fff8f0'); }
+      }
+    } catch (e) {}
+    return c;
+  };
+
+  // drzewa i krzewy: barwy pory roku; budynki zimą: śnieg na dachach
+  const TREE_PAL = {
+    jesien: ['#76422e', '#a65c32', '#c5883c', '#dbb55d'],
+    zima: ['#8a9aa8', '#b8c8d4', '#dfe8ee', '#f4f8fa'],
+    wiosna: ['#4f8a3c', '#6fbf52', '#9fd870', '#f4c8d8']
+  };
+  const PINE_PAL = { zima: ['#3a5a4a', '#5f7f78', '#c8d8e0', '#f0f4f8'], wiosna: ['#2f6a3a', '#3f8a48', '#5fae58', '#7fc868'], jesien: null };
+  function recolor(src, pal) {
+    const [c, g] = mkCanvas(src.width, src.height); g.drawImage(src, 0, 0);
+    const px = g.getImageData(0, 0, c.width, c.height), P2 = pal.map(hexToRgb);
+    for (let i = 0; i < px.data.length; i += 4) {
+      const r = px.data[i], gr = px.data[i + 1], b = px.data[i + 2];
+      if (px.data[i + 3] && gr > r * 1.1 && gr > b * 0.95) { const col = P2[Math.min(P2.length - 1, Math.floor(gr / 70))]; px.data[i] = col[0]; px.data[i + 1] = col[1]; px.data[i + 2] = col[2]; }
+    }
+    g.putImageData(px, 0, 0);
+    return c;
+  }
+  function snowy(sprite) {
+    if (sprite._e2snow) return sprite._e2snow;
+    const src = sprite.c, [c, g] = mkCanvas(src.width, src.height); g.drawImage(src, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height), W = c.width, H = c.height, A = (x, y) => d.data[(y * W + x) * 4 + 3];
+    const limit = Math.floor(H * 0.72);
+    for (let x = 0; x < W; x++) {
+      let y = 0; while (y < limit && A(x, y) < 200) y++;
+      if (y >= limit) continue;
+      const depth = 2 + ((x * 7) % 3 === 0 ? 1 : 0);
+      for (let k = 1; k <= depth; k++) { const yy = y + k; if (yy >= H || A(x, yy) < 200) break; const i = (yy * W + x) * 4; d.data[i] = 240; d.data[i + 1] = 245; d.data[i + 2] = 250; }
+    }
+    g.putImageData(d, 0, 0);
+    return (sprite._e2snow = Object.assign({}, sprite, { c }));
+  }
+  function seasonalSprite(sprite, object, se) {
+    if (se === 'lato' || !object) return sprite;
+    const t = object.type, kind = object.kind || '';
+    if (t === 'building') return se === 'zima' ? snowy(sprite) : sprite;
+    if (t !== 'tree' && t !== 'bush') return sprite;
+    if (kind === 'neuron' || kind === 'dead' || kind === 'mushroom') return sprite;
+    if (kind === 'palm' && se !== 'zima') return sprite;
+    const pine = kind === 'pine';
+    const pal = pine ? PINE_PAL[se] : TREE_PAL[se];
+    if (!pal) return sprite;
+    const key = '_e2' + se;
+    if (!sprite[key]) sprite[key] = Object.assign({}, sprite, { c: recolor(sprite.c, pal) });
+    return sprite[key];
+  }
+  E2.seasonalSprite = seasonalSprite;
+
+  // sezonowe cząsteczki: jesień — liście, wiosna — płatki, zima — śnieg (rysowany na ekranie)
+  const ip0 = Game.prototype.initParticles, np0 = Game.prototype.newParticle;
+  Game.prototype.initParticles = function (Z) {
+    const def = Z && Z.def;
+    if (!def || Z.interior || !outdoorId(Z.id) || def.particles === 'fog' || def.particles === 'none') return ip0.call(this, Z);
+    const se = this.e2Season().id;
+    if (se === 'lato') return ip0.call(this, Z);
+    const keep = def.particles;
+    def.particles = se === 'jesien' ? 'leaves' : se === 'wiosna' ? 'petals' : 'none';
+    try { ip0.call(this, Z); } finally { def.particles = keep; }
+  };
+  Game.prototype.newParticle = function (kind, anywhere) {
+    const q = np0.call(this, kind, anywhere);
+    if (q && kind === 'leaves' && this.zone && outdoorId(this.zone.id) && this.e2Season().id === 'jesien') q.r = 36 + Math.random() * 14;
+    return q;
+  };
+
+  const SEASON_SAY = {
+    jesien: 'Jesień! Liście żółkną, bo drzewa przestają wytwarzać chlorofil i widać inne barwniki.',
+    zima: 'Spadł śnieg! Dni są krótsze. Poranne światło pomaga nastawić zegar biologiczny — warto wyjść na spacer przed południem.',
+    wiosna: 'Wiosna! Dni są coraz dłuższe. Więcej dziennego światła zwykle sprzyja energii i nastrojowi.',
+    lato: 'Lato! Długie wieczory kuszą, żeby kłaść się później. Zegar biologiczny chętnie się wtedy przesuwa.'
+  };
+  Game.prototype.e2ApplySeason = function (announce) {
+    E2.g = this;
+    Object.entries(this.zones || {}).forEach(([id, z]) => { if (outdoorId(id) && z) { z.ground = null; z.lightShape = null; z.glowShape = null; } });
+    const Z = this.zone;
+    if (Z && !Z.interior && outdoorId(Z.id)) { Z.ground = bakeGround(Z); this.initParticles(Z); }
+    this.updateHUD();
+    if (announce) {
+      const se = this.e2Season();
+      this.toast(`${se.icon} ${se.name} w Freudowicach`, 3500);
+      if (this.think) setTimeout(() => { if (this.e2Season().id === se.id && !inDream(this)) this.think(SEASON_SAY[se.id], 7000); }, 1200);
+    }
+  };
+
+  /* =================================================================
+     2) SILNIK „ZNAJDŹ” — zadania poboczne od mieszkańców
+     Przedmioty leżą w konkretnych dzielnicach (miejsce losowane przy
+     przyjęciu zadania, zapisane w stanie). Podnosisz je Spacją/kliknięciem.
+     ================================================================= */
+  const QUESTS = {
+    listy: {
+      npc: 'listonosz', icon: '✉️', name: 'Zgubione listy', item: 'list', count: 4, zones: ['rynek', 'bulwar', 'plaza', 'wzgorze'], near: 'obiekt',
+      accept: 'Pomogę pozbierać',
+      offer: g => ['Ojej, ojej! Wiatr wyrwał mi z torby cztery listy i rozniósł je po mieście: Rynek, Bulwar, Plaża i Wzgórze. Pomożesz mi je pozbierać?'],
+      start: g => 'Listy lubią chować się przy ławkach, drzewach i latarniach. Jak znajdziesz wszystkie cztery, przyjdź do mnie.',
+      remind: (g, k, n) => `Masz już ${k} z ${n} listów. Reszta leży gdzieś na Rynku, Bulwarze, Plaży albo Wzgórzu.`,
+      done: g => [`Wszystkie cztery! ${g.gf('Uratowałaś', 'Uratowałeś')} mi dzień. Proszę — 25 Dopaminek za fatygę.`,
+        'Wiesz, co jest najgorsze w zgubionym liście? Że cały czas o nim myślisz. Bluma Zeigarnik zauważyła, że niedokończone sprawy pamiętamy lepiej niż zakończone. Późniejsze badania dały mieszane wyniki, ale jedno się sprawdza: zapisanie planu pomaga głowie odpuścić (Masicampo i Baumeister, 2011).'],
+      reward: { money: 25, xp: 10 }
+    },
+    splawiki: {
+      npc: 'rybak', icon: '🎣', name: 'Spławiki rybaka', item: 'splawik', count: 3, zones: ['plaza', 'bulwar', 'las'], near: 'woda',
+      accept: 'Poszukam spławików',
+      offer: g => ['Zgubiłem trzy spławiki. Jeden na Plaży, jeden przy kanale na Bulwarze, a jeden w Lesie Synaps, przy strumieniu. Dziwne, wszystkie przy wodzie. Poszukasz?'],
+      start: g => 'Szukaj przy brzegu. Spławiki zawsze zatrzymują się tam, gdzie kończy się woda.',
+      remind: (g, k, n) => `${k} z ${n}. Pozostałe są gdzieś przy wodzie: Plaża, kanał na Bulwarze albo strumień w Lesie Synaps.`,
+      done: g => ['Mój szczęśliwy spławik! Teraz na pewno złowię szczupaka. Proszę, 20 Dopaminek.',
+        `…No dobrze, ${g.gf('przyłapałaś', 'przyłapałeś')} mnie. To złudzenie kontroli: ludzie przeceniają swój wpływ na zdarzenia losowe, zwłaszcza gdy mają swoje rytuały i talizmany (Langer, 1975). Ryby i tak biorą, kiedy chcą.`],
+      reward: { money: 20, xp: 10 }
+    },
+    chowany: {
+      npc: 'ida', icon: '🙈', name: 'Chowany z Idą', item: 'ida', count: 1, zones: ['rynek', 'osiedle', 'bulwar', 'blonia', 'wzgorze', 'port'], near: 'obiekt', repeat: true,
+      accept: 'Szukam! Raz, dwa, trzy…',
+      offer: g => ['Zagrajmy w chowanego! Ja się chowam, a ty szukasz. Gdzieś w mieście, ale NIE na plaży, bo to za łatwe. Zgoda?'],
+      start: g => 'Zamknij oczy i licz do dziesięciu! I nie podglądaj! Hi hi!',
+      afterStart: '🙈 Ida zniknęła. Gdzieś w mieście słychać chichot… Rynek? Osiedle? Port? Na pewno nie plaża.',
+      remind: (g, k, n) => 'Ida się chowa.',
+      done: (g, n) => n > 1 ? [pick(Math.random, [
+        `Znowu mnie ${g.gf('znalazłaś', 'znalazłeś')}! Jutro schowam się LEPIEJ.`,
+        `Ej! Skąd ${g.gf('wiedziałaś', 'wiedziałeś')}, gdzie jestem? To przez chichot, prawda?`,
+        'Mam cię… to znaczy ty masz mnie. Jutro schowam się tak, że nikt mnie nie znajdzie!'])]
+        : [`${g.gf('Znalazłaś', 'Znalazłeś')} mnie! Jak ty to ${g.gf('zrobiłaś', 'zrobiłeś')}?!`,
+          'Wiesz, że niemowlęta przez pierwsze miesiące zachowują się tak, jakby schowana zabawka przestawała istnieć? Piaget nazwał umiejętność, która przychodzi później, stałością przedmiotu. Dlatego „a kuku!” tak bawi maluchy. Ja już wiem, że istnieję, nawet jak mnie nie widać. Pobawimy się jutro?'],
+      reward: { money: 10, xp: 10 }, again: { money: 3, xp: 3 }
+    },
+    sny: {
+      npc: 'morfeusza', icon: '🦋', name: 'Ulotne sny', item: 'motyl', count: 3, zones: ['wyspa_snu', 'wyspa_darwina', 'wyspa_snu'], near: 'obiekt',
+      accept: 'Złapię je',
+      offer: g => ['Z Katedry wyfrunęły trzy senne motyle — fragmenty czyichś snów. Dwa krążą tu, po Wyspie Snu, jeden poleciał na Wyspę Darwina. Pomożesz mi je odnaleźć, zanim się rozwieją?'],
+      start: g => 'Senne motyle siadają przy ławkach, latarniach i drzewach. Świecą, więc nocą łatwiej je zobaczyć.',
+      remind: (g, k, n) => `Masz ${k} z ${n} sennych motyli. Pozostałe są na Wyspie Snu albo na Wyspie Darwina.`,
+      done: g => ['Wszystkie trzy. Dziękuję! Dostajesz 10 LP do treningu snu i trochę Dopaminek.',
+        'Sny ulatują szybko: kilka minut po przebudzeniu zostaje z nich niewiele. Pomaga zapisanie snu od razu po przebudzeniu — ludzie, którzy prowadzą dziennik snów, zwykle pamiętają ich więcej.'],
+      reward: { money: 15, xp: 10, lp: 10 }
+    }
+  };
+  E2.QUESTS = QUESTS;
+
+  Object.assign(E1.objSprites, {
+    e2_item: o => {
+      if (o.item === 'ida') {
+        const look = Object.assign({}, NPCS.ida.look, { small: true });
+        return characterSprite(look, 'down', 0, false);
+      }
+      return cached('e2_item|' + o.item, () => {
+        // szara koperta z niebieskim znaczkiem i lakiem — inna niż białe fiszki z czerwonym paskiem
+        if (o.item === 'list') return makeSprite(11, 8, g => { R(g, 0, 0, 11, 8, '#e2c98f'); line(g, 0, 0, 5, 4, '#9a7a48'); line(g, 10, 0, 5, 4, '#9a7a48'); R(g, 8, 1, 2, 2, '#3f6fd0'); disc(g, 5, 4.5, 1.2, '#c0392b'); }, { shadow: [5, 7, 5, 1, 0.2] });
+        if (o.item === 'splawik') return makeSprite(6, 12, g => { R(g, 2, 0, 1, 3, '#2a2a30'); disc(g, 2.5, 5, 2.5, '#e05a5a'); disc(g, 2.5, 8, 2.5, '#ffffff'); R(g, 2, 10, 1, 2, '#2a2a30'); }, { shadow: [3, 11, 3, 1, 0.2] });
+        if (o.item === 'motyl') return makeSprite(12, 10, g => { ell(g, 3, 4, 3, 3.5, '#c9a0ff'); ell(g, 9, 4, 3, 3.5, '#c9a0ff'); ell(g, 3, 4, 1.5, 2, '#f0e6ff'); ell(g, 9, 4, 1.5, 2, '#f0e6ff'); R(g, 5, 2, 2, 7, '#3d1f6d'); }, { shadow: [6, 9, 4, 1, 0.15] });
+        return makeSprite(8, 8, g => disc(g, 4, 4, 3, '#ffd23f'));
+      });
+    }
+  });
+
+  Game.prototype.e2Quests = function () {
+    const d = this.e2Data(); if (!d.q || typeof d.q !== 'object') d.q = {};
+    // chowany trwa do końca dnia: nieznaleziona Ida rano wraca na plażę
+    const ch = d.q.chowany;
+    if (ch && ch.state === 'active' && ch.day !== this.state.day) { ch.state = null; ch.items = []; }
+    return d.q;
+  };
+  // kafelki, do których da się dojść od krawędzi dzielnicy albo spod drzwi
+  function reachable(Z) {
+    if (Z._e2reach) return Z._e2reach;
+    const w = Z.w, h = Z.h, seen = new Uint8Array(w * h), q = [];
+    const push = (x, y) => { if (x < 0 || y < 0 || x >= w || y >= h) return; const i = y * w + x; if (seen[i] || Z.solid[i]) return; seen[i] = 1; q.push(i); };
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); }
+    for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+    (Z.buildings || []).forEach(b => push(b.doorCol, b.doorRow + 1));
+    while (q.length) { const i = q.pop(), x = i % w, y = (i - x) / w; push(x + 1, y); push(x - 1, y); push(x, y + 1); push(x, y - 1); }
+    return (Z._e2reach = seen);
+  }
+  Game.prototype.e2PickSpot = function (zoneId, near, rnd, taken = []) {
+    const Z = this.zones[zoneId] || (this.zones[zoneId] = buildZone(zoneId));
+    const w = Z.w, h = Z.h, solid = (x, y) => x < 0 || y < 0 || x >= w || y >= h || !!Z.solid[y * w + x];
+    const T = (x, y) => (Z.terrain && x >= 0 && y >= 0 && x < w && y < h ? Z.terrain[y * w + x] : null);
+    const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const reach = reachable(Z);
+    const good = [], ok = [];
+    for (let y = 3; y < h - 3; y++) for (let x = 3; x < w - 3; x++) {
+      if (solid(x, y) || !reach[y * w + x]) continue;
+      if (taken.some(t => Math.abs(t.x - x) + Math.abs(t.y - y) < 8)) continue;
+      if ((Z.interacts || []).some(it => x >= it.x - 1 && x < it.x + it.w + 1 && y >= it.y - 1 && y < it.y + it.h + 1)) continue;
+      if ((Z.buildings || []).some(b => x >= b.doorCol - 1 && x <= b.doorCol + 1 && y >= b.doorRow && y <= b.doorRow + 2)) continue;
+      if ((Z.npcs || []).some(n => Math.abs(n.x - x) + Math.abs(n.y - y) < 2)) continue;
+      if (near === 'woda') { if (N4.some(([dx, dy]) => T(x + dx, y + dy) === 'water')) good.push([x, y]); continue; }
+      (N4.some(([dx, dy]) => solid(x + dx, y + dy)) ? good : ok).push([x, y]);
+    }
+    const list = good.length ? good : ok;
+    return list.length ? list[Math.floor(rnd() * list.length)] : [20, 14];
+  };
+  Game.prototype.e2PlaceItems = function () {
+    const Z = this.zone;
+    if (!Z || !Z.objects) return;
+    Z.objects = Z.objects.filter(o => o.type !== 'e2_item');
+    Z.interacts = (Z.interacts || []).filter(it => it.kind !== 'e2_item');
+    const hadLight = (Z.lights || []).some(l => l.e2);
+    if (hadLight) Z.lights = Z.lights.filter(l => !l.e2);
+    let light = false;
+    if (!(this.dreamSession && this.dreamSession())) Object.entries(this.e2Quests()).forEach(([qid, st]) => {
+      if (!st || st.state !== 'active' || !QUESTS[qid]) return;
+      (st.items || []).forEach((it, i) => {
+        if (it.found || it.zone !== Z.id) return;
+        Z.objects.push({ type: 'e2_item', item: QUESTS[qid].item, x: it.x, y: it.y, fw: 1, fh: 1 });
+        Z.interacts.push({ x: it.x, y: it.y, w: 1, h: 1, kind: 'e2_item', q: qid, i });
+        // senne motyle świecą nocą
+        if (QUESTS[qid].item === 'motyl' && Z.lights) { Z.lights.push({ x: it.x * 16 + 8, y: it.y * 16 + 6, r: 26, col: '#c9a0ff', s: 0.7, e2: true }); light = true; }
+      });
+    });
+    if (hadLight || light) { Z.lightShape = null; Z.glowShape = null; }
+  };
+  Game.prototype.e2Start = function (qid) {
+    const Q = QUESTS[qid], all = this.e2Quests(), prev = all[qid] || {}, s = this.state;
+    const rnd = RND(qid + '|' + s.day + '|' + (prev.n || 0));
+    const zones = Q.repeat ? [pick(rnd, Q.zones)] : Q.zones.slice(0, Q.count);
+    const items = [];
+    zones.forEach(z => { const [x, y] = this.e2PickSpot(z, Q.near, rnd, items.filter(t => t.zone === z)); items.push({ zone: z, x, y, found: false }); });
+    all[qid] = Object.assign({}, prev, { state: 'active', items, day: s.day, declined: null });
+    audio.click();
+    this.e2PlaceItems(); this.e2UpdateChip(); this.save();
+    const after = Q.afterStart;
+    this.showDialogue({ name: NPCS[Q.npc].name, npc: NPCS[Q.npc], pages: [Q.start(this)], pitch: NPCS[Q.npc].small ? 1.5 : 1, onClose: after ? () => this.toast(after, 5000) : null });
+  };
+  Game.prototype.e2Pickup = function (qid, i) {
+    const Q = QUESTS[qid], st = this.e2Quests()[qid];
+    if (!Q || !st || st.state !== 'active' || !st.items[i] || st.items[i].found) return;
+    st.items[i].found = true;
+    const k = st.items.filter(x => x.found).length;
+    audio.pickup();
+    this.e2PlaceItems(); this.e2UpdateChip();
+    if (Q.repeat) return this.e2Complete(qid);
+    this.toast(`${Q.icon} ${Q.name}: ${k}/${Q.count}${k >= Q.count ? ` · wróć do: ${NPCS[Q.npc].name}` : ''}`, 3200);
+    this.save();
+  };
+  Game.prototype.e2Complete = function (qid) {
+    const Q = QUESTS[qid], st = this.e2Quests()[qid], s = this.state;
+    if (!Q || !st) return;
+    const firstTime = !st.n;
+    st.state = 'done'; st.doneDay = s.day; st.n = (st.n || 0) + 1;
+    const rw = !firstTime && Q.again ? Q.again : Q.reward;
+    if (rw.money) this.addMoney(rw.money);
+    if (rw.xp) this.addXP(rw.xp);
+    if (rw.lp && firstTime && this.dreamReward) this.dreamReward('e2q:' + qid, rw.lp, 'odnalezione senne motyle');
+    audio.success();
+    this.e2PlaceItems(); this.e2UpdateChip(); this.save();
+    this.showDialogue({ name: NPCS[Q.npc].name, npc: NPCS[Q.npc], pages: Q.done(this, st.n), pitch: NPCS[Q.npc].small ? 1.5 : 1 });
+  };
+
+  // pasek z zadaniami szukania (prawy górny róg sceny)
+  Game.prototype.e2UpdateChip = function () {
+    let el = document.getElementById('e2-chip');
+    if (!el) { const st = document.getElementById('stage'); if (!st) return; el = document.createElement('div'); el.id = 'e2-chip'; st.appendChild(el); }
+    if (!this.state || !this.state.created || (this.dreamSession && this.dreamSession())) { el.hidden = true; return; }
+    const parts = Object.entries(this.e2Quests()).filter(([q, st]) => st && st.state === 'active' && QUESTS[q]).map(([q, st]) => {
+      const Q = QUESTS[q], k = st.items.filter(x => x.found).length;
+      return Q.repeat ? `${Q.icon} Ida się chowa` : `${Q.icon} ${Q.name} ${k}/${Q.count}`;
+    });
+    el.hidden = !parts.length;
+    const html = parts.map(p => `<span>${esc(p)}</span>`).join('');
+    if (el.innerHTML !== html) el.innerHTML = html;
+  };
+
+  /* =================================================================
+     3) TRENING SNU — mgła, poprzestawiane drzewa, limit czasu
+     i zadania „co się zmieniło względem jawy”
+     ================================================================= */
+  const DREAM_COLORS = ['#e05a9a', '#5ad0e0', '#9a5ae0', '#e0d05a', '#5ae08a', '#e0805a'];
+  const DREAM_WORDS = ['SNU', 'NICZEGO', 'JUTRA', 'CIENI', 'KSIĘŻYCA', 'WCZORAJ'];
+  const DREAM_HAIR = [['#3ea06c', 'zielone'], ['#d8649a', 'różowe'], ['#5a7fe0', 'niebieskie'], ['#f2f2f2', 'białe'], ['#8a5ad0', 'fioletowe']];
+  const ALT_DESC = { odwrocony: 'stoi do góry nogami', olbrzymi: 'jest dziwnie wielki', kolor: 'ma inny kolor niż na jawie' };
+  const OBJ_NAMES = {
+    lamp: 'latarnia', bench: 'ławka', signpost: 'drogowskaz', sign: 'tabliczka', fountain: 'fontanna', well: 'studnia', board: 'tablica ogłoszeń',
+    mailbox: 'skrzynka na listy', piano: 'pianino', mirror: 'lustro', telescope: 'teleskop', haystack: 'stóg siana', beehive: 'ul',
+    container: 'kontener', crate: 'skrzynia', barrel: 'beczka', planter: 'donica', cafetable: 'stolik', scoreboard: 'tablica wyników',
+    target: 'tarcza', carousel: 'karuzela', icecream: 'budka z lodami', slide: 'zjeżdżalnia', swings: 'huśtawka', lifeguard: 'wieża ratownika',
+    windmill: 'młyn', clothesline: 'sznur z praniem', crane: 'dźwig', sitesign: 'tablica budowy', bleachers: 'trybuny', carwreck: 'wrak auta',
+    e1_galton: 'Deska Galtona', e1_lody: 'budka z lodami', e1_srednia: 'Ławka Średniej', e1_moneta: 'automat z monetą', e1_regresja: 'pomnik',
+    e1_kaczka: 'gumowa kaczka', noc_brain: 'Pomnik Mózgu', e2_dreamitem: 'złoty klucz'
+  };
+  const POINT_SKIP = new Set(['tree', 'bush', 'building', 'e2_item']);
+  const cap = t => t ? t[0].toUpperCase() + t.slice(1) : t;
+  const objName = o => OBJ_NAMES[o.type] || 'ten przedmiot';
+  const colorDist = (a, b) => { const A = hexToRgb(a), B = hexToRgb(b); return Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]); };
+  const fmtTime = sec => { sec = Math.max(0, Math.ceil(sec)); return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`; };
+  const rzeczy = n => n >= 5 ? `zmieniło się ${n} rzeczy` : `zmieniły się ${n} rzeczy`;
+
+  E1.objSprites.e2_dreamitem = () => cached('e2_klucz', () => makeSprite(14, 10, g => {
+    disc(g, 4, 5, 3.5, '#e8c860'); disc(g, 4, 5, 1.6, '#3d1f6d'); R(g, 7, 4, 7, 2, '#e8c860'); R(g, 11, 6, 1, 2, '#e8c860'); R(g, 13, 6, 1, 3, '#e8c860'); P(g, 3, 3, '#fff6c0');
+  }, { shadow: [7, 9, 5, 1, 0.2] }));
+
+  Game.prototype.e2DreamLimit = function () { return Math.min(330, 90 + this.dreamDays() * 30); };
+  Game.prototype.e2DreamPlan = function (Z, s) {
+    const days = this.dreamDays(), seed = Math.floor(Math.random() * 1e9), rnd = RND('sen|' + seed);
+    const n = days < 2 ? 2 : days < 4 ? 3 : days < 6 ? 4 : 5;
+    const real = buildZone(s.loc);
+    const npcs = (real.npcs || []).filter(x => { const d = NPCS[x.id]; return d && d.kind === 'human' && !d.night && !d.runner; }).map(x => ({ id: x.id, x: x.x, y: x.y }));
+    const pointable = Z.objects.filter(o => !POINT_SKIP.has(o.type) && (o.fw || 1) * (o.fh || 1) <= 4);
+    const usedB = new Set(), usedO = new Set(), changes = [];
+    // tylko szyldy, które naprawdę widać, i budynki, których kolor zależy od wall/roof
+    const signVisible = b => { try { const spr = buildingSprite(b, b.loc ? this.unlockedLevel(b.loc) : 1); return !!(spr && spr.signRect); } catch (e) { return false; } };
+    const pools = {
+      napis: () => Z.buildings.filter(b => b.sign && b.sign.length >= 4 && b.kind !== 'dream-home' && !SPECIAL_BUILDINGS[b.style] && !usedB.has(b.id) && signVisible(b)),
+      kolor: () => Z.buildings.filter(b => b.kind !== 'dream-home' && b.w >= 4 && !SPECIAL_BUILDINGS[b.style] && !usedB.has(b.id)),
+      postac: () => npcs.filter(x => !usedO.has('npc:' + x.id)),
+      obiekt: () => pointable.filter(o => !usedO.has(o.type + o.x + ',' + o.y)),
+      przedmiot: () => changes.some(c => c.kind === 'przedmiot') ? [] : [1]
+    };
+    const order = shuffle(rnd, Object.keys(pools));
+    for (let guard = 0; changes.length < n && guard < 30; guard++) {
+      const kind = order[guard % order.length], pool = pools[kind]();
+      if (!pool.length) continue;
+      const it = pool[Math.floor(rnd() * pool.length)];
+      if (kind === 'napis') {
+        const words = it.sign.split(' ');
+        let text = words.length > 1 ? words.slice(0, -1).concat(pick(rnd, DREAM_WORDS)).join(' ') : 'NIE' + it.sign;
+        if (text === it.sign) text = it.sign + '?';
+        usedB.add(it.id);
+        changes.push({ kind, bid: it.id, text, desc: `Napis „${text}” — na jawie jest tu „${it.sign}”.` });
+      } else if (kind === 'kolor') {
+        const part = rnd() < 0.5 ? 'wall' : 'roof', orig = it[part] || '#888888';
+        const col = DREAM_COLORS.slice().sort((a, b) => colorDist(b, orig) - colorDist(a, orig))[Math.floor(rnd() * 2)];
+        usedB.add(it.id);
+        changes.push({ kind, bid: it.id, part, col, desc: `${part === 'wall' ? 'Ściany' : 'Dach'} budynku${it.sign ? ` „${it.sign}”` : ''} ${part === 'wall' ? 'mają' : 'ma'} inny kolor niż na jawie.` });
+      } else if (kind === 'postac') {
+        const def = NPCS[it.id], look = def.look || {};
+        const hair = DREAM_HAIR.filter(h => h[0] !== look.hairC), h = hair[Math.floor(rnd() * hair.length)];
+        usedO.add('npc:' + it.id);
+        // bez czapki, żeby kolor włosów było widać
+        changes.push({ kind, npc: it.id, look: { hairC: h[0], hair: look.hair === 'lyse' ? 'krecone' : look.hair, acc: look.acc === 'cap' ? 'none' : look.acc }, desc: `${def.name} ma ${h[1]} włosy. Na jawie wygląda inaczej.` });
+      } else if (kind === 'obiekt') {
+        const big = (it.fw || 1) * (it.fh || 1) > 2, alt = pick(rnd, big ? ['odwrocony', 'kolor'] : ['odwrocony', 'olbrzymi', 'kolor']);
+        usedO.add(it.type + it.x + ',' + it.y);
+        changes.push({ kind, otype: it.type, x: it.x, y: it.y, alt, desc: `${cap(objName(it))} ${ALT_DESC[alt]}.` });
+      } else if (kind === 'przedmiot') {
+        const free = [], reach = reachable(Z);
+        for (let y = 2; y < Z.h - 2; y++) for (let x = 2; x < Z.w - 2; x++) if (!Z.solid[y * Z.w + x] && reach[y * Z.w + x] && Math.hypot(x - 20, y - 14) > 9) free.push([x, y]);
+        if (!free.length) continue;
+        const [x, y] = free[Math.floor(rnd() * free.length)];
+        changes.push({ kind, x, y, desc: 'Złoty klucz, którego na jawie tu nie ma. Ktoś go zgubił we śnie.' });
+      }
+    }
+    const limit = this.e2DreamLimit();
+    return { seed, npcs, changes, limit, left: limit, briefed: false, warned: false };
+  };
+  Game.prototype.e2DreamApply = function (Z, s) {
+    const P = s.e2, days = this.dreamDays();
+    Z.npcs = (P.npcs || []).map(n => Object.assign({}, n));
+    P.changes.forEach(c => {
+      if (c.kind === 'kolor' || c.kind === 'napis') {
+        const b = Z.buildings.find(x => x.id === c.bid);
+        if (b && c.kind === 'kolor') b[c.part] = c.col;
+        if (b && c.kind === 'napis') b.sign = c.text;
+      } else if (c.kind === 'obiekt') {
+        const o = Z.objects.find(x => x.type === c.otype && x.x === c.x && x.y === c.y);
+        if (o) { o.e2alt = c.alt; o.e2tint = DREAM_COLORS[(c.x * 3 + c.y) % DREAM_COLORS.length]; }
+      } else if (c.kind === 'przedmiot' && !c.found) Z.objects.push({ type: 'e2_dreamitem', x: c.x, y: c.y, fw: 1, fh: 1 });
+    });
+    // niski poziom treningu: drzewa poprzestawiane i część roślin się kołysze (nie liczy się do zadań)
+    if (days < 3) {
+      const trees = Z.objects.filter(o => o.type === 'tree'), pos = shuffle(RND('drzewa|' + P.seed), trees.map(t => [t.x, t.y]));
+      trees.forEach((t, i) => { t.x = pos[i][0]; t.y = pos[i][1]; });
+    }
+    if (days < 5) { const rnd = RND('kolysz|' + P.seed); Z.objects.forEach(o => { if ((o.type === 'tree' || o.type === 'bush') && rnd() < 0.35) o.e2sway = rnd() * 6; }); }
+    // we śnie da się wskazać wszystko poza roślinami
+    Z.interacts = (Z.interacts || []).filter(it => it.kind !== 'e2_wskaz');
+    Z.objects.forEach(o => { if (!POINT_SKIP.has(o.type)) Z.interacts.push({ x: o.x, y: o.y, w: o.fw || 1, h: o.fh || 1, kind: 'e2_wskaz', obj: o }); });
+  };
+  const bdz0 = Game.prototype.buildDreamZone;
+  Game.prototype.buildDreamZone = function (s) {
+    const Z = bdz0.call(this, s);
+    try {
+      if (!s.e2 || !Array.isArray(s.e2.changes)) s.e2 = this.e2DreamPlan(Z, s);
+      this.e2DreamApply(Z, s);
+    } catch (e) { console.warn('ETAP2: plan snu', e); }
+    return Z;
+  };
+  Game.prototype.e2DreamPoint = function (it) {
+    const s = this.dreamSession(), P = s && s.e2;
+    if (!P || !it) return false;
+    let idx = -1, what = '';
+    if (it.type === 'door') { idx = P.changes.findIndex(c => !c.found && (c.kind === 'kolor' || c.kind === 'napis') && c.bid === it.b.id); what = it.b.sign ? `Budynek „${it.b.sign}”` : 'Ten budynek'; }
+    else if (it.type === 'npc') { idx = P.changes.findIndex(c => !c.found && c.kind === 'postac' && c.npc === it.n.id); what = it.n.def.name; }
+    else if (it.type === 'spot' && it.it && it.it.kind === 'e2_wskaz') {
+      const o = it.it.obj;
+      idx = P.changes.findIndex(c => !c.found && ((c.kind === 'obiekt' && c.otype === o.type && c.x === o.x && c.y === o.y) || (c.kind === 'przedmiot' && o.type === 'e2_dreamitem')));
+      what = cap(objName(o));
+    } else return false;
+    if (idx >= 0) this.e2DreamFound(idx);
+    else if (performance.now() - (this._e2nope || 0) > 1200) { this._e2nope = performance.now(); audio.click(); this.toast(`${what} wygląda tak samo jak na jawie.`, 2000); }
+    return true;
+  };
+  Game.prototype.e2DreamFound = function (idx) {
+    const s = this.dreamSession(), P = s.e2, c = P.changes[idx];
+    if (!c || c.found) return;
+    c.found = true; P.left += 20;
+    const k = P.changes.filter(x => x.found).length;
+    if (c.kind === 'przedmiot' && this.zone) {
+      this.zone.objects = this.zone.objects.filter(o => o.type !== 'e2_dreamitem');
+      this.zone.interacts = this.zone.interacts.filter(it => !(it.obj && it.obj.type === 'e2_dreamitem'));
+    }
+    const lp = this.dreamReward('e2find:' + this.state.day + ':' + idx, 5, 'zauważona zmiana');
+    audio.success();
+    this.toast(`🔎 ${k}/${P.changes.length} · ${c.desc} (+20 s${lp ? ' · +5 LP' : ''})`, 4500);
+    if (k === P.changes.length && !P.allDone) {
+      P.allDone = true; P.left += 40;
+      setTimeout(() => {
+        if (!this.dreamSession()) return;
+        this.dreamTrain('e2find:' + (this.dreamDays() >= 4 ? 2 : 1));
+        setTimeout(() => this.toast('🌙 Wszystkie zmiany wypatrzone! Sen się stabilizuje (+40 s). Ten trening się liczy.', 5000), 1600);
+      }, 2600);
+    }
+    this.save();
+  };
+
+  /* =================================================================
+     4) PODPIĘCIA: dzielnice, rozmowy, rysowanie, HUD, zegar snu
+     ================================================================= */
+  const SPOT_PROMPT = { list: 'Podnieś list', splawik: 'Podnieś spławik', motyl: 'Złap sennego motyla', ida: 'Mam cię, Ido!' };
+  const DIR_BACK = { up: 'down', down: 'up', left: 'right', right: 'left' };
+  const later = fn => Promise.resolve().then(fn);
+  // przedmiot we śnie „w innym kolorze”: zabarwiona kopia sprite’a (działa też na szarych latarniach)
+  function tinted(sprite, col) {
+    const k = '_e2t' + col;
+    if (!sprite[k]) {
+      const [c, g] = mkCanvas(sprite.c.width, sprite.c.height);
+      g.drawImage(sprite.c, 0, 0);
+      g.globalCompositeOperation = 'source-atop'; g.globalAlpha = 0.6; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
+      sprite[k] = Object.assign({}, sprite, { c });
+    }
+    return sprite[k];
+  }
+  const inDream = g => !!(g.dreamSession && g.dreamSession());
+  // „naciśnij Spację” na komputerze, „dotknij AKCJA” na telefonie
+  const touch = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const ACT = html => touch() ? (html ? 'naciśnij <b>AKCJA</b> (albo dotknij tej rzeczy)' : 'naciśnij AKCJA') : (html ? 'naciśnij <b>Spację</b> (albo kliknij)' : 'naciśnij Spację');
+
+  const base = {};
+  ['setZone', 'useSpot', 'spotPrompt', 'talkTo', 'npcVisible', 'drawObjAnim', 'updateHUD', 'update', 'updatePrompt',
+    'drawDreamSprite', 'drawDreamEffects', 'trigger', 'openDreamTasks', 'openDreamModulation', 'openTesterPanel'].forEach(k => { base[k] = Game.prototype[k]; });
+
+  Object.assign(Game.prototype, {
+    setZone(id) {
+      E2.g = this;
+      base.setZone.call(this, id);
+      try {
+        const s = this.dreamSession && this.dreamSession();
+        if (s && s.e2) {
+          // we śnie mieszkańcy stoją w miejscu i patrzą na gracza; jedna osoba może wyglądać inaczej niż na jawie
+          if (String(id).startsWith('dream:') && this.zone && this.zone.id === id) (this.npcs || []).forEach(n => {
+            const c = s.e2.changes.find(x => x.kind === 'postac' && x.npc === n.id);
+            n.def = Object.assign({}, n.def, { wander: 0, night: false }, c ? { look: Object.assign({}, n.def.look, c.look) } : {});
+          });
+        } else if (!s) {
+          this.e2PlaceItems();
+          const st = this.e2Quests().chowany;
+          if (st && st.state === 'active' && (st.items || []).some(it => !it.found && it.zone === id)) {
+            setTimeout(() => { if (this.zone && this.zone.id === id && !this.dialog && !inDream(this)) this.toast('🙈 Gdzieś blisko słychać chichot…', 3500); }, 2600);
+          }
+        }
+        this.e2UpdateChip();
+      } catch (e) { console.warn('ETAP2: setZone', e); }
+    },
+
+    useSpot(it) {
+      if (it && it.kind === 'e2_item') return this.e2Pickup(it.q, it.i);
+      return base.useSpot.call(this, it);
+    },
+    spotPrompt(it) {
+      if (it && it.kind === 'e2_item') { const Q = QUESTS[it.q]; return (Q && SPOT_PROMPT[Q.item]) || 'Podnieś'; }
+      return base.spotPrompt.call(this, it);
+    },
+
+    talkTo(n) {
+      const qid = n && n.def && !inDream(this) ? Object.keys(QUESTS).find(k => QUESTS[k].npc === n.id) : null;
+      if (!qid) return base.talkTo.call(this, n);
+      const Q = QUESTS[qid], s = this.state, all = this.e2Quests(), st = all[qid];
+      const meet = () => {
+        n.talkT = 5;
+        if (n.def.kind === 'human') n.dir = DIR_BACK[this.player.dir] || n.dir;
+        s.talked[n.id] = (s.talked[n.id] || 0) + 1;
+        this.questEvent('talk', n.id);
+      };
+      // okno otwieramy chwilę później: nakładka PROFILU sprawdza this.dialog zaraz po rozmowie
+      // i dopisałaby pytanie o zwykłą kwestię NPC, której gracz wtedy nie usłyszał
+      const show = d => later(() => this.showDialogue(Object.assign({ name: n.def.name, npc: n.def, pitch: n.def.small ? 1.5 : 1 }, d)));
+      const decline = () => { all[qid] = Object.assign({}, all[qid] || {}, { declined: s.day }); this.save(); };
+      if (st && st.state === 'active') {
+        const k = (st.items || []).filter(x => x.found).length;
+        meet();
+        if (k >= st.items.length) { later(() => this.e2Complete(qid)); return; }
+        show({ pages: [Q.remind(this, k, st.items.length)], options: [
+          { label: '🔎 Szukam dalej', fn: null },
+          { label: '💬 Porozmawiajmy o czymś innym', fn: () => base.talkTo.call(this, n) }
+        ] });
+        return;
+      }
+      const avail = Q.repeat ? (!st || st.doneDay !== s.day) : (!st || !st.state);
+      if (avail && (!st || st.declined !== s.day) && (s.day >= 2 || (s.talked[n.id] || 0) >= 1)) {
+        meet();
+        show({ pages: Q.offer(this), options: [
+          { label: `${Q.icon} ${Q.accept}`, fn: () => this.e2Start(qid) },
+          { label: 'Nie teraz', fn: decline },
+          { label: '💬 Porozmawiajmy o czymś innym', fn: () => { decline(); base.talkTo.call(this, n); } }
+        ] });
+        return;
+      }
+      return base.talkTo.call(this, n);
+    },
+
+    npcVisible(n) {
+      if (n && n.id === 'ida' && this.state && this.state.e2 && this.state.e2.q && !inDream(this)) {
+        const st = this.e2Quests().chowany;
+        if (st && st.state === 'active') return false;   // Ida się chowa
+      }
+      return base.npcVisible.call(this, n);
+    },
+
+    drawObjAnim(o, X, Y, t) {
+      base.drawObjAnim.call(this, o, X, Y, t);
+      if ((o.type === 'e2_item' && o.item !== 'ida') || o.type === 'e2_dreamitem') {
+        const ph = (t * 1.3 + ((o.x * 7 + o.y * 13) % 10) / 10) % 2;
+        if (ph < 0.6) {
+          const ctx = this.ctx, sx = Math.round(X + 3 + ((o.x * 5 + o.y) % 6)), sy = Math.round(Y - 1);
+          ctx.save(); ctx.globalAlpha = Math.sin(ph / 0.6 * Math.PI); ctx.fillStyle = '#fff6a8';
+          ctx.fillRect(sx, sy - 2, 1, 5); ctx.fillRect(sx - 2, sy, 5, 1);
+          ctx.restore();
+        }
+      }
+    },
+
+    updateHUD() {
+      base.updateHUD.call(this);
+      if (!this.state) return;
+      try {
+        const se = this.e2Season(), day = document.getElementById('hud-day'), clock = document.getElementById('hud-clock');
+        if (day && !day.textContent.startsWith(se.icon)) day.textContent = se.icon + ' ' + day.textContent;
+        if (clock) clock.title = `${se.name} · ${this.e2SeasonDay()}. dzień z 28`;
+        this.e2UpdateChip();
+      } catch (e) {}
+    },
+
+    update(dt) {
+      E2.g = this;
+      base.update.call(this, dt);
+      const s = this.state;
+      if (!s || !s.created || this.scene !== 'world' || !this.zone) return;
+      try {
+        // zmiana pory roku: pierwszy raz po starcie po cichu, potem z komunikatem (gdy nic nie jest otwarte)
+        const se = this.e2Season().id;
+        if (this._e2season !== se) {
+          const first = this._e2season == null;
+          if (first || !this.paused()) { this._e2season = se; this.e2ApplySeason(!first && !inDream(this)); }
+        }
+        this.e2DreamTick(dt);
+      } catch (e) { console.warn('ETAP2: update', e); }
+    },
+    e2DreamTick(dt) {
+      const s = this.dreamSession && this.dreamSession(), P = s && s.e2;
+      if (!P || this.paused() || s.nightmare || s.lesson || !this.zone || !String(this.zone.id).startsWith('dream:')) return;
+      if (!P.briefed) {
+        P.briefed = true;
+        this.toast(`🔎 W tym śnie ${rzeczy(P.changes.length)} względem jawy. Podejdź i ${ACT()}. Mgła i drzewa się nie liczą.`, 7000);
+      }
+      P.left -= dt;
+      if (!P.warned && P.left <= 15) { P.warned = true; this.toast('⏳ Sen zaczyna się rozmywać… Zostało 15 sekund.', 4000); }
+      if (P.left <= 0) { P.left = 0; this.toast('☀ Sen się rozwiał. Postać się budzi.', 4000); this.wakeDream(); }
+    },
+
+    updatePrompt() {
+      base.updatePrompt.call(this);
+      const s = this.dreamSession && this.dreamSession();
+      if (!s || !s.e2 || s.nightmare) return;
+      const el = document.getElementById('prompt'), it = this.findInteraction();
+      this.activeIt = it;
+      if (!el) return;
+      if (!it) { el.style.display = 'none'; return; }
+      const what = it.type === 'npc' ? it.n.def.name : it.type === 'door' ? (it.b.sign ? `budynek „${it.b.sign}”` : 'ten budynek') : it.it && it.it.obj ? objName(it.it.obj) : 'to miejsce';
+      el.innerHTML = `<kbd>Spacja</kbd> ${esc('🔎 Inaczej niż na jawie? · ' + what)}`;
+      el.style.display = 'block';
+    },
+    trigger(it) {
+      const s = this.dreamSession && this.dreamSession();
+      if (s && s.e2 && !s.nightmare && it && this.e2DreamPoint(it)) return;
+      return base.trigger.call(this, it);
+    },
+
+    drawDreamSprite(sprite, x, y, object) {
+      if (!inDream(this)) {
+        const Z = this.zone;
+        if (object && Z && !Z.interior && outdoorId(Z.id)) { const se = this.e2Season().id; if (se !== 'lato') sprite = seasonalSprite(sprite, object, se); }
+        return base.drawDreamSprite.call(this, sprite, x, y, object);
+      }
+      if (!object || (!object.e2alt && object.e2sway == null)) return base.drawDreamSprite.call(this, sprite, x, y, object);
+      const ctx = this.ctx, w = sprite.c.width, h = sprite.c.height;
+      if (object.e2alt === 'kolor') sprite = tinted(sprite, object.e2tint || DREAM_COLORS[0]);
+      ctx.save();
+      if (object.e2sway != null) ctx.translate(Math.round(Math.sin((performance.now() - this.time0) / 1000 * 1.3 + object.e2sway) * 2), 0);
+      if (object.e2alt === 'odwrocony') { ctx.translate(0, 2 * y + h); ctx.scale(1, -1); }
+      else if (object.e2alt === 'olbrzymi') { const cx = x + w / 2, by = y + h; ctx.translate(cx, by); ctx.scale(1.6, 1.6); ctx.translate(-cx, -by); }
+      try { base.drawDreamSprite.call(this, sprite, x, y, object); } finally { ctx.restore(); }
+    },
+
+    drawDreamEffects(ctx, W, H, t) {
+      const s = this.dreamSession && this.dreamSession();
+      if (s && s.e2) { try { this.e2DrawFog(ctx, W, H, t); } catch (e) {} }
+      base.drawDreamEffects.call(this, ctx, W, H, t);
+      if (s && s.e2) { try { this.e2DrawDreamLabel(ctx, W, s); } catch (e) {} }
+      else if (!s && this.state && this.zone && !this.zone.interior && outdoorId(this.zone.id) && this.e2Season().id === 'zima' && E2.snowing(this.state.day)) this.e2DrawSnow(ctx, W, H, t);
+    },
+    // mgła snu: im mniej treningu, tym bliżej gęstnieje
+    e2DrawFog(ctx, W, H, t) {
+      const cl = this.dreamClarity(), a = Math.max(0, 0.9 - cl);
+      if (a < 0.02) return;
+      const sc = this.scale, cam = this.camera(sc), p = this.player;
+      const px = (p.x - cam.x) * sc, py = (p.y - 10 - cam.y) * sc;
+      const r0 = (40 + cl * 160) * sc, r1 = r0 + (120 + cl * 200) * sc;
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = 'none';
+      const g = ctx.createRadialGradient(px, py, r0, px, py, r1);
+      g.addColorStop(0, 'rgba(214,208,232,0)'); g.addColorStop(1, `rgba(214,208,232,${a.toFixed(3)})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = `rgba(236,232,246,${(a * 0.3).toFixed(3)})`;
+      for (let i = 0; i < 6; i++) {
+        const x = ((i * 263 + t * (5 + i * 2)) % (W + 400)) - 200, y = ((i * 191) % Math.max(1, H - 40)) + 20;
+        ctx.beginPath(); ctx.ellipse(x, y, 60 * sc, 9 * sc, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    },
+    e2DrawDreamLabel(ctx, W, s) {
+      const P = s.e2, k = P.changes.filter(c => c.found).length, n = P.changes.length;
+      // pozycja pod etykietą „SEN · LP”, ale czcionka czytelna także na telefonie (min. 12 px CSS)
+      const fs0 = Math.max(16, Math.round(W / 700) * 8), y = 8 + fs0 + 14 + 6;
+      const dpr = this.canvas.clientWidth ? W / this.canvas.clientWidth : 1, fs = Math.max(fs0, Math.round(12 * dpr));
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = 'none';
+      ctx.font = `${fs}px ${WORLD_FONT}`; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      const stop = s.nightmare || s.lesson, low = !stop && P.left <= 15;
+      const label = `${stop ? 'CZAS SNU WSTRZYMANY' : 'CZAS SNU ' + fmtTime(P.left)} · ZMIANY ${k}/${n}`;
+      ctx.fillStyle = low ? (Math.floor(performance.now() / 400) % 2 ? '#7a2a3a' : '#5a2030') : '#252334';
+      ctx.fillRect(8, y, Math.min(W - 16, ctx.measureText(label).width + 20), fs + 14);
+      ctx.fillStyle = '#e8dfc9'; ctx.fillText(label, 18, y + 6, W - 36);
+      ctx.restore();
+    },
+    e2DrawSnow(ctx, W, H, t) {
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = 'none';
+      const sz = Math.max(2, Math.round(this.scale * 0.75));
+      ctx.fillStyle = 'rgba(248,250,253,0.9)';
+      for (let i = 0; i < 48; i++) {
+        const sp = (16 + (i % 5) * 5) * Math.max(1, this.scale / 2), drift = Math.sin(t * 0.7 + i * 1.7) * 14;
+        const x = (((i * 97 + t * 7 + drift) % (W + 20)) + W + 20) % (W + 20) - 10;
+        const y = ((i * 151 + t * sp) % (H + 20)) - 10;
+        ctx.fillRect(Math.round(x), Math.round(y), sz, sz);
+      }
+      ctx.restore();
+    },
+
+    openDreamTasks() {
+      base.openDreamTasks.call(this);
+      const s = this.dreamSession && this.dreamSession(), P = s && s.e2;
+      const body = document.querySelector('#modal .panel-body');
+      if (!P || s.nightmare || !this.modalOpen || !body || !document.getElementById('dream-task-wake')) return;
+      const k = P.changes.filter(c => c.found).length;
+      const card = document.createElement('div');
+      card.className = 'card'; card.id = 'e2-dream-card';
+      card.innerHTML = `<b>🔎 Co się zmieniło względem jawy?</b> <span class="tag purple">${k}/${P.changes.length}</span> <span class="tag">⏳ ${fmtTime(P.left)}</span>
+        <p class="small mt">W tym śnie ${rzeczy(P.changes.length)}: napis na budynku, kolor budynku albo przedmiotu, czyjś wygląd albo coś, czego na jawie tu nie ma. Podejdź i ${ACT(true)}. Mgła, rozmyte kształty i poprzestawiane drzewa to tylko sen — <b>nie liczą się</b>.</p>
+        <p class="small">Każde trafienie: <b>+5 LP</b> i <b>+20 s</b> snu. Wszystkie zmiany: <b>+40 s</b> i dzień treningowy. Z każdym dniem treningu sen trwa dłużej i mniej się mgli.</p>
+        ${P.changes.filter(c => c.found).map(c => `<div class="small">✓ ${esc(c.desc)}</div>`).join('')}`;
+      body.insertBefore(card, body.firstChild);
+    },
+    openDreamModulation(source = null) {
+      base.openDreamModulation.call(this, source);
+      const body = document.querySelector('#modal .panel-body');
+      if (!this.modalOpen || !body || body.querySelector('#e2-dream-note') || !(body.querySelector('#dream-daily-limit') || document.getElementById('dream-practice'))) return;
+      const s = this.dreamSession && this.dreamSession(), P = s && s.e2;
+      const note = document.createElement('p');
+      note.className = 'small'; note.id = 'e2-dream-note';
+      note.innerHTML = P ? `🔎 Ten sen: ${P.changes.filter(c => c.found).length}/${P.changes.length} zmian znalezionych · zostało ${fmtTime(P.left)}.`
+        : `🔎 Sen trwa teraz <b>${fmtTime(this.e2DreamLimit())}</b> i z każdym dniem treningu się wydłuża. W środku szukaj, co zmieniło się względem jawy: każde trafienie to +5 LP i +20 s snu.`;
+      const anchor = body.querySelector('#dream-daily-limit');
+      if (anchor) anchor.after(note); else body.insertBefore(note, body.firstChild);
+    },
+
+    openTesterPanel() {
+      base.openTesterPanel.call(this);
+      const body = document.querySelector('#modal .panel-body');
+      if (!this._testerOpen || !body || body.querySelector('[data-e2season]')) return;
+      const se = this.e2Season(), ov = this.e2Data().seasonOverride;
+      const btn = (v, label) => `<button class="btn btn-sm ${(ov || 'auto') === v ? 'btn-purple' : ''}" data-e2season="${v}">${label}</button>`;
+      const act = Object.entries(this.e2Quests()).filter(([q, st]) => st && st.state === 'active' && QUESTS[q]).map(([q]) => QUESTS[q].icon).join(' ');
+      const card = document.createElement('div');
+      card.className = 'card mt';
+      card.innerHTML = `<b>🍂 Pora roku i zadania szukania</b> <span class="small">${se.icon} ${se.name} · ${this.e2SeasonDay()}. dzień z 28${ov ? ' · ustawiona ręcznie' : ''}</span>
+        <div class="row mt" style="flex-wrap:wrap">${btn('auto', '📅 wg daty')}${SEASONS.map(x => btn(x.id, x.icon + ' ' + x.name)).join('')}</div>
+        <div class="row mt"><button class="btn btn-sm" data-e2reset="1">🔎 Wyczyść zadania szukania${act ? ' (' + act + ')' : ''}</button></div>`;
+      body.appendChild(card);
+      card.querySelectorAll('[data-e2season]').forEach(b => b.addEventListener('click', () => {
+        const d = this.e2Data(), v = b.dataset.e2season;
+        if (v === 'auto') delete d.seasonOverride; else d.seasonOverride = v;
+        this._e2season = this.e2Season().id; this.e2ApplySeason(true); this.save(); this.openTesterPanel();
+      }));
+      card.querySelector('[data-e2reset]').addEventListener('click', () => {
+        this.e2Data().q = {}; this.e2PlaceItems(); this.e2UpdateChip(); this.save();
+        this.toast('🔎 Zadania szukania wyczyszczone.'); this.openTesterPanel();
+      });
+    }
+  });
+
+  const css = document.createElement('style');
+  css.textContent = `#e2-chip{position:absolute;top:8px;right:8px;z-index:6;display:flex;flex-direction:column;gap:4px;align-items:flex-end;pointer-events:none}
+#e2-chip[hidden]{display:none}
+#e2-chip span{background:rgba(46,28,16,.88);color:var(--parch-100);border:2px solid var(--gold);border-radius:8px;padding:3px 9px;font-family:var(--font-body);font-weight:600;font-size:13px;box-shadow:0 2px 0 rgba(0,0,0,.3)}
+@media (pointer: coarse){#e2-chip{top:auto;bottom:116px;right:10px}}`;
+  document.head.appendChild(css);
+})();
+</script>
+
 <!-- PROFIL:START -->
 <script>
 /* =====================================================================

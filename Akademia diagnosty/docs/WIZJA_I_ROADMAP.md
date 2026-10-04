@@ -31,10 +31,11 @@ Kod: osobny `<script>` „ETAP 1 · 2026-10-04” (przed blokiem PROFIL). Test: 
 - ⚡ Wnętrza domów-przedmiotów: 27 motywów (podłoga, ściana, okno, hol, meble, obrazy, dywany) i różny układ (drzwi pokoi, stanowiska, kolumny, ławki, rośliny).
 - ⚡ Muzyka: pogłos, akordy w tle, delikatna perkusja, druga linia melodii, nokturn nocą, własny motyw wnętrz na każdej wyspie.
 
-### Etap 2 · Systemy świata
-- 🔨 4 pory roku wg daty gry (✅ 28 dni gry na porę, rok = 112 dni). Najpierw, bo zmieniają grafikę wszędzie, a nowe miejsca powstaną od razu z wariantami sezonowymi.
-- 🔨 Jeden mechanizm „znajdź / co się zmieniło”: zadania poboczne od postaci + zadania w treningu snu.
-- 🔨 Wyspa Snu: na niskim poziomie miasto zamglone i poprzestawiane, limit czasu, wcześniejsze wybudzenie, zadania z bonusem, coraz dłuższy trening.
+### Etap 2 · Systemy świata — ⚡ zrobione 2026-10-04
+Kod: osobny `<script>` „ETAP 2 · 2026-10-04” (przed blokiem PROFIL). Test: `tests/etap2_test.py`. Panel testerki (F9) ma przełącznik pór roku.
+- ⚡ 4 pory roku wg daty gry: 28 dni na porę, rok = 112 dni, dzień 1 = jesień. Zmienia się teren (paleta, śnieg, opadłe liście, stokrotki, zimą bez kwiatów), drzewa i krzewy, śnieg na dachach, cząsteczki (liście, płatki, płatki śniegu). Ikona pory przy dacie w HUD, komunikat i jedno zdanie o świetle dnia, gdy pora się zmienia.
+- ⚡ Silnik „znajdź”: zadania poboczne od mieszkańców — ✉️ Listonosz (4 listy w 4 dzielnicach), 🎣 Rybak (3 spławiki przy wodzie), 🙈 Mała Ida (chowany, codziennie), 🦋 Morfeusza (3 senne motyle, nagroda w LP). Każde kończy się ciekawostką z psychologii. Pasek postępu w rogu ekranu.
+- ⚡ Trening snu „co się zmieniło względem jawy”: 2–5 zmian (napis, kolor budynku lub przedmiotu, wygląd mieszkańca, przedmiot, którego na jawie nie ma). Mgła i poprzestawiane drzewa na niskim poziomie (nie liczą się). Limit czasu od 1:30, rośnie z treningiem do 5:30; +20 s i +5 LP za trafienie; komplet = dzień treningowy. Po czasie postać się budzi. We śnie są teraz mieszkańcy dzielnicy.
 
 ### Etap 3 · Nowe miejsca
 - 🔨 Ogród Uważności (mindfulness i medytacja).

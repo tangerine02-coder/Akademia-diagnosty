@@ -39,6 +39,18 @@
 26. **Perkusja** w muzyce Plaży, Błoni, Rynku, Bulwaru i Portu; nocą milknie, a melodia zwalnia i łagodnieje.
 27. **Dom gracza** nie dostał nakładek z zewnątrz — jego wygląd ustawiasz sama w kreatorze.
 
+## Etap 2 (4.10)
+28. **Dzień 1 = jesień** (jak początek roku akademickiego), potem zima, wiosna, lato — po 28 dni. Ręcznie: panel testerki (F9).
+29. **Wygląd pór roku**: jesienią rude drzewa i liście na ziemi, zimą śnieg na trawie, dachach i drzewach (bez kwiatów), wiosną jasna trawa, stokrotki i płatki w powietrzu. Śnieg pada w 2 na 3 zimowe dni. Wnętrza i sen nie zmieniają się z porą roku.
+30. **Zdanie przy zmianie pory** (np. zimą: „Poranne światło pomaga nastawić zegar biologiczny — warto wyjść na spacer przed południem”).
+31. **Zadania „znajdź” i nagrody**: Listonosz — 4 listy, 25 🟡 + 10 XP; Rybak — 3 spławiki, 20 🟡 + 10 XP; Ida — chowany raz dziennie, 10 🟡 + 10 XP, potem 3 🟡 + 3 XP; Morfeusza — 3 senne motyle, 15 🟡 + 10 XP + 10 LP. Propozycja pada od 2. dnia (w 1. dniu po pierwszej zwykłej rozmowie); „Nie teraz” chowa ją do jutra.
+32. **Ciekawostki na końcu zadań** (do przeczytania okiem psycholożki): efekt Zeigarnik z zastrzeżeniem o mieszanych replikacjach + zapisanie planu (Masicampo i Baumeister, 2011); złudzenie kontroli (Langer, 1975); stałość przedmiotu (Piaget); dziennik snów a pamiętanie snów.
+33. **Nieznaleziona Ida** następnego dnia rano wraca na plażę (chowany nie trwa przez noc).
+34. **Czas snu**: 1:30 na start, +30 s za każdy dzień treningu, najwyżej 5:30. Za trafienie +20 s i +5 LP, za komplet +40 s i dzień treningowy. Czas stoi w oknach, podczas koszmaru i prób lotu.
+35. **Liczba zmian we śnie**: 2 (0–1 dni treningu), 3 (2–3), 4 (4–5), 5 (6+). Mgła rzednie z wyrazistością snu i znika przy ok. 9 dniach; drzewa są poprzestawiane do 3. dnia, kołyszą się do 5. dnia.
+36. **Mieszkańcy we śnie**: wcześniej sen był pusty, teraz stoją w nim mieszkańcy dzielnicy (bez rozmów). Jedna osoba może mieć inne włosy (czapkę wtedy zdejmuje).
+37. **LP za trafienia** to nowe, codzienne źródło LP (do 25 LP dziennie przy 5 zmianach). Może przyspieszyć drogę do latania — do sprawdzenia w grze.
+
 ## Relacje, wątki, Momenty (projekt z 1.10, po południu)
 Ten moduł (🫂 Ludzie, 📸 Album, 📈 Mój tydzień, 6 małych wątków) **nie występuje w pliku gry na GitHubie**. Albo nie został jeszcze wbudowany, albo plik w repo jest starszy niż ten na komputerze. Do sprawdzenia przed dalszą pracą.
 19. Progi bliskości w relacjach z mieszkańcami.
