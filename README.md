@@ -21,12 +21,13 @@ Przy działającym serwerze (z folderu repo: `python3 -m http.server 8765 --dire
 - `python3 tests/czcionki_test.py` — wybór czcionek,
 - `python3 tests/przeglad_test.py` — przegląd całej gry (każda dzielnica, miejsce, mieszkaniec i drzwi); z argumentem `tel` na ekranie telefonu.
 
-Testy używają Playwright i czystego profilu przeglądarki; zrzuty ekranu trafiają do `tests/out/`.
+Wszystkie naraz: `sh tests/wszystkie.sh` (sam włączy serwer, jeśli trzeba). Testy używają Playwright i czystego profilu przeglądarki; zrzuty ekranu i logi trafiają do `tests/out/`.
 
 ## Dokumenty
 - `docs/WIZJA_I_ROADMAP.md` — wizja gry i roadmapa etapów
 - `docs/DO_PRZEJRZENIA.md` — decyzje AI czekające na akceptację autorki
 - `docs/PODZIAL_BAZA_ROZSZERZENIE.md` — propozycja podziału pytań katedr na wersję publiczną i akademicką
+- `docs/ARCHITEKTURA.md` — jak zbudowany jest plik gry (bloki, owijki, stan zapisu) — ściąga do kolejnych zmian
 - zadania: tablica POPRAWKI w Notion („Gra Akademia Diagnosty”)
 
 ## Stare wersje
