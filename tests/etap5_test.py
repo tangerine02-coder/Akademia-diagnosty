@@ -1,4 +1,4 @@
-"""Test Etapu 5 (część, 2026-10-05): hol katedry, Kompendium wiedzy, mini gry w każdej katedrze, mentorka.
+"""Test Etapu 5 (część, 2026-10-05): hol katedry, Kompendium wiedzy, mini gry w każdej katedrze, mentorka, Wyspa Snu.
 
 Uruchomienie (w folderze repo):
     python3 -m http.server 8765 --directory "Akademia diagnosty" &
@@ -199,13 +199,41 @@ async def main():
         r = await pg.evaluate("() => { game.closeModal(true); const t = [game.e5MentorTip(), game.e5MentorTip()]; const o = game.prObservations().find(x => x.k === 'e5_plany'); return [t, o && o.text]; }")
         check(all(r[0]) and r[1], f'szybka rada i obserwacja „Planowanie” w profilu ({r[1] and r[1][:50]})')
 
-        # ---------- 6. telefon ----------
-        print('\n[6] Telefon')
+        # ---------- 6. Wyspa Snu ----------
+        print('\n[6] Wyspa Snu')
+        r = await pg.evaluate("""() => { game.closeModal(true); game.closeDialog(true); game.setZone('wyspa_snu');
+          const it = game.zone.interacts.find(i => i.kind === 'e5_higiena'); return { it: !!it, prompt: it && game.spotPrompt(it), npcs: game.npcs.map(n => n.id) }; }""")
+        check(r['it'] and r['prompt'] == 'Tablica Higieny Snu' and 'sennik' in r['npcs'] and 'kot_drzemka' in r['npcs'], f'Wyspa Snu: tablica, Pan Sennik i Kot Drzemka ({r["npcs"]})')
+        r = await pg.evaluate("""() => { const np = game.npData(); const d = game.state.day; np.log = [{ d: d - 3, bed: 23 * 60 }, { d: d - 2, bed: 23 * 60 + 40 }, { d: d - 1, bed: 22 * 60 + 50 }];
+          game.e5Higiena(); return { n: document.querySelectorAll('#modal .e5-rada').length, streak: game.e5Rytm().streak, btn: !!document.getElementById('e5-rytm') }; }""")
+        check(r['n'] == 8 and r['streak'] == 3 and r['btn'], f'tablica: 8 rad i wyzwanie „regularny rytm” zaliczone ({r})')
+        await pg.screenshot(path=f'{OUT}/e5_tablica_snu.png')
+        r = await pg.evaluate("""() => { const xp0 = game.state.stats.xp, lp0 = game.dreamData().lp; document.getElementById('e5-rytm').click();
+          return { dxp: game.state.stats.xp - xp0, dlp: game.dreamData().lp - lp0, again: !!document.getElementById('e5-rytm') }; }""")
+        check(r['dxp'] >= 10 and r['dlp'] == 5 and not r['again'], f'nagroda za rytm raz w tygodniu (+{r["dxp"]} XP, +{r["dlp"]} LP)')
+        r = await pg.evaluate("() => { const np = game.npData(); np.log = [{ d: 1, bed: 22 * 60 }, { d: 2, bed: 25 * 60 }, { d: 3, bed: 23 * 60 }]; const a = game.e5Rytm().streak; np.log = [{ d: 1, bed: 23 * 60 }, { d: 3, bed: 23 * 60 }]; return [a, game.e5Rytm().streak]; }")
+        check(r == [1, 1], f'rytm: rozrzut ponad godzinę albo przerwa w nocach przerywa serię ({r})')
+        await pg.evaluate("() => { game.closeModal(true); game.state.energy = 100; game.e5Higiena(); document.getElementById('e5-mity').click(); }")
+        await pg.wait_for_timeout(250)
+        await pg.evaluate("""async () => { const R = SUBJECTS.e5_sen.rooms[0]; for (let k = 0; k < 10; k++) { const q = document.querySelector('#modal #mg-q'); if (!q) break;
+          const it = R.items.find(x => x[0] === q.textContent); if (!it) break; document.getElementById(it[1] ? 'mg-t' : 'mg-f').click(); await new Promise(r => setTimeout(r, 20)); } }""")
+        await pg.wait_for_timeout(400)
+        r = await pg.evaluate("() => ({ txt: document.getElementById('modal').innerText, back: [...document.querySelectorAll('#modal .panel-foot .btn')].map(b => b.textContent) })")
+        check('Wynik: 100%' in r['txt'] and '🌙 Wróć do tablicy' in r['back'], 'quiz „Sen: mit czy fakt?” i powrót do tablicy')
+        r = await pg.evaluate("""async () => { game.closeModal(true); const n = game.npcs.find(x => x.id === 'sennik'); const rr = Math.random; Math.random = () => 0.99;
+          try { game.talkTo(n); } finally { Math.random = rr; } await new Promise(r => setTimeout(r, 60)); const opts = game.dialog.options.map(o => o.label);
+          const m0 = game.state.money; const o = game.dialog.options[1]; game.closeDialog(true); o.fn();
+          return { opts, dm: game.state.money - m0, txt: document.getElementById('modal').innerText }; }""")
+        check(len(r['opts']) == 5 and r['dm'] == -2 and 'efekt Barnuma' in r['txt'] and 'Co mówią badania' in r['txt'], 'Pan Sennik: „wróżba” za 2 🟡, potem badania i efekt Barnuma')
+        await pg.screenshot(path=f'{OUT}/e5_sennik.png')
+
+        # ---------- 7. telefon ----------
+        print('\n[7] Telefon')
         mob = await b.new_page(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)
         merrs = []
         mob.on('pageerror', lambda e: merrs.append(str(e)))
         await start_game(mob)
-        for name, js in [('kompendium', "game.e5Kompendium('neuro')"), ('minigry', "game.e5MiniGry('neuro')"), ('mentorka', "game.e5MentorSession()"), ('quiz', "(game.state.energy = 100, game.startMinigame('e5_neuro', 2))"), ('memory', "(game.state.energy = 100, game.startMinigame('e5_neuro', 0))")]:
+        for name, js in [('kompendium', "game.e5Kompendium('neuro')"), ('minigry', "game.e5MiniGry('neuro')"), ('mentorka', "game.e5MentorSession()"), ('tablica_snu', "game.e5Higiena()"), ('quiz', "(game.state.energy = 100, game.startMinigame('e5_neuro', 2))"), ('memory', "(game.state.energy = 100, game.startMinigame('e5_neuro', 0))")]:
             await mob.evaluate(f"() => {{ game.closeModal(true); if (game._mg) game.mgStop(game._mg); {js}; }}")
             await mob.wait_for_timeout(350)
             over = await mob.evaluate("() => { const p = document.querySelector('#modal .panel'); return p ? p.scrollWidth > p.clientWidth + 2 || p.getBoundingClientRect().right > innerWidth + 1 : 'brak'; }")

@@ -21195,6 +21195,8 @@ window.addEventListener('load', () => {
       „Który opis pasuje?”. Nagrody mniejsze niż w domach-przedmiotach.
    4) Mentorka Dr Róża Busola na Rynku: spotkanie raz w tygodniu, cel tygodnia
       i plan „jeśli–to” z przypomnieniem w wybranej chwili (część e5_mentor).
+   5) Wyspa Snu: Tablica Higieny Snu, quiz „mit czy fakt”, wyzwanie „regularny
+      rytm”, Pan Sennik i Kot Drzemka (część e5_sen).
    Liczby i teksty to szkic AI [do przejrzenia]. Stan gry: state.e5.
    ===================================================================== */
 (() => {
@@ -21366,7 +21368,7 @@ window.addEventListener('load', () => {
       return base.showSyllabus.call(this, loc);
     },
     startMinigame(sid, idx) {
-      if (SUBJECTS[sid] && SUBJECTS[sid].e5 && !fill(SUBJECTS[sid].katedra)) return this.toast('Za mało pytań w tej katedrze.');
+      if (SUBJECTS[sid] && SUBJECTS[sid].e5 && SUBJECTS[sid].katedra && !fill(SUBJECTS[sid].katedra)) return this.toast('Za mało pytań w tej katedrze.');
       return base.startMinigame.call(this, sid, idx);
     },
     finishMinigame(ctx, ratio, summary) {
@@ -21383,13 +21385,14 @@ window.addEventListener('load', () => {
         if (line) line.textContent = `+${dxp} XP${dm > 0 ? ` · +${dm} 🟡` : ''}`;
         m.querySelectorAll('.fb.ok').forEach(el => {
           if (el.textContent.includes('Zapalono światło')) el.innerHTML = `⭐ Zaliczone: „${esc(ctx.R.name)}”!`;
-          if (el.textContent.includes('Wszystkie światła')) el.innerHTML = `🏛️✨ <b>Wszystkie mini gry zaliczone: ${esc(S.name)}!</b>`;
+          if (el.textContent.includes('Wszystkie światła')) el.innerHTML = S.allDone || `🏛️✨ <b>Wszystkie mini gry zaliczone: ${esc(S.name)}!</b>`;
         });
         const back = m.querySelector('.panel-foot [data-close]');
-        if (back) {
-          back.textContent = '🎲 Wróć do mini gier';
+        const goBack = S.katedra ? () => this.e5MiniGry(S.katedra) : S.onBack ? () => S.onBack.call(this) : null;
+        if (back && goBack) {
+          back.textContent = S.katedra ? '🎲 Wróć do mini gier' : (S.backLabel || '↩ Wróć');
           back.removeAttribute('data-close');
-          back.addEventListener('click', () => { audio.click(); this.e5MiniGry(S.katedra); });
+          back.addEventListener('click', () => { audio.click(); goBack(); });
         }
       } catch (e) {}
       return r;
@@ -21719,6 +21722,179 @@ window.addEventListener('load', () => {
   .e5-goal { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 12px; border: 2px solid var(--parch-300); border-radius: 10px; background: #fffaf0; cursor: pointer; font: inherit; color: inherit; }
   .e5-goal.sel { border-color: var(--green); background: #eaf8e0; }
   .e5-gi { font-size: 22px; }
+  `;
+  document.head.appendChild(css);
+})();
+
+/* ---------------------------------------------------------------------
+   ETAP 5 · WYSPA SNU — dopracowanie (Notion WYSPA SNU: „Dopracuj wyspę snu —
+   zadania itp.”):
+   1) Tablica Higieny Snu: 8 kart z radami opartymi na badaniach, mini gra
+      „Sen: mit czy fakt?” i wyzwanie „Regularny rytm” (3 noce z rzędu o podobnej porze).
+   2) Pan Sennik — sprzedawca senników „tłumaczy” sen, a gra pokazuje, co mówią
+      badania (sny typowe, hipoteza ciągłości, efekt Barnuma).
+   3) Kot Drzemka — ciekawostki o drzemkach i śnie.
+   Treści i nagrody [do przejrzenia].
+   --------------------------------------------------------------------- */
+(() => {
+  'use strict';
+  const E5 = window.ETAP5 || (window.ETAP5 = {});
+  const E4 = window.ETAP4 || {};
+  const later = fn => Promise.resolve().then(fn);
+  const inDream = g => !!(g.dreamSession && g.dreamSession());
+  const gg = (g, s) => (g && g.prG ? g.prG(s) : String(s).replace(/\{([^{}]*)\}/g, (_, a) => a.split('|')[0]));
+
+  const RADY = [
+    ['⏰', 'Stała pora wstawania', 'Wstawaj o podobnej porze także w weekend. Regularny rytm pomaga zegarowi biologicznemu; u studentów nieregularny sen wiązał się ze słabszymi wynikami w nauce (Phillips i in., 2017).'],
+    ['🌅', 'Światło rano, półmrok wieczorem', 'Poranne światło dzienne przesuwa zegar biologiczny na wcześniej, a jasne światło późnym wieczorem — na później. Spacer przed południem to dobry ruch.'],
+    ['🛏️', 'Łóżko do spania', 'Jeśli długo nie możesz zasnąć, wstań i zrób coś spokojnego przy przyciemnionym świetle, a wróć, gdy poczujesz senność. To element terapii poznawczo-behawioralnej bezsenności (CBT-I) — metody pierwszego wyboru w leczeniu bezsenności.'],
+    ['☕', 'Kofeina', 'Kofeina działa kilka godzin — jej okres półtrwania to zwykle ok. 3–7 godzin. Kawa po południu może utrudniać zasypianie.'],
+    ['🍷', 'Alkohol', 'Alkohol przyspiesza zaśnięcie, ale pogarsza drugą połowę nocy: sen staje się płytszy i częściej przerywany.'],
+    ['😴', 'Krótka drzemka', 'Drzemka ok. 10–20 minut wczesnym popołudniem poprawia czujność i rzadko psuje sen nocny. Dłuższa częściej kończy się ociężałością (inercja senna).'],
+    ['📝', 'Myśli przed snem', 'Zapisz przed snem, co jest do zrobienia jutro. W jednym badaniu osoby, które pisały listę zadań, zasypiały szybciej niż te, które pisały o rzeczach już zrobionych (Scullin i in., 2018).'],
+    ['📱', 'Ekrany', 'Wieczorem przeszkadza nie tylko światło ekranu, ale też pobudzające treści i to, że przesuwają porę snu. Pomaga ustalona godzina odłożenia telefonu.']
+  ];
+  const MITY = [
+    ['Alkohol pomaga dobrze się wyspać.', false, 'Ułatwia zaśnięcie, ale pogarsza jakość snu w drugiej połowie nocy.'],
+    ['Odsypianie w weekend w pełni nadrabia niedobór snu z całego tygodnia.', false, 'Częściowo pomaga, ale nie odwraca wszystkich skutków niedoboru snu, a do tego przesuwa rytm dobowy.'],
+    ['Większość ludzi śni każdej nocy, nawet jeśli rano tego nie pamięta.', true, 'Sny pojawiają się co noc, zwłaszcza w fazie REM — większości po prostu nie pamiętamy.'],
+    ['Sny trwają tylko kilka sekund, nawet jeśli wydają się długie.', false, 'Już w badaniach z budzeniem w fazie REM (Dement i Kleitman, 1957) długość snu z grubsza odpowiadała czasowi, który upłynął.'],
+    ['Liczenie owiec to najlepszy sposób na zaśnięcie.', false, 'W badaniu Harvey i Payne (2002) wyobrażanie sobie spokojnej, angażującej sceny pomagało zasnąć szybciej niż zwykłe odwracanie uwagi.'],
+    ['W fazie REM mięśnie ciała są w dużej mierze sparaliżowane.', true, 'Ta atonia chroni przed odgrywaniem snów. Gdy przetrwa chwilę po przebudzeniu, pojawia się paraliż przysenny.'],
+    ['Osoby starsze potrzebują dużo mniej snu niż dorośli w średnim wieku.', false, 'Zalecenia dla osób po 65. roku życia to nadal ok. 7–8 godzin; zmienia się raczej sam sen — jest płytszy i częściej przerywany.'],
+    ['Głośne chrapanie zawsze jest niegroźne.', false, 'Głośne chrapanie z przerwami w oddychaniu może być objawem obturacyjnego bezdechu sennego — warto to sprawdzić u lekarza.'],
+    ['Kofeina może działać jeszcze kilka godzin po wypiciu kawy.', true, 'Okres półtrwania kofeiny to zwykle kilka godzin, dlatego kawa po południu może utrudniać zasypianie.'],
+    ['Sen pomaga utrwalać to, czego uczono się w ciągu dnia.', true, 'W czasie snu ślady pamięciowe się wzmacniają — to jeden z powodów, by nie zarywać nocy przed egzaminem.']
+  ];
+  E5.RADY = RADY; E5.MITY = MITY;
+
+  SUBJECTS.e5_sen = {
+    name: 'Tablica Higieny Snu', subject: 'Higiena snu', icon: '🌙', color: '#7b4fcf', zone: 'e5_tablica', e5: true,
+    src: 'Etap 5 — Wyspa Snu', intro: '', backLabel: '🌙 Wróć do tablicy', allDone: '🌙✨ <b>Quiz o śnie zaliczony!</b>',
+    onBack() { this.e5Higiena(); },
+    rooms: [{ id: 'mity', name: 'Sen: mit czy fakt?', icon: '🌙', kind: 'tf', light: '#c9a0ff', time: 70, take: 8, items: MITY }]
+  };
+
+  if (E4.extendZone) E4.extendZone('wyspa_snu', B => {
+    B.obj('board', 29, 13, { fw: 2, interact: 'e5_higiena' });
+    B.npc('sennik', 30, 21);
+    B.npc('kot_drzemka', 15, 21);
+  });
+  NPCS.sennik = { name: 'Pan Sennik, wędrowny sprzedawca', kind: 'human',
+    look: { skin: SKIN_TONES[2], hair: 'krotkie', hairC: '#3a2a4a', top: '#7b4fcf', bottom: '#2a2a33', acc: 'beret', beard: '#3a2a4a' },
+    lines: ['Senniki! Egipskie, chińskie, babcine — każdy sen wytłumaczę!'] };
+  NPCS.kot_drzemka = { name: 'Kot Drzemka', kind: 'cat', wander: 2, lines: [
+    'Mrrr… (Kot Drzemka śpi 12–16 godzin na dobę. Dorosłym ludziom zwykle wystarcza 7–9.)',
+    'Miau. (Kot drzemie krótko i często. Ludziom krótka drzemka po południu — ok. 10–20 minut — poprawia czujność.)',
+    'Mrrrr. (Kot wygrzewa się w porannym słońcu. Poranne światło pomaga też Tobie ustawić zegar biologiczny.)',
+    'Miau? (Kot przeciąga się długo po drzemce. Ociężałość zaraz po przebudzeniu to inercja senna — mija po kilkunastu minutach.)'
+  ] };
+
+  /* ---------- wyzwanie: regularny rytm ---------- */
+  const hhmm = m => { const h = Math.floor(m / 60) % 24, mm = Math.round(m % 60); return `${h}:${String(mm).padStart(2, '0')}`; };
+  Game.prototype.e5Rytm = function () {
+    const np = this.npData ? this.npData() : { log: [] };
+    const log = (np.log || []).filter(x => x && !x.out && typeof x.bed === 'number' && typeof x.d === 'number');
+    // najdłuższy ciąg kolejnych nocy kończący się ostatnią nocą, w którym rozrzut godzin zaśnięcia ≤ 60 min
+    let streak = 0;
+    for (let i = log.length - 1; i >= 0; i--) {
+      const part = log.slice(i);
+      const consecutive = part.every((x, k) => k === 0 || x.d === part[k - 1].d + 1);
+      const beds = part.map(x => x.bed);
+      if (!consecutive || Math.max(...beds) - Math.min(...beds) > 60) break;
+      streak = part.length;
+    }
+    return { log: log.slice(-7), streak };
+  };
+
+  Game.prototype.e5Higiena = function () {
+    const s = this.state, d = this.e5Data(), today = s.day || 1;
+    if (!d.sen || typeof d.sen !== 'object') d.sen = {};
+    const R = this.e5Rytm(), week = Math.floor((today - 1) / 7);
+    const done = d.sen.rytmWeek === week, can = R.streak >= 3 && !done;
+    const stars = (s.subj && s.subj.e5_sen && s.subj.e5_sen.mity && s.subj.e5_sen.mity.stars) || 0;
+    const body = `<p class="small">Higiena snu to proste nawyki, które pomagają dobrze spać. Bez cudów — za to z badaniami.</p>
+      <div class="e5-rady mt">${RADY.map(([ic, t, x]) => `<div class="e5-rada"><span class="e5-ri">${ic}</span><div><b>${t}</b><div class="small">${x}</div></div></div>`).join('')}</div>
+      <div class="card mt"><b>🌙 Wyzwanie tygodnia: regularny rytm</b>
+        <p class="small mt">Połóż się spać trzy noce z rzędu o podobnej porze (różnica najwyżej godzina). Nagroda: +10 XP i +5 LP do treningu snu.</p>
+        <p class="small mt">Ostatnie noce: ${R.log.length ? R.log.map(x => `<span class="tag">dzień ${x.d}: ${hhmm(x.bed)}</span>`).join(' ') : '<span class="muted">jeszcze żadnej — sen w łóżku zapisuje się sam</span>'}</p>
+        <p class="small mt">Seria: <b>${R.streak}/3</b>${done ? ' · ✅ w tym tygodniu zaliczone' : ''}</p>
+        ${can ? '<div class="row mt"><span class="grow"></span><button class="btn btn-green btn-sm" id="e5-rytm">🌙 Odbierz nagrodę</button></div>' : ''}</div>
+      <div class="row mt" style="flex-wrap:wrap;gap:6px"><button class="btn" id="e5-mity">🎲 Sen: mit czy fakt? ${starsHtml(stars)}</button></div>`;
+    const m = this.openModal(this.panel('🌙 Tablica Higieny Snu', body, '<button class="btn" data-close>Zamknij</button>', 'wide'));
+    const rb = m.querySelector('#e5-rytm');
+    if (rb) rb.addEventListener('click', () => {
+      d.sen.rytmWeek = week; d.sen.rytmCount = (d.sen.rytmCount || 0) + 1;
+      this.addXP(10);
+      if (this.dreamReward) this.dreamReward('e5_rytm:' + week, 5, 'regularny rytm snu');
+      audio.success(); this.save(); this.e5Higiena();
+    });
+    m.querySelector('#e5-mity').addEventListener('click', () => { audio.click(); this.startMinigame('e5_sen', 0); });
+  };
+
+  /* ---------- Pan Sennik ---------- */
+  const SYMBOLE = [
+    ['zeby', '🦷 Wypadające zęby', 'Zęby to siła, moja droga duszo. Coś się kończy, coś zaczyna. Czasem czujesz, że inni nie doceniają, ile dajesz z siebie… prawda?',
+      'Sen o wypadających zębach to jeden z „snów typowych” — śni się wielu ludziom w różnych krajach. Nie ma dowodów, że coś zapowiada. W jednym badaniu częściej wiązał się z podrażnieniem zębów (np. zaciskaniem ich w nocy) niż z nastrojem (Rozen i Soffer-Dudek, 2018).'],
+    ['spadanie', '🕳️ Spadanie', 'Spadanie? Wielka zmiana nadchodzi! Bywasz osobą ostrożną, ale w głębi duszy pragniesz przygody. Zgadza się?',
+      'Spadanie to jeden z najczęstszych snów typowych u studentów (Nielsen i in., 2003). Często zdarza się tuż przy zasypianiu, razem z nagłym drgnięciem ciała — to skurcz hipniczny, zwykle zupełnie niegroźny.'],
+    ['egzamin', '📝 Egzamin', 'Egzamin to próba losu! Ktoś ważny będzie Cię oceniał. Masz w sobie więcej siły, niż myślisz.',
+      'Sny o egzaminach i spóźnieniach są bardzo częste u studentów (Nielsen i in., 2003) — a wiele osób śni je jeszcze długo po studiach. Zgodnie z hipotezą ciągłości sny często odbijają nasze codzienne troski, a nie tajne przepowiednie.'],
+    ['latanie', '🕊️ Latanie', 'Latanie! Wolność! Twoja dusza wyrywa się ku wielkim rzeczom. Czasem jednak hamujesz się, bo boisz się oceny.',
+      'Latanie to też sen typowy, często przyjemny. Bywa związany ze świadomym śnieniem — możesz go trenować w Katedrze Snu po drugiej stronie wyspy.']
+  ];
+  Game.prototype.e5Sennik = function (n) {
+    const def = n.def, s = this.state;
+    const opts = SYMBOLE.map(([id, lab]) => ({ label: id === 'egzamin' ? gg(this, '📝 Egzamin, do którego nie jestem {gotowa|gotowy|gotowe}') : lab, fn: () => this.e5SennikWrozba(def, id) }));
+    opts.push({ label: '👋 Nie, dziękuję', fn: null });
+    later(() => this.showDialogue({ name: def.name, npc: def, pages: ['Senniki! Egipskie, chińskie, babcine! Powiedz, co Ci się śniło, a powiem, co to znaczy. Tylko 2 Dopaminki!'], options: opts }));
+  };
+  Game.prototype.e5SennikWrozba = function (def, id) {
+    const s = this.state, d = this.e5Data(), S = SYMBOLE.find(x => x[0] === id);
+    if (!S) return;
+    if ((s.money || 0) < 2) return this.say(def.name, 'Za darmo nie wróżę! Wróć z dwiema Dopaminkami.', '🔮');
+    this.addMoney(-2, true);
+    if (!d.sen || typeof d.sen !== 'object') d.sen = {};
+    const first = !d.sen.sennik;
+    d.sen.sennik = (d.sen.sennik || 0) + 1;
+    if (first) this.addXP(5);
+    this.save();
+    this.openModal(this.panel('🔮 Sennik Pana Sennika', `<div class="fb mt" style="background:#f3ecfb;border:2px solid #c9a0ff">🔮 <i>„${S[2]}”</i></div>
+      <p class="mt"><b>🔍 Co mówią badania:</b> ${S[3]}</p>
+      <div class="fb ai mt">Zauważ, że „wróżba” pasowałaby do prawie każdego. Ogólne opisy, w których każdy się odnajduje, to <b>efekt Barnuma</b> (Forer, 1949). Badania nie potwierdzają, że symbole senne mają stałe, uniwersalne znaczenia — więcej o takich pułapkach w Archiwum Szarlatanerii.</div>
+      <p class="tiny muted mt">Zapłacone 2 🟡 — tyle kosztuje lekcja o efekcie Barnuma.${first ? ' Pierwsza lekcja: +5 XP.' : ''}</p>`,
+      '<button class="btn" data-close>Zamknij</button>', 'narrow'));
+  };
+
+  const base = {};
+  ['useSpot', 'spotPrompt', 'talkTo'].forEach(k => { base[k] = Game.prototype[k]; });
+  Object.assign(Game.prototype, {
+    useSpot(it) {
+      if (it && it.kind === 'e5_higiena') { try { return this.e5Higiena(); } catch (e) { console.warn('ETAP5: tablica', e); } }
+      return base.useSpot.call(this, it);
+    },
+    spotPrompt(it) {
+      if (it && it.kind === 'e5_higiena') return 'Tablica Higieny Snu';
+      return base.spotPrompt.call(this, it);
+    },
+    talkTo(n) {
+      if (!n || n.id !== 'sennik' || !n.def || inDream(this)) return base.talkTo.call(this, n);
+      const s = this.state;
+      n.talkT = 5;
+      n.dir = { up: 'down', down: 'up', left: 'right', right: 'left' }[this.player.dir] || n.dir;
+      s.talked[n.id] = (s.talked[n.id] || 0) + 1;
+      this.questEvent('talk', n.id);
+      return this.e5Sennik(n);
+    }
+  });
+
+  const css = document.createElement('style');
+  css.id = 'etap5-sen-css';
+  css.textContent = `
+  .e5-rady { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .e5-rada { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 2px solid #d9c8f0; border-radius: 10px; background: #faf6ff; }
+  .e5-ri { font-size: 24px; line-height: 1; }
+  @media (max-width: 620px) { .e5-rady { grid-template-columns: 1fr; } }
   `;
   document.head.appendChild(css);
 })();

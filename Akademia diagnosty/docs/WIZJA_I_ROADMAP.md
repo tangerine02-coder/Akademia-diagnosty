@@ -57,6 +57,7 @@ Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: 
 - 🔨 Podział na BAZĘ i ROZSZERZENIE; testy tylko w wersji dla studentów. Warunek przed publikacją gry.
 - ⚡ Mentorka postaci (zrobione 2026-10-05): Dr Róża Busola przy ławce na Rynku. Raz w tygodniu spotkanie: co się wydarzyło, rozmowa o celu z zeszłego tygodnia (bez oceniania), nowy cel i plan „jeśli–to”. Gra przypomina o planie w wybranej chwili. Szybka rada w każdej chwili.
 - 🔨 Promotor (magisterka, praca roczna) — w wersji akademickiej; zasady do ustalenia z autorką.
+- ⚡ Poza planem (2026-10-05): Wyspa Snu dopracowana — Tablica Higieny Snu (8 rad, quiz „Sen: mit czy fakt?”, cotygodniowe wyzwanie „regularny rytm”), Pan Sennik (wróżba z sennika, a potem badania i efekt Barnuma), Kot Drzemka.
 - ⚡ Mini gry i kompendium wiedzy w każdej katedrze (zrobione 2026-10-05): przy drzwiach hol z wyborem — 📖 Kompendium (wszystkie zagadnienia katedry z wyszukiwarką), 🎲 Mini gry (Memory, Błyskawica, „Który opis pasuje?”, za każdym razem inne pytania) i 📝 Zajęcia (dotychczasowe pytania otwarte). Domy-przedmioty z Archipelagu i z Etapu 3 mają już pokoje-mini gry.
 
 ### Później
