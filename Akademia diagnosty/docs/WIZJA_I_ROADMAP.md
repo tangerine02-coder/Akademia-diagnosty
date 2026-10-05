@@ -55,14 +55,15 @@ Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: 
 
 ### Etap 5 · Wersja akademicka
 - 🔨 Podział na BAZĘ i ROZSZERZENIE; testy tylko w wersji dla studentów. Warunek przed publikacją gry.
-- 🔨 Promotor (magisterka, praca roczna) i mentor postaci.
-- 🔨 Mini gry i kompendium wiedzy w każdym budynku.
+- ⚡ Mentorka postaci (zrobione 2026-10-05): Dr Róża Busola przy ławce na Rynku. Raz w tygodniu spotkanie: co się wydarzyło, rozmowa o celu z zeszłego tygodnia (bez oceniania), nowy cel i plan „jeśli–to”. Gra przypomina o planie w wybranej chwili. Szybka rada w każdej chwili.
+- 🔨 Promotor (magisterka, praca roczna) — w wersji akademickiej; zasady do ustalenia z autorką.
+- ⚡ Mini gry i kompendium wiedzy w każdej katedrze (zrobione 2026-10-05): przy drzwiach hol z wyborem — 📖 Kompendium (wszystkie zagadnienia katedry z wyszukiwarką), 🎲 Mini gry (Memory, Błyskawica, „Który opis pasuje?”, za każdym razem inne pytania) i 📝 Zajęcia (dotychczasowe pytania otwarte). Domy-przedmioty z Archipelagu i z Etapu 3 mają już pokoje-mini gry.
 
 ### Później
 - 💭 Rodzina postaci.
 
 ### Otwarte pytania
-- 💭 Mentor i promotor: jedna postać czy dwie?
+- 💭 Mentor i promotor: jedna postać czy dwie? (Na razie dwie: mentorka dla każdego, promotor później w wersji akademickiej [do przejrzenia].)
 - 💭 Katedra Teologii i Płci: co ma w niej być?
 
 ---

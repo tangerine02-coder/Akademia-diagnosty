@@ -21002,6 +21002,8 @@ window.addEventListener('load', () => {
       : D.lvl ? (fails ? 'Zlecenie Brygadzisty doprowadzone do końca — mimo egzaminu niezdanego za pierwszym razem. Długie cele chyba Cię nie zrażają.' : 'Zlecenie Brygadzisty doprowadzone do końca. Długie, wieloetapowe cele chyba Ci służą.')
       : fails ? 'Egzamin u Brygadzisty nie wyszedł za pierwszym razem, a zlecenie trwa dalej. Wracasz — to więcej niż upór.'
       : 'Trwa zlecenie Brygadzisty. Duży cel rozbity na małe kroki — dobry sposób na „od jutra”.');
+    // kolejne etapy dopisują swoje źródła obserwacji (np. Etap 5: spotkania z mentorką)
+    (E4.extraObs || []).forEach(f => { try { out.push(...(f(g) || [])); } catch (e) { console.warn('ETAP4: obserwacje', e); } });
     return out;
   }
   E4.observations = e4Observations;
@@ -21174,6 +21176,549 @@ window.addEventListener('load', () => {
   .cz-h { font-size: 17px; font-weight: 700; color: var(--wood-700); }
   .cz-b { font-size: 15px; }
   #t-font { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; }
+  `;
+  document.head.appendChild(css);
+})();
+</script>
+
+<script>
+/* =====================================================================
+   ETAP 5 · 2026-10-05 — osobny skrypt (owija funkcje i Game.prototype).
+   Roadmapa: docs/WIZJA_I_ROADMAP.md → Etap 5 „Wersja akademicka”.
+   Notion (OGÓLNE): „testy… będą dostępne głównie dla studentów psychologii.
+   Dla laików są niepotrzebne (albo dodatkowe). W każdym budynku mają być
+   mini gry i kompendium wiedzy.”
+   1) Hol katedry: przy drzwiach wybór — 📖 Kompendium, 🎲 Mini gry, 📝 Zajęcia.
+   2) Kompendium wiedzy: wszystkie zagadnienia katedry (najważniejsze + szerzej),
+      z wyszukiwarką i znaczkiem „zaliczone na zajęciach”.
+   3) Mini gry z pytań katedry (silnik pokoi z Archipelagu): Memory, Błyskawica,
+      „Który opis pasuje?”. Nagrody mniejsze niż w domach-przedmiotach.
+   4) Mentorka Dr Róża Busola na Rynku: spotkanie raz w tygodniu, cel tygodnia
+      i plan „jeśli–to” z przypomnieniem w wybranej chwili (część e5_mentor).
+   Liczby i teksty to szkic AI [do przejrzenia]. Stan gry: state.e5.
+   ===================================================================== */
+(() => {
+  'use strict';
+
+  const E5 = window.ETAP5 = {};
+  const inDream = g => !!(g.dreamSession && g.dreamSession());
+  const XP_SCALE = 0.4;                 // mini gry katedr: 40% nagród pokoju z Archipelagu [do przejrzenia]
+  E5.XP_SCALE = XP_SCALE;
+  const short = (t, n) => {
+    t = String(t || '').replace(/\s+/g, ' ').trim();
+    if (t.length <= n) return t;
+    const cut = t.slice(0, n - 1), sp = cut.lastIndexOf(' ');
+    return (sp > n * 0.6 ? cut.slice(0, sp) : cut).replace(/[,;:(—–-]+$/, '') + '…';
+  };
+  E5.short = short;
+
+  Game.prototype.e5Data = function () {
+    const s = this.state;
+    if (!s.e5 || typeof s.e5 !== 'object') s.e5 = {};
+    const d = s.e5;
+    if (!d.halls || typeof d.halls !== 'object') d.halls = {};
+    if (!d.read || typeof d.read !== 'object') d.read = {};
+    if (!d.once || typeof d.once !== 'object') d.once = {};
+    return d;
+  };
+
+  /* ---------- mini gry: „wirtualne domy” w silniku pokoi (SUBJECTS) ---------- */
+  const SID = loc => 'e5_' + loc;
+  const qsOf = loc => QUESTIONS_DB.filter(q => q.locId === loc && q.topic && q.canonicalAnswer);
+  Object.keys(LOCATIONS).forEach(loc => {
+    const L = LOCATIONS[loc];
+    SUBJECTS[SID(loc)] = {
+      name: L.name, subject: L.name, icon: L.icon, color: L.color, zone: L.zone, e5: true, katedra: loc,
+      src: 'pytania katedry (QUESTIONS_DB)', intro: '',
+      rooms: [
+        { id: 'memory', name: 'Memory: zagadnienie ↔ wskazówka', icon: '🃏', kind: 'pairs', light: L.color, pairs: [],
+          desc: 'Odkrywaj karty i łącz zagadnienie z jego wskazówką.' },
+        { id: 'blyskawica', name: 'Błyskawica: pasuje czy nie?', icon: '⚡', kind: 'tf', light: L.color, time: 75, take: 10, items: [],
+          desc: 'Czy wskazówka pasuje do zagadnienia? Strzałki ← / → albo przyciski.' },
+        { id: 'opisy', name: 'Który opis pasuje?', icon: '❓', kind: 'quiz', light: L.color, take: 6, items: [],
+          desc: 'Zagadnienie i cztery opisy z tej samej katedry. Tylko jeden jest właściwy.' }
+      ]
+    };
+  });
+  // świeże pytania przy każdej grze (także po „Jeszcze raz”)
+  function fill(loc) {
+    const S = SUBJECTS[SID(loc)], qs = qsOf(loc), R = Math.random;
+    if (!S || qs.length < 4) return false;
+    const hint = q => q.hint || q.canonicalAnswer;
+    S.rooms[0].pairs = shuffle(R, qs.slice()).slice(0, 6).map(q => [short(q.topic, 48), short(hint(q), 90)]);
+    S.rooms[1].items = shuffle(R, qs.slice()).slice(0, 10).map((q, k) => {
+      if (k % 2 === 0) return [`„${short(q.topic, 52)}” — ${short(hint(q), 120)}`, true, `Tak — to wskazówka do zagadnienia „${q.topic}”.`];
+      const o = shuffle(R, qs.filter(x => x.topic !== q.topic))[0];
+      return [`„${short(q.topic, 52)}” — ${short(hint(o), 120)}`, false, `Nie — ta wskazówka należy do zagadnienia „${o.topic}”.`];
+    });
+    S.rooms[2].items = shuffle(R, qs.slice()).slice(0, 6).map(q => {
+      const others = shuffle(R, qs.filter(x => x.topic !== q.topic)).filter((x, k, a) => a.findIndex(y => y.canonicalAnswer === x.canonicalAnswer) === k).slice(0, 3);
+      return { q: `Który opis pasuje do zagadnienia „${q.topic}”?`, a: [short(q.canonicalAnswer, 170)].concat(others.map(o => short(o.canonicalAnswer, 170))), why: short(q.explanation || '', 260) };
+    });
+    return true;
+  }
+  E5.fill = fill;
+  E5.SID = SID;
+
+  /* ---------- hol katedry ---------- */
+  Game.prototype.e5Hall = function (b) {
+    const loc = b.loc, L = LOCATIONS[loc], d = this.e5Data();
+    this.player.y = (b.doorRow + 1) * 16 + 8; this.clickTarget = null; this.keys = {};
+    audio.door();
+    const seen = d.halls[loc] || 0;
+    d.halls[loc] = seen + 1;
+    const sid = SID(loc), S = SUBJECTS[sid], stars = S.rooms.reduce((a, r, i) => a + this.roomStars(sid, i), 0);
+    const lvl = this.unlockedLevel(loc), rem = this.remainingFor(loc);
+    const read = qsOf(loc).filter(q => d.read[q.id]).length, total = qsOf(loc).length;
+    const opts = [
+      { label: `📖 Kompendium wiedzy (${read}/${total})`, fn: () => this.e5Kompendium(loc) },
+      { label: `🎲 Mini gry (⭐ ${stars}/${S.rooms.length * 3})`, fn: () => this.e5MiniGry(loc) },
+      { label: rem ? `📝 Zajęcia: pytania otwarte (poziom ${lvl})` : '📝 Zajęcia: wszystko zaliczone', fn: () => this.enterBuilding(b) }
+    ];
+    if (loc === 'archiwum' && this.e3OpenWystawa) opts.splice(2, 0, { label: '🕯️ Wystawa: zdyskredytowane testy i metody', fn: () => this.e3OpenWystawa() });
+    opts.push({ label: '🚪 Wyjdź', fn: null });
+    const first = `${L.icon} ${L.name}. 📖 Kompendium to wiedza tej katedry w pigułce — dla każdego. 🎲 Mini gry sprawdzają ją na wesoło. 📝 Zajęcia to pytania otwarte dla przyszłych diagnostów: za nie budynek rośnie o kolejne piętra.`;
+    this.showDialogue({ name: L.name, emoji: L.icon, pages: [seen ? `${L.icon} ${L.name}. Dokąd idziemy?` : first], options: opts });
+  };
+
+  /* ---------- kompendium ---------- */
+  Game.prototype.e5Kompendium = function (loc, openId) {
+    const s = this.state, d = this.e5Data(), L = LOCATIONS[loc], qs = qsOf(loc);
+    const ans = (s.stats && s.stats.answeredQuestions) || {};
+    const all = this.questionsFor(loc);
+    const lvlOf = q => Math.floor(Math.max(0, all.indexOf(q)) / LEVEL_STEP) + 1;
+    const done = qs.filter(q => ans[q.id]).length;
+    const rows = qs.map(q => `<details class="e5-k ${ans[q.id] ? 'ok' : ''}" data-q="${esc(q.id)}" ${openId === q.id ? 'open' : ''}>
+        <summary><span class="tag ${ans[q.id] ? 'green' : ''}">${ans[q.id] ? '✓' : '•'} poz. ${lvlOf(q)}</span><b class="grow">${esc(q.topic)}</b>${d.read[q.id] ? '<span class="tiny muted">przeczytane</span>' : ''}</summary>
+        <div class="e5-kb"><p><b>Najważniejsze:</b> ${esc(q.canonicalAnswer)}</p>${q.explanation ? `<p class="small mt"><b>Szerzej:</b> ${esc(q.explanation)}</p>` : ''}${q.hint ? `<p class="tiny muted mt">💡 ${esc(q.hint)}</p>` : ''}</div></details>`).join('');
+    const body = `<p class="small">Wiedza ${esc(L.name)} w pigułce: ${qs.length} zagadnień. Na zajęciach zaliczono ${done}. Kliknij zagadnienie, żeby je rozwinąć.</p>
+      <input class="text-in mt" id="e5-k-q" placeholder="🔎 Szukaj w kompendium…" autocomplete="off">
+      <div class="e5-klist mt" id="e5-k-list">${rows}</div>
+      <p class="tiny muted mt" id="e5-k-none" hidden>Nic nie pasuje do wyszukiwania.</p>
+      <p class="tiny muted mt">Zagadnienia odblokowują się na zajęciach piętrami (${LEVEL_STEP} poprawnych odpowiedzi = nowe piętro). Kompendium jest otwarte w całości — do czytania i powtórek.</p>`;
+    const m = this.openModal(this.panel(`📖 Kompendium — ${esc(L.name)}`, body, '<button class="btn" id="e5-k-mg">🎲 Mini gry</button><span class="grow"></span><button class="btn" data-close>Zamknij</button>', 'wide'));
+    const list = m.querySelector('#e5-k-list');
+    list.querySelectorAll('details').forEach(el => el.addEventListener('toggle', () => {
+      if (!el.open) return;
+      const id = el.dataset.q;
+      if (!d.read[id]) {
+        d.read[id] = s.day || 1;
+        if (this.prObs) { try { this.prObs('ciekawosc'); } catch (e) {} }
+        if (!el.querySelector('summary .muted')) el.querySelector('summary').insertAdjacentHTML('beforeend', '<span class="tiny muted">przeczytane</span>');
+        if (qs.every(q => d.read[q.id]) && !d.once['kompendium_' + loc]) {
+          d.once['kompendium_' + loc] = s.day || 1;
+          this.addXP(10, loc); audio.success();
+          this.toast(`📚 Całe kompendium: ${L.name}! +10 XP`, 4000);
+        }
+        this.save();
+      }
+    }));
+    const inp = m.querySelector('#e5-k-q'), none = m.querySelector('#e5-k-none');
+    const norm = t => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
+    inp.addEventListener('input', () => {
+      const v = norm(inp.value.trim());
+      let n = 0;
+      list.querySelectorAll('details').forEach(el => { const q = qs.find(x => x.id === el.dataset.q); const hit = !v || norm(q.topic + ' ' + q.canonicalAnswer + ' ' + (q.explanation || '') + ' ' + (q.hint || '')).includes(v); el.hidden = !hit; if (hit) n++; });
+      none.hidden = n > 0;
+    });
+    m.querySelector('#e5-k-mg').addEventListener('click', () => { audio.click(); this.e5MiniGry(loc); });
+    if (openId) { const el = list.querySelector(`details[data-q="${CSS.escape(openId)}"]`); if (el) el.scrollIntoView({ block: 'center' }); }
+  };
+
+  /* ---------- lista mini gier ---------- */
+  Game.prototype.e5MiniGry = function (loc) {
+    const sid = SID(loc), S = SUBJECTS[sid], L = LOCATIONS[loc];
+    const rows = S.rooms.map((R, i) => `<div class="card row e5-mg" style="border-left:6px solid ${R.light}">
+        <span class="e5-mgi">${R.icon}</span><div class="grow"><b>${esc(R.name)}</b><div class="tiny muted">${esc(R.desc)}</div></div>
+        <span class="e5-st">${starsHtml(this.roomStars(sid, i))}</span><button class="btn btn-sm btn-green" data-play="${i}">Graj</button></div>`).join('');
+    const m = this.openModal(this.panel(`🎲 Mini gry — ${esc(L.name)}`, `<p class="small">Pytania z kompendium tej katedry, za każdym razem inne. Gra kosztuje 4 ⚡. Gwiazdka za zaliczenie, trzy za komplet.</p><div class="col mt">${rows}</div>`,
+      '<button class="btn" id="e5-mg-k">📖 Kompendium</button><span class="grow"></span><button class="btn" data-close>Zamknij</button>', 'narrow'));
+    m.querySelectorAll('[data-play]').forEach(b => b.addEventListener('click', () => { audio.click(); this.startMinigame(sid, +b.dataset.play); }));
+    m.querySelector('#e5-mg-k').addEventListener('click', () => { audio.click(); this.e5Kompendium(loc); });
+  };
+
+  /* ---------- podpięcia ---------- */
+  const base = {};
+  ['enterDoor', 'masterDialog', 'showSyllabus', 'startMinigame', 'finishMinigame', 'addXP', 'addMoney'].forEach(k => { base[k] = Game.prototype[k]; });
+  Object.assign(Game.prototype, {
+    enterDoor(b) {
+      if (b && b.loc && LOCATIONS[b.loc] && SUBJECTS[SID(b.loc)] && !this.transition && !this.dialog && !this.modalOpen && !inDream(this)) {
+        try { return this.e5Hall(b); } catch (e) { console.warn('ETAP5: hol', e); }
+      }
+      return base.enterDoor.call(this, b);
+    },
+    // u mistrza: „Czego tu się uczy?” otwiera kompendium, dochodzą mini gry
+    masterDialog(n, first) {
+      const r = base.masterDialog.call(this, n, first);
+      try {
+        const loc = n && n.def && n.def.master, o = this.dialog && this.dialog.options;
+        if (loc && o && SUBJECTS[SID(loc)] && !inDream(this)) {
+          const syl = o.find(x => x.label === '📖 Czego tu się uczy?');
+          if (syl) syl.label = '📖 Kompendium wiedzy';
+          if (!o.some(x => x.e5)) o.splice(Math.max(0, o.length - 1), 0, { label: '🎲 Mini gry', fn: () => this.e5MiniGry(loc), e5: true });
+          if (this.dialog.full && this.finishPage) this.finishPage();
+        }
+      } catch (e) { console.warn('ETAP5: mistrz', e); }
+      return r;
+    },
+    showSyllabus(loc) {
+      if (SUBJECTS[SID(loc)]) return this.e5Kompendium(loc);
+      return base.showSyllabus.call(this, loc);
+    },
+    startMinigame(sid, idx) {
+      if (SUBJECTS[sid] && SUBJECTS[sid].e5 && !fill(SUBJECTS[sid].katedra)) return this.toast('Za mało pytań w tej katedrze.');
+      return base.startMinigame.call(this, sid, idx);
+    },
+    finishMinigame(ctx, ratio, summary) {
+      const S = ctx && ctx.sid && SUBJECTS[ctx.sid];
+      if (!S || !S.e5) return base.finishMinigame.call(this, ctx, ratio, summary);
+      const xp0 = this.state.stats.xp, m0 = this.state.money;
+      this._e5Scale = XP_SCALE;
+      let r;
+      try { r = base.finishMinigame.call(this, ctx, ratio, summary); } finally { this._e5Scale = 0; }
+      try {
+        const m = document.getElementById('modal');
+        const dxp = this.state.stats.xp - xp0, dm = this.state.money - m0;
+        const line = [...m.querySelectorAll('p.small.center')].find(el => /XP/.test(el.textContent));
+        if (line) line.textContent = `+${dxp} XP${dm > 0 ? ` · +${dm} 🟡` : ''}`;
+        m.querySelectorAll('.fb.ok').forEach(el => {
+          if (el.textContent.includes('Zapalono światło')) el.innerHTML = `⭐ Zaliczone: „${esc(ctx.R.name)}”!`;
+          if (el.textContent.includes('Wszystkie światła')) el.innerHTML = `🏛️✨ <b>Wszystkie mini gry zaliczone: ${esc(S.name)}!</b>`;
+        });
+        const back = m.querySelector('.panel-foot [data-close]');
+        if (back) {
+          back.textContent = '🎲 Wróć do mini gier';
+          back.removeAttribute('data-close');
+          back.addEventListener('click', () => { audio.click(); this.e5MiniGry(S.katedra); });
+        }
+      } catch (e) {}
+      return r;
+    },
+    addXP(amount, locId) {
+      if (this._e5Scale && amount > 0) amount = Math.max(1, Math.round(amount * this._e5Scale));
+      return base.addXP.call(this, amount, locId);
+    },
+    addMoney(n, quiet) {
+      if (this._e5Scale && n > 0) n = Math.max(1, Math.round(n * this._e5Scale));
+      return base.addMoney.call(this, n, quiet);
+    }
+  });
+
+  const css = document.createElement('style');
+  css.id = 'etap5-css';
+  css.textContent = `
+  .e5-klist { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; padding-right: 4px; }
+  .e5-k { border: 2px solid var(--parch-300); border-radius: 8px; background: #fffaf0; }
+  .e5-k.ok { border-color: #a8d48a; }
+  .e5-k summary { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; list-style: none; }
+  .e5-k summary::-webkit-details-marker { display: none; }
+  .e5-k summary::after { content: '▸'; color: var(--wood-400); margin-left: 4px; }
+  .e5-k[open] summary::after { content: '▾'; }
+  .e5-k[open] summary { border-bottom: 1px dashed var(--parch-300); }
+  .e5-kb { padding: 8px 12px 10px; line-height: 1.5; }
+  .e5-mg { align-items: center; gap: 10px; }
+  .e5-mgi { font-size: 26px; }
+  .e5-st { white-space: nowrap; }
+  @media (max-width: 620px) { .e5-mg { flex-wrap: wrap; } .e5-klist { max-height: 46vh; } }
+  `;
+  document.head.appendChild(css);
+})();
+
+/* ---------------------------------------------------------------------
+   ETAP 5 · MENTORKA — Dr Róża Busola na Rynku (Notion OGÓLNE: „dodaj mentora
+   dla postaci”). Promotor dla studentów to osobna postać — później, w wersji
+   akademickiej [do przejrzenia: jedna postać czy dwie — tu: dwie].
+   Raz w tygodniu (7 dni gry) spotkanie: co się wydarzyło od ostatniego razu,
+   rozmowa o celu z zeszłego tygodnia, nowy cel + plan „jeśli–to”
+   (intencje implementacyjne: Gollwitzer i Sheeran, 2006). Gra przypomina
+   o planie dokładnie w chwili z planu. Szybka rada — w każdej chwili.
+   --------------------------------------------------------------------- */
+(() => {
+  'use strict';
+  const E5 = window.ETAP5 || (window.ETAP5 = {});
+  const E4 = window.ETAP4 || {};
+  const later = fn => Promise.resolve().then(fn);
+  const inDream = g => !!(g.dreamSession && g.dreamSession());
+  const gg = (g, s) => (g && g.prG ? g.prG(s) : String(s).replace(/\{([^{}]*)\}/g, (_, a) => a.split('|')[0]));
+  const pl = (n, a, b, c) => (E4.plural ? E4.plural(n, a, b, c) : (n === 1 ? a : c));
+  const WEEK = 7;
+
+  NPCS.busola = { name: 'Dr Róża Busola, mentorka', kind: 'human',
+    look: { skin: SKIN_TONES[1], hair: 'kok', hairC: '#c9c9cf', top: '#5f8f6a', bottom: '#4a3a5a', acc: 'glasses' },
+    lines: [
+      'Nie mówię, dokąd iść. Pomagam zobaczyć, gdzie już jesteś.',
+      'Mały krok, który zrobisz, jest wart więcej niż wielki, który planujesz od jutra.',
+      'Porażka to dane, nie wyrok.',
+      'Na tej ławce siedziało już wielu przyszłych diagnostów. Każdy kiedyś zaczynał od „nie wiem”.'
+    ] };
+  if (E4.extendZone) E4.extendZone('rynek', B => B.npc('busola', 26, 9));
+
+  Game.prototype.e5Mentor = function () {
+    const d = this.e5Data();
+    if (!d.mentor || typeof d.mentor !== 'object') d.mentor = {};
+    const M = d.mentor;
+    ['met', 'last', 'n', 'done', 'remind'].forEach(k => { if (typeof M[k] !== 'number') M[k] = 0; });
+    if (!Array.isArray(M.hist)) M.hist = [];
+    if (M.goal && (typeof M.goal !== 'object' || !GOALS[M.goal.t])) M.goal = null;
+    return M;
+  };
+
+  /* ---------- liczniki postępu (bez skutków ubocznych w zapisie) ---------- */
+  const starsOf = (s, sid) => { const st = (s.subj && s.subj[sid]) || {}; return SUBJECTS[sid] ? SUBJECTS[sid].rooms.reduce((a, r) => a + ((st[r.id] && st[r.id].stars) || 0), 0) : 0; };
+  const litOf = (s, sid) => { const st = (s.subj && s.subj[sid]) || {}; return SUBJECTS[sid] ? SUBJECTS[sid].rooms.filter(r => st[r.id] && st[r.id].stars > 0).length : 0; };
+  function counters(g) {
+    const s = g.state, e3 = s.e3 || {}, e4 = (s.e4 && s.e4.stats) || {}, e5 = s.e5 || {}, og = e3.ogrod || {};
+    const subs = Object.keys(SUBJECTS);
+    return {
+      day: s.day || 1,
+      correct: (s.totals && s.totals.correct) || 0,
+      topics: Object.keys((s.stats && s.stats.answeredQuestions) || {}).length,
+      stars: subs.filter(k => SUBJECTS[k].e5).reduce((a, k) => a + starsOf(s, k), 0),
+      lit: subs.filter(k => !SUBJECTS[k].e5).reduce((a, k) => a + litOf(s, k), 0),
+      read: Object.keys(e5.read || {}).length,
+      water: e4.waterDays || 0,
+      harvested: e4.harvested || 0,
+      experiments: e4.experiments || 0,
+      leit: (e3.leit && e3.leit.sessions) || 0,
+      care: ['oddech', 'skan', 'staw', 'dzwon'].reduce((a, k) => a + (og[k] || 0), 0),
+      talks: Object.values(s.talked || {}).reduce((a, v) => a + (+v || 0), 0),
+      quests: Object.values(g.e2Quests ? g.e2Quests() || {} : {}).reduce((a, x) => a + ((x && x.n) || 0), 0)
+    };
+  }
+  E5.counters = counters;
+  const DELTAS = [
+    ['correct', '✅', n => `${n} ${pl(n, 'poprawna odpowiedź', 'poprawne odpowiedzi', 'poprawnych odpowiedzi')} na zajęciach`, 'zajęcia w katedrach'],
+    ['topics', '📚', n => `${n} ${pl(n, 'nowe zagadnienie', 'nowe zagadnienia', 'nowych zagadnień')}`, 'nowe zagadnienia'],
+    ['stars', '🎲', n => `${n} ${pl(n, 'gwiazdka', 'gwiazdki', 'gwiazdek')} w mini grach katedr`, 'mini gry w katedrach'],
+    ['lit', '💡', n => `${n} ${pl(n, 'zapalony pokój', 'zapalone pokoje', 'zapalonych pokoi')} w domach-przedmiotach`, 'domy-przedmioty'],
+    ['read', '📖', n => `${n} ${pl(n, 'przeczytane zagadnienie', 'przeczytane zagadnienia', 'przeczytanych zagadnień')} w kompendiach`, 'kompendia'],
+    ['water', '💧', n => `${n} ${pl(n, 'dzień', 'dni', 'dni')} podlewania`, 'ogródek'],
+    ['harvested', '🧺', n => `${n} ${pl(n, 'zebrane warzywo', 'zebrane warzywa', 'zebranych warzyw')}`, 'zbiory'],
+    ['experiments', '🧪', n => `${n} ${pl(n, 'eksperyment', 'eksperymenty', 'eksperymentów')} na poletku`, 'poletko doświadczalne'],
+    ['leit', '🗃️', n => `${n} ${pl(n, 'sesja', 'sesje', 'sesji')} powtórek`, 'powtórki'],
+    ['care', '🪷', n => `${n} ${pl(n, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')} uważności`, 'uważność'],
+    ['talks', '💬', n => `${n} ${pl(n, 'rozmowa', 'rozmowy', 'rozmów')} z mieszkańcami`, 'rozmowy z mieszkańcami'],
+    ['quests', '🤝', n => `${n} ${pl(n, 'spełniona prośba', 'spełnione prośby', 'spełnionych próśb')}`, 'pomaganie mieszkańcom']
+  ];
+
+  /* ---------- cele tygodnia ---------- */
+  const GOALS = {
+    topics: { icon: '📚', k: 'topics', n: [3, 5], text: n => `Zalicz ${n} ${pl(n, 'nowe zagadnienie', 'nowe zagadnienia', 'nowych zagadnień')} na zajęciach w katedrach`, act: 'pójdę na zajęcia do którejś katedry' },
+    stars: { icon: '🎲', k: 'stars', n: [3, 6], text: n => `Zdobądź ${n} ${pl(n, 'gwiazdkę', 'gwiazdki', 'gwiazdek')} w mini grach katedr`, act: 'zagram w mini grę w katedrze' },
+    read: { icon: '📖', k: 'read', n: [8, 15], text: n => `Przeczytaj ${n} ${pl(n, 'zagadnienie', 'zagadnienia', 'zagadnień')} w kompendiach katedr`, act: 'przeczytam dwa zagadnienia z kompendium' },
+    water: { icon: '💧', k: 'water', n: [3, 5], text: n => `Podlej ogródek w ${n} różne dni`, act: 'podleję grządki' },
+    leit: { icon: '🗃️', k: 'leit', n: [2, 4], text: n => `Zrób ${n} ${pl(n, 'sesję', 'sesje', 'sesji')} w Automacie Powtórek`, act: 'zrobię krótką powtórkę w Automacie Powtórek', need: g => Object.keys(g.state.stats.answeredQuestions || {}).length >= 3 },
+    care: { icon: '🪷', k: 'care', n: [2, 4], text: n => `Zrób ${n} ${pl(n, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')} w Ogrodzie Uważności`, act: 'pójdę na chwilę do Ogrodu Uważności' },
+    lit: { icon: '💡', k: 'lit', n: [2, 4], text: n => `Zapal ${n} ${pl(n, 'pokój', 'pokoje', 'pokoi')} w domach-przedmiotach`, act: 'odwiedzę dom-przedmiot i zapalę pokój' },
+    pole: { icon: '🧪', k: 'experiments', n: [1, 2], text: n => (n === 1 ? 'Przeprowadź eksperyment na Poletku Doświadczalnym' : `Przeprowadź ${n} eksperymenty na Poletku Doświadczalnym`), act: 'zajrzę na poletko na Wzgórzu' },
+    talks: { icon: '💬', k: 'talks', n: [8, 15], text: n => `Porozmawiaj z mieszkańcami ${n} razy`, act: 'zagadam kogoś po drodze' }
+  };
+  E5.GOALS = GOALS;
+  const CUES = {
+    rano: { text: 'rano, po wyjściu z domu', if: 'rano wyjdę z domu' },
+    dzielnica: { text: 'po wejściu do innej dzielnicy', if: 'wejdę do innej dzielnicy' },
+    kawa: { text: 'po kawie w Kawiarni „Pod Dopaminą”', if: 'wypiję kawę w Kawiarni „Pod Dopaminą”' },
+    wieczor: { text: 'wieczorem, po powrocie do domu', if: 'wieczorem wrócę do domu' },
+    rynek: { text: 'na widok ławki na Rynku', if: 'zobaczę ławkę na Rynku' }
+  };
+  E5.CUES = CUES;
+  const goalProgress = (g, G) => Math.max(0, (counters(g)[GOALS[G.t].k] || 0) - (G.base || 0));
+  E5.goalProgress = goalProgress;
+  const planText = G => `Jeśli ${CUES[G.cue] ? CUES[G.cue].if : '…'}, to ${GOALS[G.t].act}.`;
+
+  /* ---------- rozmowa z mentorką ---------- */
+  Game.prototype.e5MentorTalk = function (n) {
+    const s = this.state, M = this.e5Mentor(), today = s.day || 1, def = n.def;
+    const due = !M.last || today >= M.last + WEEK;
+    const G = M.goal, prog = G ? goalProgress(this, G) : 0;
+    let p;
+    if (!M.met) p = 'Jestem Róża Busola, mentorka. Raz w tygodniu siadamy przy tej ławce: patrzymy, co się wydarzyło, co było trudne, i wybierasz jeden cel na kolejny tydzień. Nie oceniam — pomagam zobaczyć.';
+    else if (due) p = 'Minął tydzień. Usiądziemy? Mam herbatę i sporo ciekawości.';
+    else p = G ? `Twój cel: ${GOALS[G.t].text(G.n)} — ${Math.min(prog, G.n)}/${G.n}. Plan: ${planText(G)} Następne spotkanie: dzień ${M.last + WEEK}.`
+      : `Następne spotkanie: dzień ${M.last + WEEK}. Do tego czasu — po prostu bądź ${gg(this, '{ciekawa|ciekawy|ciekawe}')} świata.`;
+    const opts = [];
+    if (due) opts.push({ label: '🧭 Spotkanie mentorskie', fn: () => this.e5MentorSession() });
+    opts.push({ label: '💡 Szybka rada', fn: () => this.say(def.name, this.e5MentorTip(), '🧭') });
+    opts.push({ label: '👋 Na razie', fn: null });
+    later(() => this.showDialogue({ name: def.name, npc: def, pages: [p], options: opts }));
+  };
+
+  // rada zależna od tego, co dzieje się w grze
+  Game.prototype.e5MentorTip = function () {
+    const s = this.state, today = s.day || 1, ctx = [];
+    if ((s.energy || 0) < 25) ctx.push('Twoja bateria jest prawie pusta. Sen albo kawa to nie lenistwo — zmęczony mózg gorzej zapamiętuje.');
+    try { const L = this.e3LeitDue ? this.e3LeitDue() : null; if (L && L.due.length >= 3) ctx.push(`W Automacie Powtórek w Dzielnicy Pamięci czeka ${L.due.length} ${pl(L.due.length, 'karta', 'karty', 'kart')}. Powtórki rozłożone w czasie to jedna z najlepiej sprawdzonych technik nauki (Dunlosky i in., 2013).`); } catch (e) {}
+    const e4 = s.e4 || {};
+    if ((e4.beds || []).some(b => b && !b.ripe && b.w !== today)) ctx.push('Grządki przy domu czekają na wodę — rośliny rosną tylko w podlane dni.');
+    if ((e4.beds || []).some(b => b && b.ripe)) ctx.push('W ogródku coś dojrzało. Zbiory czekają!');
+    if (e4.pole && e4.pole.ripe) ctx.push('Na Poletku Doświadczalnym dojrzały plony — czas policzyć wyniki eksperymentu.');
+    const J = e4.dom && e4.dom.job;
+    if (J && !J.exam && J.examDay !== today) ctx.push('Egzamin u Brygadzisty: dziś możesz podejść. Najpierw zajrzyj do kompendiów — są tam te same zagadnienia.');
+    const prog = Object.keys(LOCATIONS).map(loc => { const qs = this.questionsFor(loc); return [loc, qs.filter(q => s.stats.answeredQuestions[q.id]).length / Math.max(1, qs.length)]; }).sort((a, b) => a[1] - b[1]);
+    if (prog.length) { const L = LOCATIONS[prog[0][0]]; ctx.push(`Najrzadziej zaglądasz do: ${L.icon} ${L.name}. Może kompendium albo mini gra na dobry początek?`); }
+    const gen = ['Lepiej trzy krótkie sesje niż jedna długa: pamięć lubi przerwy.',
+      'Zamiast czytać drugi raz, spróbuj sobie przypomnieć. Przywoływanie z pamięci uczy mocniej niż powtórne czytanie (Dunlosky i in., 2013).',
+      'Kiedy coś nie wyjdzie, mów do siebie tak, jak do przyjaciela. Życzliwość wobec siebie pomaga wrócić do zadania (Kristin Neff).',
+      'Mieszaj tematy. Przeplatanie (raz to, raz tamto) bywa trudniejsze, ale lepiej uczy rozróżniać pojęcia.'];
+    const M = this.e5Mentor();
+    M.tip = ((M.tip || 0) + 1) % 1000;
+    const pool = ctx.concat(gen);                        // najpierw rady „z gry”, potem ogólne — po kolei
+    return pool[M.tip % pool.length];
+  };
+
+  /* ---------- spotkanie mentorskie ---------- */
+  Game.prototype.e5MentorSession = function () {
+    const s = this.state, M = this.e5Mentor(), today = s.day || 1;
+    if (M.last && today < M.last + WEEK) return this.toast(`Następne spotkanie: dzień ${M.last + WEEK}.`);
+    const now = counters(this), snap = M.snap || null;
+    const S = { step: 'review', reason: null, pick: null, cue: null, rewarded: false };
+    const prev = M.goal ? Object.assign({}, M.goal) : null;
+    const prevOk = prev ? goalProgress(this, prev) >= prev.n : false;
+    const m = this.openModal(this.panel(`🧭 Spotkanie mentorskie${M.n ? ` · tydzień ${M.n + 1}` : ''}`, '<div id="e5-ms"></div>', '<button class="btn" data-close>Zamknij</button>', 'narrow'));
+    const root = m.querySelector('#e5-ms');
+    // propozycje celów: mniejszy krok po nieudanym tygodniu, większy po udanym
+    const size = prev ? (prevOk ? 1 : 0) : 0;
+    const rnd = mulberry(hashStr('mentor|' + today + '|' + (M.n || 0)));
+    const keys = shuffle(rnd, Object.keys(GOALS).filter(k => !GOALS[k].need || GOALS[k].need(this)).filter(k => !prev || k !== prev.t || !prevOk)).slice(0, 3);
+    const render = () => {
+      if (!root.isConnected) return;
+      if (S.step === 'review') {
+        const lines = snap ? DELTAS.map(([k, ic, f, lab]) => [ic, (now[k] || 0) - (snap[k] || 0), f, lab]).filter(x => x[1] > 0) : [];
+        const days = snap ? Math.max(0, today - (snap.day || today)) : 0;
+        const best = lines.slice().sort((a, b) => b[1] - a[1])[0];
+        root.innerHTML = snap ? `<p>Od ostatniego spotkania minęło ${days} ${pl(days, 'dzień', 'dni', 'dni')}. Oto, co się wydarzyło:</p>
+            ${lines.length ? `<ul class="e5-ml mt">${lines.map(([ic, v, f]) => `<li>${ic} ${f(v)}</li>`).join('')}</ul>` : '<div class="fb ai mt">To był cichy tydzień. To też jest informacja — czasem odpoczynek jest najlepszym planem.</div>'}
+            ${best ? `<p class="small mt">Dr Busola: „Najwięcej działo się tu: ${best[3]}. Dobrze wiedzieć, co Cię ciągnie.”</p>` : ''}`
+          : `<p>Dr Busola: „Zanim zaczniemy — krótko o tym, jak to działa. Raz w tygodniu sprawdzamy, co się wydarzyło. Potem wybierasz <b>jeden</b> mały cel i chwilę, w której się nim zajmiesz. Ludzie, którzy planują „jeśli X, to Y”, częściej dowożą swoje cele niż ci, którzy tylko chcą (Gollwitzer i Sheeran, 2006).”</p>`;
+        root.insertAdjacentHTML('beforeend', `<div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e5-ms-next">Dalej →</button></div>`);
+        root.querySelector('#e5-ms-next').addEventListener('click', () => { audio.click(); S.step = prev ? 'prev' : 'new'; render(); });
+        return;
+      }
+      if (S.step === 'prev') {
+        const p = goalProgress(this, prev);
+        if (prevOk) {
+          if (!S.rewarded) { S.rewarded = true; M.done++; this.addXP(20); this.addMoney(10, true); audio.success(); M.hist.push({ day: today, t: prev.t, n: prev.n, ok: 1 }); M.goal = null; this.save(); }
+          root.innerHTML = `<p>Cel z zeszłego tygodnia: <b>${GOALS[prev.t].icon} ${GOALS[prev.t].text(prev.n)}</b></p>
+            <div class="fb ok mt">🎉 Udało się (${Math.min(p, prev.n)}/${prev.n})! +20 XP, +10 🟡. Dr Busola: „Zauważ, co pomogło. To Twoja wiedza o sobie — przyda się.”</div>
+            <div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e5-ms-next">Dalej →</button></div>`;
+          root.querySelector('#e5-ms-next').addEventListener('click', () => { audio.click(); S.step = 'new'; render(); });
+          return;
+        }
+        const REASONS = [
+          ['czas', '⏳ Nie było czasu', 'Może cel był za duży na ten tydzień. Wybierzmy mniejszy — małe, udane kroki budują poczucie, że dasz radę (Bandura nazywał to poczuciem własnej skuteczności).'],
+          ['zapomnienie', gg(this, '🫥 Zapomniał{am|em|om}'), 'To najczęstsza przeszkoda i nie świadczy o słabej woli. Pomaga konkretny sygnał: plan „jeśli–to” przypina cel do sytuacji, w której i tak się znajdziesz.'],
+          ['ochota', '🌧️ Zabrakło ochoty', 'Zdarza się. Może ten cel nie był do końca Twój? Wybierz taki, który Cię ciekawi — cele zgodne z własnymi wartościami i ciekawością łatwiej utrzymać (teoria autodeterminacji, Deci i Ryan).'],
+          ['priorytety', '🔀 Coś ważniejszego wyskoczyło', 'Zmiana priorytetów to też decyzja. Dobrze, że ją widzisz — nie wszystko trzeba robić naraz.']
+        ];
+        root.innerHTML = `<p>Cel z zeszłego tygodnia: <b>${GOALS[prev.t].icon} ${GOALS[prev.t].text(prev.n)}</b> — ${Math.min(p, prev.n)}/${prev.n}.</p>
+          <p class="mt">Dr Busola: „Nie wyszło? Bez oceniania. Co przeszkodziło najbardziej?”</p>
+          <div class="col mt">${REASONS.map(([k, label]) => `<button class="btn ${S.reason === k ? 'btn-green' : ''}" data-r="${k}">${label}</button>`).join('')}</div>
+          ${S.reason ? `<div class="fb ai mt">${REASONS.find(r => r[0] === S.reason)[2]}</div><div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e5-ms-next">Dalej →</button></div>` : ''}`;
+        root.querySelectorAll('[data-r]').forEach(b => b.addEventListener('click', () => { audio.click(); S.reason = b.dataset.r; render(); }));
+        const nx = root.querySelector('#e5-ms-next');
+        if (nx) nx.addEventListener('click', () => { audio.click(); M.hist.push({ day: today, t: prev.t, n: prev.n, ok: 0, why: S.reason }); M.goal = null; this.save(); S.step = 'new'; render(); });
+        return;
+      }
+      if (S.step === 'new') {
+        root.innerHTML = `<p><b>Cel na ten tydzień</b> — wybierz jeden${prev && !prevOk ? ' (tym razem mniejszy krok)' : prev ? ' (możesz sięgnąć wyżej)' : ''}:</p>
+          <div class="col mt">${keys.map(k => { const G = GOALS[k], n = G.n[size]; return `<button class="e5-goal ${S.pick === k ? 'sel' : ''}" data-g="${k}"><span class="e5-gi">${G.icon}</span><span>${G.text(n)}</span></button>`; }).join('')}</div>
+          ${S.pick ? `<p class="mt"><b>Kiedy?</b> Wybierz chwilę, w której się tym zajmiesz:</p>
+            <div class="row mt" style="flex-wrap:wrap;gap:6px">${Object.entries(CUES).map(([k, C]) => `<button class="chip ${S.cue === k ? 'sel' : ''}" data-c="${k}">${C.text}</button>`).join('')}</div>` : ''}
+          ${S.pick && S.cue ? `<div class="fb ok mt">📌 Plan: <b>${planText({ t: S.pick, cue: S.cue })}</b><br><span class="small">Gra przypomni Ci o nim właśnie w tej chwili (raz dziennie).</span></div>` : ''}
+          <div class="row mt" style="flex-wrap:wrap;gap:6px"><button class="btn btn-sm" id="e5-ms-skip">Bez celu w tym tygodniu</button><span class="grow"></span>
+            <button class="btn btn-green" id="e5-ms-save" ${S.pick && S.cue ? '' : 'disabled'}>Zapisz plan</button></div>`;
+        root.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => { audio.click(); S.pick = b.dataset.g; render(); }));
+        root.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => { audio.click(); S.cue = b.dataset.c; render(); }));
+        const finish = goal => {
+          M.goal = goal; M.met = M.met || today; M.last = today; M.n++; M.snap = counters(this); M.remind = 0;
+          this.addXP(5); this.e4Stat && this.e4Stat('mentor');
+          this.save(); S.step = 'end'; render();
+        };
+        root.querySelector('#e5-ms-skip').addEventListener('click', () => { audio.click(); finish(null); });
+        root.querySelector('#e5-ms-save').addEventListener('click', () => {
+          if (!S.pick || !S.cue) return;
+          audio.success();
+          finish({ t: S.pick, n: GOALS[S.pick].n[size], base: (counters(this)[GOALS[S.pick].k] || 0), cue: S.cue, set: today, ok: 0 });
+        });
+        return;
+      }
+      // koniec
+      const G = M.goal;
+      root.innerHTML = `${G ? `<p>Twój cel: <b>${GOALS[G.t].icon} ${GOALS[G.t].text(G.n)}</b></p><div class="fb ok mt">📌 ${planText(G)}</div>` : '<p>W tym tygodniu bez celu. Też można — odpoczynek to nie porażka.</p>'}
+        <p class="mt">Dr Busola: „Do zobaczenia za tydzień — w dniu ${M.last + WEEK}. Jestem tu, przy ławce.” <span class="small">(+5 XP za spotkanie)</span></p>
+        <p class="tiny muted mt">Plan „jeśli–to” (intencja implementacyjna) wiąże cel z konkretną sytuacją. W metaanalizie 94 badań taki plan wyraźnie zwiększał szansę osiągnięcia celu (Gollwitzer i Sheeran, 2006).</p>`;
+    };
+    render();
+  };
+
+  /* ---------- przypomnienia o planie i o osiągniętym celu ---------- */
+  Game.prototype.e5MentorCheck = function (ev) {
+    if (!this.state || !this.state.created || inDream(this)) return;
+    const M = this.e5Mentor(), G = M.goal, today = this.state.day || 1, time = this.state.time || 0;
+    if (!G) return;
+    if (!G.ok && goalProgress(this, G) >= G.n) {
+      G.ok = today; this.save();
+      setTimeout(() => { audio.success(); this.toast(`🧭 Cel tygodnia osiągnięty: ${GOALS[G.t].text(G.n)}! Dr Busola chętnie o tym posłucha (Rynek, przy ławce).`, 5500); }, 600);
+      return;
+    }
+    if (G.ok || M.remind === today) return;
+    const hit = (G.cue === 'rano' && ev.from === 'dom' && ev.to === 'osiedle' && time < 12 * 60)
+      || (G.cue === 'dzielnica' && ev.to && ev.from && ev.to !== ev.from && ZONES[ev.to] && !ZONES[ev.to].isle && ev.from !== 'dom')
+      || (G.cue === 'kawa' && ev.cafe)
+      || (G.cue === 'wieczor' && ev.to === 'dom' && time >= 20 * 60)
+      || (G.cue === 'rynek' && ev.to === 'rynek');
+    if (!hit) return;
+    M.remind = today; this.save();
+    setTimeout(() => this.toast(`📌 Twój plan: ${planText(G)} (${Math.min(goalProgress(this, G), G.n)}/${G.n})`, 5500), 900);
+  };
+
+  const base = {};
+  ['talkTo', 'setZone', 'openCafe'].forEach(k => { base[k] = Game.prototype[k]; });
+  Object.assign(Game.prototype, {
+    talkTo(n) {
+      if (!n || n.id !== 'busola' || !n.def || inDream(this)) return base.talkTo.call(this, n);
+      const s = this.state;
+      n.talkT = 5;
+      n.dir = { up: 'down', down: 'up', left: 'right', right: 'left' }[this.player.dir] || n.dir;
+      s.talked[n.id] = (s.talked[n.id] || 0) + 1;
+      this.questEvent('talk', n.id);
+      const M = this.e5Mentor();
+      const r = this.e5MentorTalk(n);
+      if (!M.met) M.met = s.day || 1;
+      return r;
+    },
+    setZone(id) {
+      const from = this.zone && this.zone.id;
+      const r = base.setZone.call(this, id);
+      try { this.e5MentorCheck({ from, to: id }); } catch (e) { console.warn('ETAP5: mentorka', e); }
+      return r;
+    },
+    openCafe(...a) {
+      const r = base.openCafe.apply(this, a);
+      try { this.e5MentorCheck({ cafe: true }); } catch (e) {}
+      return r;
+    }
+  });
+
+  // obserwacja do profilu (zakładka 🧠 Osobowość, przez Etap 4)
+  if (E4) {
+    E4.extraObs = E4.extraObs || [];
+    E4.extraObs.push(g => {
+      const M = g.e5Mentor(), h = M.hist || [], ok = h.filter(x => x.ok).length;
+      return [{ k: 'e5_plany', name: 'Planowanie', text: M.n < 2 ? null
+        : ok >= 2 ? `Na spotkaniach z mentorką wybierasz cele i plany „jeśli–to” (${M.n} ${pl(M.n, 'spotkanie', 'spotkania', 'spotkań')}, ${ok} ${pl(ok, 'osiągnięty cel', 'osiągnięte cele', 'osiągniętych celów')}). Planowanie chyba Ci służy.`
+        : h.length ? 'Cele z mentorką nie zawsze się udają — i dobrze, że o tym rozmawiacie. Mniejszy krok bywa lepszy niż wielki zryw.'
+        : `Chodzisz na spotkania mentorskie (${M.n}). Może lubisz mieć kogoś, z kim można spojrzeć na tydzień z boku?` }];
+    });
+  }
+
+  const css = document.createElement('style');
+  css.id = 'etap5-mentor-css';
+  css.textContent = `
+  .e5-ml { margin-left: 18px; line-height: 1.6; }
+  .e5-goal { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 12px; border: 2px solid var(--parch-300); border-radius: 10px; background: #fffaf0; cursor: pointer; font: inherit; color: inherit; }
+  .e5-goal.sel { border-color: var(--green); background: #eaf8e0; }
+  .e5-gi { font-size: 22px; }
   `;
   document.head.appendChild(css);
 })();

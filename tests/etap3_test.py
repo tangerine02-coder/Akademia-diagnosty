@@ -109,8 +109,9 @@ async def main():
         check(d and any('Wystawa' in o for o in d['options']), f'Kustosz proponuje wystawę: {d and d["options"]}')
         w = await pg.evaluate("""() => { game.closeDialog(true); const b = game.zone.buildings.find(x => x.loc === 'archiwum'); game.enterDoor(b);
           return game.dialog ? game.dialog.options.map(o => o.label) : null; }""")
-        check(w and len(w) == 3 and 'Wystawa' in w[0] and 'Zajęcia' in w[1], f'drzwi Archiwum: wybór Wystawa / Zajęcia ({w})')
-        await pg.evaluate('() => game.chooseOption(0)')
+        # od Etapu 5 drzwi każdej katedry otwierają hol (Kompendium, Mini gry, Zajęcia); w Archiwum także Wystawa
+        check(w and any('Wystawa' in o for o in w) and any('Zajęcia' in o for o in w), f'drzwi Archiwum: wybór Wystawa / Zajęcia ({w})')
+        await pg.evaluate("() => game.chooseOption(game.dialog.options.findIndex(o => o.label.includes('Wystawa')))")
         await pg.wait_for_timeout(250)
         halls = await pg.evaluate("() => document.querySelectorAll('#modal .e3-hall').length")
         check(halls == 6, f'wystawa: 6 sal ({halls})')
