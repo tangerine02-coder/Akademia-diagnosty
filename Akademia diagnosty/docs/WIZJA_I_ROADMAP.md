@@ -51,6 +51,7 @@ Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: 
 - ⚡ Poletko Doświadczalne na Wzgórzu Hipotez (Pani Losowska): eksperyment z grupą kontrolną na 8 poletkach. Zabiegi: kompost, ściółka, muzyka dla roślin, rozmowa z roślinami. Przydział ręczny, losowy albo losowy w rzędach (bloki). Wyniki: słupki, średnie, test permutacyjny, lekcja o zakłóceniu i „prawda gry”. Plony trafiają do koszyka.
 - ⚡ Rozbudowa domu: misja Brygadzisty w Porcie od 4. i od 8. poziomu (materiały, prowiant z ogródka, opanowane zagadnienia, egzamin kierownika budowy raz dziennie). Nagroda: nowy pokój za ścianką z przejściem, z oknem i kinkietem — więcej miejsca na meble.
 - ⚡ Osobowość z wyborów: 6 nowych obserwacji w zakładce 🧠 Osobowość (systematyczność, troska o siebie, pomaganie, czekanie na nagrodę, myślenie badawcze, długie cele). Gracz ich nie zmienia — może się tylko nie zgodzić.
+- ⚡ Poza planem: nowa para czcionek (Pixelify Sans + Fraunces) i przycisk „Aa” z wyborem: Nowa, Książkowa, Wyraźna, Klasyczna (dawna).
 
 ### Etap 5 · Wersja akademicka
 - 🔨 Podział na BAZĘ i ROZSZERZENIE; testy tylko w wersji dla studentów. Warunek przed publikacją gry.

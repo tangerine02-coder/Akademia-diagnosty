@@ -73,6 +73,9 @@
 54. **Osobowość z wyborów**: 6 nowych obserwacji — Systematyczność (dni podlewania + sesje Leitnera), Troska o siebie (ćwiczenia w Ogrodzie Uważności), Pomaganie (spełnione prośby mieszkańców), Czekanie na nagrodę (długie vs szybkie uprawy, sprzedaż przy dobrej vs słabej cenie; ciekawostka: Kidd, Palmeri i Aslin, 2013), Myślenie badawcze (poletko), Długie cele (zlecenie Brygadzisty). Nowość dla całej zakładki: to, co gra już zauważyła, jest na górze listy, a „??? — jeszcze nie wiem” na dole.
 55. **„Zapisane w katedrze osobowości”** (notatka w Notion): w grze nie ma Katedry Osobowości — obserwacje są w Profilu → 🧠 Osobowość. Czy dodać taki budynek (np. z mistrzem, który komentuje profil)?
 
+## Czcionki (5.10)
+56. **Nowa domyślna para czcionek** (Notion: „ta jest zbyt generyczna”; decyzja z 1.10: „próbuję innej pary, zostaje kopia starej”): **Pixelify Sans** (nagłówki, przyciski, pasek u góry) + **Fraunces** (pytania, dialogi, wyjaśnienia, napisy w mieście). Przycisk **„Aa”** na dolnym pasku pozwala wybrać: Nową, Książkową (Pixelify Sans + Literata), Wyraźną (Atkinson Hyperlegible — krój dla osób słabowidzących) albo Klasyczną (dawne Tiny5 + Vollkorn). Wybór pamięta przeglądarka, nie plik zapisu. Listy w skrzynce zostają w Jacquarda Bastarda 9, a wykres w Profilu diagnosty w Vollkorn (moduł PROFIL).
+
 ## Relacje, wątki, Momenty (projekt z 1.10, po południu)
 Ten moduł (🫂 Ludzie, 📸 Album, 📈 Mój tydzień, 6 małych wątków) **nie występuje w pliku gry na GitHubie**. Albo nie został jeszcze wbudowany, albo plik w repo jest starszy niż ten na komputerze. Do sprawdzenia przed dalszą pracą.
 19. Progi bliskości w relacjach z mieszkańcami.

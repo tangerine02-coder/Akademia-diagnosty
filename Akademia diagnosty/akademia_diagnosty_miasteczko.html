@@ -7,6 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tiny5&family=Vollkorn:ital,wght@0,400..800;1,400..800&family=Jacquarda+Bastarda+9&display=swap" rel="stylesheet">
+<!-- CZCIONKI 2026-10-05: nowe pary do wyboru (przycisk Aa). Każda rodzina osobno — jeśli któraś się nie wczyta, zostaje dawna. -->
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,300..900;1,7..72,300..900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+<script>try { document.documentElement.dataset.font = localStorage.getItem('ad_font') || 'nowa'; } catch (e) { document.documentElement.dataset.font = 'nowa'; }</script>
 <style>
   :root {
     --wood-900: #2e1c10;
@@ -29,10 +35,15 @@
     --gold-light: #ffd66b;
     --pink: #d9678f;
     --purple: #7b55b8;
-    --font-pixel: 'Tiny5', 'Lucida Console', 'Courier New', monospace;   /* głos gry: nagłówki, przyciski, HUD, napisy w świecie */
-    --font-body: 'Vollkorn', Georgia, 'Times New Roman', serif;   /* głos książki: pytania, dialogi, wyjaśnienia */
+    --font-pixel: 'Pixelify Sans', 'Tiny5', 'Lucida Console', 'Courier New', monospace;   /* głos gry: nagłówki, przyciski, HUD, napisy w świecie */
+    --font-body: 'Fraunces', 'Vollkorn', Georgia, 'Times New Roman', serif;   /* głos książki: pytania, dialogi, wyjaśnienia */
     --font-hand: 'Jacquarda Bastarda 9', 'Tiny5', 'Courier New', monospace;   /* głos ręki: tylko listy (pikselowa kaligrafia, 18 px = 2× siatka) */
   }
+  /* Czcionki do wyboru (przycisk Aa, 2026-10-05): domyślna „nowa” = Pixelify Sans + Fraunces [do przejrzenia].
+     „klasyczna” = dawne Tiny5 + Vollkorn. Tak samo w FONT_SETS (napisy na canvasie). */
+  :root[data-font="ksiazkowa"] { --font-body: 'Literata', 'Vollkorn', Georgia, 'Times New Roman', serif; }
+  :root[data-font="wyrazna"] { --font-pixel: 'Atkinson Hyperlegible', Verdana, Arial, sans-serif; --font-body: 'Atkinson Hyperlegible', Verdana, Arial, sans-serif; }
+  :root[data-font="klasyczna"] { --font-pixel: 'Tiny5', 'Lucida Console', 'Courier New', monospace; --font-body: 'Vollkorn', Georgia, 'Times New Roman', serif; }
 
   * { box-sizing: border-box; margin: 0; padding: 0; font-synthesis-weight: none; }
   html, body { height: 100%; }
@@ -3709,10 +3720,18 @@ const BADGES_LIST = [
    ===================================================================== */
 
 const TOWN_NAME = 'Freudowice Zdrój';
-// Dwa głosy gry — także na canvasie: piksele (Tiny5) tylko dla znaków, które mogą być duże i „równe” (wielokrotność 8 px),
-// a napisy w świecie (szyldy, imiona) to Vollkorn — czytelny w każdym rozmiarze, z pełnymi polskimi znakami.
-const PIXEL_FONT = "'Tiny5', 'Lucida Console', 'Courier New', monospace";        // musi zgadzać się z --font-pixel
-const WORLD_FONT = "'Vollkorn', Georgia, 'Times New Roman', serif";              // musi zgadzać się z --font-body
+// Dwa głosy gry — także na canvasie: piksele tylko dla znaków, które mogą być duże i „równe” (wielokrotność 8 px),
+// a napisy w świecie (szyldy, imiona) to czcionka książkowa — czytelna w każdym rozmiarze, z pełnymi polskimi znakami.
+// Pary do wyboru (przycisk Aa, localStorage 'ad_font') — muszą zgadzać się z --font-pixel / --font-body w CSS.
+const FONT_SETS = {
+  nowa:      ["'Pixelify Sans', 'Tiny5', 'Lucida Console', monospace", "'Fraunces', 'Vollkorn', Georgia, serif"],
+  ksiazkowa: ["'Pixelify Sans', 'Tiny5', 'Lucida Console', monospace", "'Literata', 'Vollkorn', Georgia, serif"],
+  wyrazna:   ["'Atkinson Hyperlegible', Verdana, Arial, sans-serif", "'Atkinson Hyperlegible', Verdana, Arial, sans-serif"],
+  klasyczna: ["'Tiny5', 'Lucida Console', 'Courier New', monospace", "'Vollkorn', Georgia, 'Times New Roman', serif"]
+};
+const FONT_ID = FONT_SETS[document.documentElement.dataset.font] ? document.documentElement.dataset.font : 'nowa';
+let PIXEL_FONT = FONT_SETS[FONT_ID][0];   // zmienia się po wyborze czcionki (przycisk Aa)
+let WORLD_FONT = FONT_SETS[FONT_ID][1];
 const pxSize = n => Math.max(16, Math.round(n / 8) * 8);                            // rozmiar dla PIXEL_FONT na siatce 8 px
 const TILE = 16;
 const ZW = 40, ZH = 28;            // rozmiar dzielnicy w kafelkach
@@ -21088,6 +21107,73 @@ window.addEventListener('load', () => {
   .e4-req.ok { background: #eaf8e0; border-color: #8cc26a; }
   @media (max-width: 760px) { .e4-plan { grid-template-columns: 1fr; } }
   @media (max-width: 620px) { .e4-garden { flex-direction: column; } .e4-beds { width: 100%; } }
+  `;
+  document.head.appendChild(css);
+})();
+</script>
+
+<script>
+/* =====================================================================
+   CZCIONKI · 2026-10-05 — wybór pary czcionek (przycisk „Aa” na dolnym pasku).
+   Notion (OGÓLNE): „Zmień czcionkę — ta jest zbyt generyczna”. Decyzja z 1.10:
+   „próbuję innej pary; zostaje kopia starej” → nowa para jest domyślna,
+   a dawna (Tiny5 + Vollkorn) zostaje do wyboru jako „Klasyczna”.
+   Pary: FONT_SETS (canvas) i :root[data-font] (CSS) w części głównej pliku.
+   Wybór zapamiętuje przeglądarka (localStorage 'ad_font'), jak powiększenie.
+   ===================================================================== */
+(() => {
+  'use strict';
+  const OPTS = [
+    ['nowa', '✨', 'Nowa', 'Pixelify Sans + Fraunces: pikselowe nagłówki i ciepła, miękka szeryfowa do czytania.'],
+    ['ksiazkowa', '📖', 'Książkowa', 'Pixelify Sans + Literata: szeryfowa zaprojektowana do długiego czytania na ekranie.'],
+    ['wyrazna', '🔍', 'Wyraźna', 'Atkinson Hyperlegible: litery trudne do pomylenia — krój Braille Institute, projektowany z myślą o osobach słabowidzących.'],
+    ['klasyczna', '🕰️', 'Klasyczna', 'Tiny5 + Vollkorn: czcionki z poprzedniej wersji gry.']
+  ];
+  const cur = () => (FONT_SETS[document.documentElement.dataset.font] ? document.documentElement.dataset.font : 'nowa');
+  function applyFont(id) {
+    if (!FONT_SETS[id]) id = 'nowa';
+    document.documentElement.dataset.font = id;
+    try { localStorage.setItem('ad_font', id); } catch (e) {}
+    PIXEL_FONT = FONT_SETS[id][0];          // napisy na canvasie rysują się co klatkę — zmiana działa od razu
+    WORLD_FONT = FONT_SETS[id][1];
+    return id;
+  }
+  window.CZCIONKI = { apply: applyFont, current: cur, OPTS };
+
+  Game.prototype.openFontPicker = function () {
+    const q = v => v.replace(/"/g, '&quot;');
+    const body = `<p class="small">Para czcionek: <b>pikselowa</b> (nagłówki, przyciski, pasek u góry) i <b>książkowa</b> (pytania, dialogi, wyjaśnienia, napisy w mieście). Wybór zapamięta ta przeglądarka.</p>
+      <div class="cz-list mt">${OPTS.map(([id, ic, name, desc]) => `<button class="cz-opt ${cur() === id ? 'sel' : ''}" data-font-id="${id}">
+        <span class="cz-h" style="font-family:${q(FONT_SETS[id][0])}">${ic} ${name}</span>
+        <span class="cz-b" style="font-family:${q(FONT_SETS[id][1])}">Zażółć gęślą jaźń — pytanie, dialog i wyjaśnienie.</span>
+        <span class="tiny muted">${desc}</span></button>`).join('')}</div>`;
+    const m = this.openModal(this.panel('🔤 Czcionka', body, '<button class="btn btn-green" data-close>Gotowe</button>', 'narrow'));
+    m.querySelectorAll('[data-font-id]').forEach(b => b.addEventListener('click', () => {
+      audio.click();
+      applyFont(b.dataset.fontId);
+      m.querySelectorAll('[data-font-id]').forEach(x => x.classList.toggle('sel', x === b));
+    }));
+  };
+
+  // przycisk „Aa” obok muzyki i powiększenia
+  const mus = document.getElementById('t-music');
+  if (mus && !document.getElementById('t-font')) {
+    const b = document.createElement('button');
+    b.className = 'tool'; b.id = 't-font'; b.title = 'Czcionka'; b.textContent = 'Aa';
+    mus.parentNode.insertBefore(b, mus);
+    b.addEventListener('click', () => { if (window.game) { audio.click(); window.game.openFontPicker(); } });
+  }
+
+  const css = document.createElement('style');
+  css.id = 'czcionki-css';
+  css.textContent = `
+  .cz-list { display: flex; flex-direction: column; gap: 8px; }
+  .cz-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; padding: 8px 12px; border: 2px solid var(--parch-300); border-radius: 10px; background: #fffaf0; cursor: pointer; color: var(--ink); }
+  .cz-opt:hover { border-color: var(--wood-400); }
+  .cz-opt.sel { border-color: var(--green); background: #eaf8e0; box-shadow: 0 0 0 2px #cfeabf inset; }
+  .cz-h { font-size: 17px; font-weight: 700; color: var(--wood-700); }
+  .cz-b { font-size: 15px; }
+  #t-font { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; }
   `;
   document.head.appendChild(css);
 })();
