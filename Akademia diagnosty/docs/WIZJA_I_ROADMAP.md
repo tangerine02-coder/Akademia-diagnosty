@@ -1,6 +1,6 @@
 # 🎯 Akademia Diagnosty — Wizja i Roadmapa
 
-*Dokument żywy. Ostatnia aktualizacja: 2026-10-05.*
+*Dokument żywy. Ostatnia aktualizacja: 2026-10-05 (Etap 6).*
 *Sesja brainstorm z AI — decyzje autorki gry.*
 
 > **Jak czytać ten dokument:**
@@ -37,14 +37,14 @@ Kod: osobny `<script>` „ETAP 2 · 2026-10-04” (przed blokiem PROFIL). Test: 
 - ⚡ Silnik „znajdź”: zadania poboczne od mieszkańców — ✉️ Listonosz (4 listy w 4 dzielnicach), 🎣 Rybak (3 spławiki przy wodzie), 🙈 Mała Ida (chowany, codziennie), 🦋 Morfeusza (3 senne motyle, nagroda w LP). Każde kończy się ciekawostką z psychologii. Pasek postępu w rogu ekranu.
 - ⚡ Trening snu „co się zmieniło względem jawy”: 2–5 zmian (napis, kolor budynku lub przedmiotu, wygląd mieszkańca, przedmiot, którego na jawie nie ma). Mgła i poprzestawiane drzewa na niskim poziomie (nie liczą się). Limit czasu od 1:30, rośnie z treningiem do 5:30; +20 s i +5 LP za trafienie; komplet = dzień treningowy. Po czasie postać się budzi. We śnie są teraz mieszkańcy dzielnicy.
 
-### Etap 3 · Nowe miejsca — ⚡ zrobione 2026-10-05 (bez Katedry Teologii i Płci)
+### Etap 3 · Nowe miejsca — ⚡ zrobione 2026-10-05
 Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: `tests/etap3_test.py`. Stan gry: `state.e3`.
 - ⚡ Archiwum Szarlatanerii 2.0: przy drzwiach wybór **Wystawa** (dla każdego, zwiedzanie bez testu) albo **Zajęcia** (dotychczasowe pytania). 6 sal, 26 eksponatów: obietnica → co pokazały badania → dlaczego kusiło → lekcja dla diagnosty; eksponaty „sporne” oznaczone. Aleja 6 gablot na Wypartym Przedmieściu, Kustosz też prowadzi na wystawę.
 - ⚡ Dom Żyrafy (NVC) na wschodnim końcu Bulwaru Empatii: 5 pokoi (obserwacja/ocena, uczucia, potrzeby, cztery kroki, scenki). Na pulpicie **Księga Rozmów** — rozmowy z całego miasta (moduł PROFIL) w czterech stylach, z zaznaczoną odpowiedzią gracza.
 - ⚡ Dom Muzyki na Plaży Id: eksperymenty słuchowe (stukanie do rytmu, brakująca podstawa, współbrzmienia), mity o muzyce, pojęcia. Schody Sheparda przed domem, Kapelmistrzyni Fuga. **Pianino na Bulwarze jest grywalne** (klawisze A–K lub dotyk, „Oda do radości”, „Zagraj z pamięci”) — z tabliczką „Dar Domu Muzyki”.
 - ⚡ Ogród Uważności na zachodniej łące Wzgórza Hipotez: Pawilon Uważności (5 pokoi: autopilot, 7 postaw, MBSR/MBCT/ACT, mity, scenki) i 4 ćwiczenia w ogrodzie — Kamień Oddechu (wolny oddech / pudełkowy), Mata Skanowania Ciała, Staw Myśli (myśl, uczucie czy doznanie z ciała), Dzwon Uważności. Energia za ćwiczenie raz dziennie, Pani Oddechowska.
 - ⚡ Dzielnica Pamięci — 10. dzielnica, na wschód od Portu (Most Pamięci, Kanał Lety, Most Mnemozyny). Magazyn Pamięci Długotrwałej (kodowanie, wskazówki, zapominanie, autobiografia, mity), Dom Fałszywych Wspomnień (DRM, świadek stłuczki wg Loftus i Palmer, mity, słownik, przesłuchanie), Pracownia Technik Uczenia (pałac pamięci na trasie przez miasto, ranking technik Dunlosky’ego, mity, plan nauki, słownik). W parku: **Automat Powtórek** (pudełka Leitnera z pytań już zaliczonych w katedrach), Krzywa Ebbinghausa, Fontanna Lety, Kapsuła Czasu (list do siebie za 7 dni). Mieszkańcy: Mnemozyna, Hermann Ebbinghaus, Pan Pewny (świadek), złota rybka. Własna muzyka.
-- 💭 Katedra Teologii i Płci — treść do ustalenia z autorką.
+- ⚡ Katedra Teologii i Płci — zbudowana w Etapie 6 jako Katedra Psychologii Religii i Płci (patrz niżej).
 
 ### Etap 4 · Długa gra — ⚡ zrobione 2026-10-05
 - ⚡ Ogródek przy domu na Osiedlu: 12 grządek, 9 roślin z porami roku (sałata, marchew, cebula, ziemniak, ogórek, truskawka, pomidor, dynia, czosnek). Rosną w dni, w które są podlane i jest ich pora roku; nie usychają. **Straganik** przy furtce: ceny zmieniają się z dnia na dzień, sprzedaż daje Dopaminki.
@@ -54,18 +54,29 @@ Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: 
 - ⚡ Poza planem: nowa para czcionek (Pixelify Sans + Fraunces) i przycisk „Aa” z wyborem: Nowa, Książkowa, Wyraźna, Klasyczna (dawna).
 
 ### Etap 5 · Wersja akademicka
-- 🔨 Podział na BAZĘ i ROZSZERZENIE; testy tylko w wersji dla studentów. Warunek przed publikacją gry. Propozycja podziału pytań katedr (🌍 dla każdego / 🎓 akademickie / 🔒 narzędzia): `docs/PODZIAL_BAZA_ROZSZERZENIE.md` — czeka na decyzję.
+- ⚡ Podział na BAZĘ i ROZSZERZENIE (zrobione 2026-10-05, Etap 6): propozycja z `docs/PODZIAL_BAZA_ROZSZERZENIE.md` przyjęta bez zmian. Testy (pytania 🎓 i 🔒) tylko w wersji dla studentów.
 - ⚡ Mentorka postaci (zrobione 2026-10-05): Dr Róża Busola przy ławce na Rynku. Raz w tygodniu spotkanie: co się wydarzyło, rozmowa o celu z zeszłego tygodnia (bez oceniania), nowy cel i plan „jeśli–to”. Gra przypomina o planie w wybranej chwili. Szybka rada w każdej chwili.
-- 🔨 Promotor (magisterka, praca roczna) — w wersji akademickiej; zasady do ustalenia z autorką.
+- ⚡ Promotor (zrobione 2026-10-05, Etap 6): Prof. Konstanty Przypis przy Bibliotece — etapy z checklistą, konsultacje fragmentów, harmonogram z terminami. Tylko w wersji akademickiej.
 - ⚡ Poza planem (2026-10-05): Wyspa Snu dopracowana — Tablica Higieny Snu (8 rad, quiz „Sen: mit czy fakt?”, cotygodniowe wyzwanie „regularny rytm”), Pan Sennik (wróżba z sennika, a potem badania i efekt Barnuma), Kot Drzemka.
 - ⚡ Mini gry i kompendium wiedzy w każdej katedrze (zrobione 2026-10-05): przy drzwiach hol z wyborem — 📖 Kompendium (wszystkie zagadnienia katedry z wyszukiwarką), 🎲 Mini gry (Memory, Błyskawica, „Który opis pasuje?”, za każdym razem inne pytania) i 📝 Zajęcia (dotychczasowe pytania otwarte). Domy-przedmioty z Archipelagu i z Etapu 3 mają już pokoje-mini gry.
+
+### Etap 6 · Dwie wersje, Katedra Religii i Płci, promotor — ⚡ zrobione 2026-10-05
+Kod: trzy bloki „ETAP 6” (przed blokiem PROFIL); blok promotora jest między komentarzami `TYLKO-AKADEMIA`. Test: `tests/etap6_test.py`. Stan gry: `state.e6`.
+- ⚡ **Dwa pliki**: `akademia_diagnosty_miasteczko.html` — wersja akademicka (ROZSZERZENIE), tu wprowadzamy zmiany; `akademia_diagnosty_publiczna.html` — wersja publiczna (BAZA), budowana skryptem `python3 narzedzia/zbuduj_publiczna.py`. Skrypt wycina zagadnienia 🎓 i 🔒 (mapa `TIERS` w kodzie) i blok promotora, zmienia klucz zapisu i sprawdza, że nic chronionego nie zostało.
+- ⚡ Wersja publiczna: ✅ Sprawdzian (pytania zamknięte, zaliczają zagadnienia) zamiast zajęć z pytaniami otwartymi; bez Profilu diagnosty i drogi diagnosty; progi Brygadzisty i odznaki dopasowane do zagadnień 🌍.
+- ⚡ 21 nowych zagadnień 🌍 — każda katedra ma co najmniej 5 (np. „Jak rozpoznać dobry test”, „Jak psycholog dochodzi do wniosków”).
+- ⚡ Wersja akademicka: znaczki 🌍 / 🎓 / 🔒 w kompendium.
+- ⚡ Katedra Psychologii Religii i Płci w dawnym Magazynie Pamięci w Porcie: Prof. Teodora Rolska, Pan Zasłyszany, 18 zagadnień (14 🌍, 4 🎓), mini gra „Mit czy fakt?”.
+- ⚡ Promotor (tylko wersja akademicka): etapy magisterki (9) i pracy rocznej (6), konsultacje fragmentów z pytaniami jak na seminarium, harmonogram z prawdziwymi datami, przypomnieniami i plikiem .ics.
+- 💭 Jak udostępniać wersję akademicką — do decyzji później (repozytorium jest dziś publiczne).
 
 ### Później
 - 💭 Rodzina postaci.
 
 ### Otwarte pytania
-- 💭 Mentor i promotor: jedna postać czy dwie? (Na razie dwie: mentorka dla każdego, promotor później w wersji akademickiej [do przejrzenia].)
-- 💭 Katedra Teologii i Płci: co ma w niej być?
+- ✅ Mentor i promotor: dwie postacie (decyzja 5.10) — mentorka dla każdego, promotor w wersji akademickiej.
+- ✅ Katedra Teologii i Płci: psychologia religii i płci — badania i mity (decyzja 5.10).
+- 💭 Wersja akademicka: jak ją udostępniać (link od prowadzących, kod, inaczej)?
 
 ---
 
@@ -76,13 +87,13 @@ Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: 
 - **Treść:** Pełna, samodzielna gra z własnym łukiem — autorefleksja, emocje, relacje, mity psychologiczne, prawa pacjenta, rozpoznawanie szarlatanerii
 - **Dystrybucja:** Otwarta, do pobrania
 - **Wymóg:** Musi być PEŁNYM doświadczeniem, nie demo ani okrojoną wersją
-- **Status:** 💭 treści do zaprojektowania
+- **Status:** ⚡ zbudowana skryptem z wersji akademickiej (Etap 6): 67 zagadnień 🌍, sprawdzian zamiast zajęć
 
 ### 📁 Wersja akademicka (BAZA + MODUŁY STUDENCKIE)
 - **Dla kogo:** Studenci psychologii (po min. roku studiów)
 - **Treść:** Wszystko co w bazie PLUS: wiedza o testach, modele procesu, psychometria, ścieżka akademicka (stażysta → diagnosta)
 - **Dystrybucja:** Zamknięty obieg z weryfikacją (uczelnia, promotor, kod dostępu)
-- **Status:** ⚡ pytania i silnik prawie gotowe (~80+ pytań akademickich)
+- **Status:** ⚡ 215 zagadnień (🌍 67 · 🎓 100 · 🔒 48), promotor; sposób udostępniania — do decyzji
 - **Fabularnie:** Student = mieszkaniec Freudowic, który zapisał się do Akademii
 
 ### Dlaczego dwa pliki, a nie wybór w grze?

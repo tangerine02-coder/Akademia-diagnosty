@@ -1,6 +1,6 @@
 # Decyzje do przejrzenia
 
-*Zebrane 2026-10-04 ze wszystkich dokumentów projektu (`[do przejrzenia]`).*
+*Zebrane 2026-10-04 ze wszystkich dokumentów projektu (`[do przejrzenia]`), uzupełniane po każdym etapie (ostatnio: Etap 6, 2026-10-05).*
 *To decyzje podjęte przez AI podczas pracy bez autorki. Przy każdej wystarczy: ✅ zostaje / ✏️ zmień na… / ❌ usuń.*
 
 ## Sklep, kawiarnia, dom (noc 1.10)
@@ -82,7 +82,7 @@
 59. **Mini gry katedr** (z pytań katedry, za każdym razem losowane): Memory 6 par (zagadnienie ↔ wskazówka), Błyskawica 10 zdań w 75 s (wskazówka pasuje czy nie), „Który opis pasuje?” 6 pytań po 4 opisy. Koszt 4 ⚡ jak w domach-przedmiotach. Nagrody to 40% nagród pokoju z Archipelagu (np. 3 gwiazdki za pierwszym razem: 26 XP i 7 🟡; komplet trzech gier: +20 XP i +10 🟡), żeby nie przyspieszać za bardzo poziomów (rozbudowa domu). Gwiazdki liczą się w Profilu do „zapalonych świateł”.
 
 ## Etap 5 — mentorka (5.10)
-60. **Mentorka i promotor to dwie postacie** (otwarte pytanie z roadmapy). Mentorka jest dla każdego; promotor przyjdzie z wersją akademicką, kiedy ustalisz, jak ma pomagać w magisterce i pracy rocznej.
+60. **Mentorka i promotor to dwie postacie** (otwarte pytanie z roadmapy). Mentorka jest dla każdego; promotor przyjdzie z wersją akademicką, kiedy ustalisz, jak ma pomagać w magisterce i pracy rocznej. → **5.10: zostają dwie postacie, promotor zbudowany (punkty 79–82).**
 61. **Dr Róża Busola** stoi przy ławce na Rynku. Spotkanie raz na 7 dni gry: lista tego, co się wydarzyło od ostatniego razu (odpowiedzi, zagadnienia, gwiazdki, pokoje, kompendia, ogródek, poletko, powtórki, uważność, rozmowy, prośby), potem cel z zeszłego tygodnia: udany → +20 XP i +10 🟡, nieudany → pytanie „co przeszkodziło?” (brak czasu, zapomnienie, brak ochoty, inne priorytety) i życzliwa odpowiedź (Bandura, Gollwitzer, Deci i Ryan). Nowy cel: jeden z trzech, po nieudanym tygodniu mniejszy krok, po udanym większy. Do celu wybiera się chwilę („Jeśli zobaczę ławkę na Rynku, to zagadam kogoś po drodze”) — gra przypomina o planie właśnie wtedy, raz dziennie. Za spotkanie +5 XP. W profilu nowa obserwacja „Planowanie”. „💡 Szybka rada” bierze się z tego, co dzieje się w grze (energia, powtórki, ogródek, poletko, egzamin u Brygadzisty, najrzadziej odwiedzana katedra) albo jest ogólną radą o nauce.
 
 ## Wyspa Snu — dopracowanie (5.10)
@@ -90,10 +90,36 @@
 63. **Pan Sennik** (przy Wieży Eschera) za 2 🟡 „tłumaczy” sen (zęby, spadanie, egzamin, latanie) ogólnikiem, po czym gra pokazuje, co mówią badania: sny typowe (Nielsen i in., 2003), zęby a podrażnienie zębów (Rozen i Soffer-Dudek, 2018), skurcz hipniczny, hipoteza ciągłości, efekt Barnuma (Forer, 1949). Pierwsza „lekcja” +5 XP. **Kot Drzemka** — ciekawostki o drzemkach, świetle i inercji sennej.
 
 ## Podział BAZA / ROZSZERZENIE (5.10)
-64. **Propozycja podziału 176 zagadnień katedr** w `docs/PODZIAL_BAZA_ROZSZERZENIE.md`: 🌍 32 dla każdego, 🎓 96 akademickich, 🔒 48 o konkretnych narzędziach. W grze nic się jeszcze nie zmieniło — czeka na Twoją decyzję i poprawki w tabelach.
+64. **Propozycja podziału 176 zagadnień katedr** w `docs/PODZIAL_BAZA_ROZSZERZENIE.md`: 🌍 32 dla każdego, 🎓 96 akademickich, 🔒 48 o konkretnych narzędziach. → **5.10: przyjęte bez zmian i zbudowane (punkty 66–74).**
 
 ## List z nowościami (5.10)
 65. Raz na gracza w skrzynce przy domu czeka **list od Burmistrza z nowościami** (ogródek i straganik, poletko, Brygadzista, hol katedr, mentorka, Tablica Higieny Snu i Pan Sennik, przycisk „Aa”). Po wczytaniu gry przypomina o nim dymek. Zwykły list dnia nadal czeka w skrzynce.
+
+## Etap 6 — wersja publiczna i akademicka (5.10)
+66. **Dwa pliki gry**: wersja akademicka `akademia_diagnosty_miasteczko.html` (tu wprowadzamy zmiany) i wersja publiczna `akademia_diagnosty_publiczna.html`, którą buduje skrypt `narzedzia/zbuduj_publiczna.py`. Skrypt wycina 148 zagadnień (🎓 100, 🔒 48) i blok promotora, a na koniec sprawdza, że w pliku nie został żaden wzorzec odpowiedzi z wyciętych zagadnień. Pliku publicznego nie edytuje się ręcznie.
+67. **Sprawdzian zamiast zajęć** w wersji publicznej: zajęcia z pytaniami otwartymi są zamknięte („dla studentów Akademii”). Zamiast nich ✅ Sprawdzian: 5 pytań zamkniętych (wybór opisu albo zagadnienia). Dobra odpowiedź zalicza zagadnienie (60% XP pytania otwartego), zła kosztuje 5% ⚡. Dzięki temu w wersji publicznej działają Brygadzista, Automat Powtórek, odznaki, zadania dnia i cele mentorki — bez tego rozbudowa domu byłaby niemożliwa.
+68. **Brygadzista w wersji publicznej**: „opanowane zagadnienia” 20 i 40 zamiast 25 i 60, bo wersja publiczna ma 67 zagadnień.
+69. **Odznaki za katedry w wersji publicznej** liczą zagadnienia 🌍: Pogromca Szarlatanerii (Archiwum 3), Mistrz Pięciu Kroków (Obserwatorium 3), Strażnik Etyki (Etyka 4), Architekt EBA (EBA 3), Mistrz Przymierza (Wywiad 3), Snajper Psychometrii (Poligon 3 i Pracownia Dziecka 2) — z nowymi opisami.
+70. **Wersja publiczna** nie ma zakładki 📊 Profil diagnosty, drogi diagnosty (studium przypadku, superwizja) ani promotora. Ma **osobny zapis** w przeglądarce, żeby postęp z wersji akademickiej (z zaliczonymi 🔒) nie mieszał się z publiczną. Plik zapisu da się wczytać w obu wersjach.
+71. **21 nowych zagadnień 🌍**, żeby każda katedra miała co najmniej 5. EBA: grupa kontrolna. Wywiad: aktywne słuchanie. Obserwatorium: diagnoza jako proces, kilka hipotez, wiele źródeł, pytanie diagnostyczne, rozmowa o wynikach. Poligon: quiz z gazety a test, normy, dlaczego nie publikuje się zadań z testów, wynik to nie wyrok, kto może używać testów. Pracownia Dziecka: zabawa, kamienie milowe (WHO), zgoda dziecka, etykiety (Pigmalion i jego ograniczenia). Klinika Rodziny: rodzina jako system, style przywiązania, kłótnie (Gottman). Pawilon Neuro: mit 10% mózgu, neuroplastyczność. Są w obu wersjach; w akademickiej — na ostatnim piętrze katedr.
+72. **Znaczki w kompendium** (wersja akademicka): 🌍 dla każdego, 🎓 akademickie, 🔒 konkretne narzędzia — przy każdym zagadnieniu, z legendą.
+73. ⚠️ **Poza bazą pytań** w wersji publicznej zostały drobne wzmianki o testach (podział dotyczył tylko pytań katedr): kwestie mieszkańców (Przewodniczący Etyk: „co wyjdzie w MMPI-2”; mistrz Poligonu: „MMPI-2 skonstruowano empirycznie…”; mistrzyni Pawilonu Neuro: „WCST: sortujesz karty…”, „MMSE to przesiew”), pytanie o skale EPQ-RK w jednym z domów-przedmiotów na Archipelagu i dawny opis odznaki Psychometry w kodzie (w grze opis jest już zmieniony). Do tego zagadnienie neuro_n1 (🌍) mówi, które testy mierzą tylko inteligencję płynną (TMS, Leiter-3) — według zasad treściowych to raczej 🎓. Zostawić czy wyciąć?
+74. ⚠️ **Repozytorium na GitHubie jest publiczne**, więc wersja akademicka z treściami 🔒 jest dostępna dla każdego, kto ma link. Jeśli „zamknięty obieg” ma działać, repozytorium trzeba będzie ustawić jako prywatne albo trzymać plik akademicki poza nim (sposób udostępniania: decyzja „później”).
+
+## Etap 6 — Katedra Psychologii Religii i Płci (5.10)
+75. **Nazwa**: „Katedra Psychologii Religii i Płci” zamiast „Teologii i Płci” — psychologia bada przeżycia i zachowania ludzi, a nie prawdziwość wiary. Mistrzyni: **Prof. Teodora Rolska** (Teo- jak teologia, Rolska jak role płciowe). Obok kręci się **Pan Zasłyszany**, który powtarza mity, a z okna katedry pada źródło.
+76. **Miejsce**: dawny Magazyn Pamięci w Porcie (magazyn przeprowadził się w Etapie 3). Własny wygląd: cegła po magazynie, rozeta w szczycie i okno-mozaika (mózg to mozaika cech); piętra rosną jak w innych katedrach. Plac budowy ma „AKTUALIZACJĘ 3”, a tablica Portu — akapit „gdzie w mózgu?” o religii i płci.
+77. **18 zagadnień** (14 🌍, 4 🎓). 🌍: religijność a duchowość, płeć biologiczna, kulturowa i tożsamość płciowa, hipoteza podobieństw płci (Hyde), religijne radzenie sobie (Pargament), mit „kobiety mówią 3× więcej” (Mehl), Dobry Samarytanin w pośpiechu (Darley i Batson), średnia różnica a pojedynczy człowiek (d = 0,2 → rozkłady wspólne w ok. 92%), religijność a zdrowie (korelacja), mózg-mozaika (Joel i spór z Del Giudice), przekonania religijne a urojenia (DSM-5), badanie STEP, hełm Boga (Granqvist), zagrożenie stereotypem i replikacje, neutralność światopoglądowa. 🎓: orientacja religijna (Allport i Ross, Batson), przywiązanie do Boga (Kirkpatrick, Granqvist), role społeczne a biologia (Eagly i Wood), płeć a trafność diagnozy (Broverman; autyzm i ADHD u dziewcząt). Czwarta mini gra w holu: „Mit czy fakt?” (12 zdań).
+78. Płynna specjalizacja w profilu (🌱 Droga) nie zna nowej katedry — lista kierunków siedzi w module PROFIL, którego źródeł (`.profil-work`) nie ma w repo.
+
+## Etap 6 — promotor (5.10, tylko wersja akademicka)
+79. **Prof. Konstanty Przypis** stoi przy Bibliotece na Rynku; drzwi Biblioteki też prowadzą do niego. Mentorka (Dr Busola) zostaje osobną postacią.
+80. **Etapy z checklistą**: magisterka — 9 etapów (temat, literatura, hipotezy, metoda i etyka, dane, analiza, dyskusja, redakcja z JSA, obrona), praca roczna — 6. Można dopisać własne punkty i oznaczyć etap jako „nie dotyczy”. Nagrody: +2 XP za punkt (raz), +15 XP za zamknięty etap, +5 XP za pierwszy harmonogram.
+81. **Konsultacje**: wklejasz fragment (wstęp, hipotezy, metoda, wyniki, dyskusja albo inny) i dostajesz do 5 pytań „jak na seminarium” oraz listę „co już jest”. Analiza jest lokalna: źródła i ich wiek, lista streszczeń zamiast syntezy, luka w badaniach, kierunek i operacjonalizacja hipotez, wpływ a związek, liczebność próby i analiza mocy, komisja etyczna, rzetelność, losowanie, kryteria, procedura, wielkość efektu, przedziały ufności, statystyka testu, interpretacja w wynikach, założenia testów, ograniczenia, wyjaśnienia alternatywne, „udowodniono”, słowa-wata, długość zdań. Tekst nie jest zapisywany (tylko pytania i początek). Superwizor AI tylko na życzenie i tylko tam, gdzie działa (Gemini Canvas). +5 XP raz dziennie.
+82. **Harmonogram**: prawdziwe daty. „Rozplanuj wstecz” dzieli czas od dziś do terminu według wag etapów (literatura i zbieranie danych ×3; obrona = termin, wcześniejsze etapy kończą się ok. 3 tygodnie przed nim). Przypomnienie przy uruchomieniu gry, gdy do terminu otwartego etapu został tydzień albo mniej (raz dziennie). Terminy można pobrać jako plik .ics do kalendarza.
+
+## List z nowościami (5.10, Etap 6)
+83. Drugi list od Burmistrza, osobny dla każdej wersji: nowa katedra; w publicznej — sprawdzian i nowe zagadnienia, w akademickiej — promotor i znaczki 🌍 / 🎓 / 🔒.
 
 ## Relacje, wątki, Momenty (projekt z 1.10, po południu)
 Ten moduł (🫂 Ludzie, 📸 Album, 📈 Mój tydzień, 6 małych wątków) **nie występuje w pliku gry na GitHubie**. Albo nie został jeszcze wbudowany, albo plik w repo jest starszy niż ten na komputerze. Do sprawdzenia przed dalszą pracą.

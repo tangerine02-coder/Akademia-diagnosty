@@ -1,6 +1,7 @@
 # Architektura pliku gry — ściąga dla kolejnych zmian
 
-*2026-10-05. Gra to jeden plik `akademia_diagnosty_miasteczko.html` (ok. 24 tys. wierszy).*
+*2026-10-05. Gra to jeden plik `akademia_diagnosty_miasteczko.html` (ok. 25,7 tys. wierszy) — wersja akademicka.*
+*Wersja publiczna `akademia_diagnosty_publiczna.html` powstaje z niej skryptem (patrz „Dwie wersje”). Zmiany wprowadzamy tylko w pliku akademickim.*
 
 ## Kolejność bloków `<script>`
 Każda większa zmiana to **osobny blok**, który owija wcześniejsze funkcje. Nie przepisuje kodu bazowego. Kolejność ma znaczenie, bo późniejszy blok owija wcześniejszy.
@@ -17,8 +18,11 @@ Każda większa zmiana to **osobny blok**, który owija wcześniejsze funkcje. N
 | 12 | ETAP 4 · 2026-10-05 | ogródek, poletko, rozbudowa domu, osobowość z wyborów (`window.ETAP4`) |
 | 13 | CZCIONKI · 2026-10-05 | okno „Aa” (`window.CZCIONKI`); pary czcionek: `FONT_SETS` w bazie i `:root[data-font]` w CSS |
 | 14 | ETAP 5 · 2026-10-05 | hol katedr, kompendium, mini gry katedr, mentorka, Wyspa Snu, list z nowościami (`window.ETAP5`) |
-| 15 | `<!-- PROFIL:START -->` … `<!-- PROFIL:END -->` | moduł PROFIL — **generowany** z `.profil-work/src` (nie edytować w HTML) |
-| 16 | `<script type="module">` | chmura (Firebase) |
+| 15 | ETAP 6 · WERSJE | `const WERSJA`, mapa kategorii `TIERS` (🌍 B / 🎓 A / 🔒 R), 21 nowych zagadnień 🌍, w wersji publicznej sprawdzian zamiast zajęć, znaczki w kompendium (`window.ETAP6`) |
+| 16 | ETAP 6 · KATEDRA PSYCHOLOGII RELIGII I PŁCI | `LOCATIONS.religia`, 18 zagadnień, budynek `e6_katedra` w dawnym Magazynie w Porcie, Prof. Rolska, Pan Zasłyszany |
+| 17 | ETAP 6 · PROMOTOR — między `<!-- TYLKO-AKADEMIA:START … -->` a `<!-- TYLKO-AKADEMIA:END -->` | Prof. Przypis: etapy, konsultacje, harmonogram (tylko wersja akademicka) |
+| 18 | `<!-- PROFIL:START -->` … `<!-- PROFIL:END -->` | moduł PROFIL — **generowany** z `.profil-work/src` (nie edytować w HTML; wnętrze w zamknięciu `(() => {…})()`, więc np. `PR_TABS` i `PR_SPEC` nie są dostępne z zewnątrz) |
+| 19 | `<script type="module">` | chmura (Firebase) |
 
 Gra startuje na zdarzenie `load`, czyli po wykonaniu wszystkich bloków. Dzięki temu owijki działają już przy pierwszym `setZone`.
 
@@ -42,11 +46,18 @@ Gra startuje na zdarzenie `load`, czyli po wykonaniu wszystkich bloków. Dzięki
 - **Teksty zależne od płci**: `this.prG('{forma żeńska|męska|neutralna}')` (moduł PROFIL).
 - **Obserwacje do profilu (🧠 Osobowość)**: funkcja dopisana do `ETAP4.extraObs` zwraca listę `{ k, name, text }`. `text: null` znaczy „??? — jeszcze nie wiem”.
 
-## Stan gry (`localStorage['akademia_freudowice_v1']`, też w pliku zapisu)
+## Dwie wersje: akademicka i publiczna
+- Plik akademicki to źródło. Wersję publiczną buduje `python3 narzedzia/zbuduj_publiczna.py` (uruchamia go też `tests/wszystkie.sh`).
+- Skrypt: `const WERSJA = 'akademicka'` → `'publiczna'`; wycina z `QUESTIONS_DB` i z list oznaczonych `/* PYTANIA */ [` każde zagadnienie, które w `TIERS` ma `A` albo `R`; wycina bloki `TYLKO-AKADEMIA`; zmienia `SAVE_KEY` i tytuł; na koniec sprawdza, że w pliku nie został żaden wzorzec odpowiedzi z wyciętych zagadnień.
+- Nowe zagadnienie: obiekt na liście `/* PYTANIA */ [ … ]` (albo w `QUESTIONS_DB`) i wpis w `TIERS`. Brak wpisu = 🌍 (zostaje w obu wersjach).
+- Kod tylko dla studentów: osobny `<script>` między komentarzami `<!-- TYLKO-AKADEMIA:START … -->` i `<!-- TYLKO-AKADEMIA:END -->`. Kod wspólny sprawdza `ETAP6.PUB` (albo `WERSJA === 'publiczna'`).
+- W wersji publicznej katedry nie mają zajęć z pytaniami otwartymi; `enterBuilding` prowadzi na ✅ Sprawdzian (`e6Sprawdzian`), który zalicza zagadnienia przez zwykłe `markCorrect`.
+
+## Stan gry (`localStorage['akademia_freudowice_v1']`, w wersji publicznej `akademia_freudowice_publiczna_v1`; też w pliku zapisu)
 - Baza: `stats`, `totals`, `home`, `subj` (gwiazdki pokoi), `talked`, `day`, `time`…
-- Etapy: `state.e2` (pory, zadania), `state.e3` (wystawa, Leitner, ogród uważności…), `state.e4` (grządki, koszyk, poletko, `dom` — rozbudowa, `stats`), `state.e5` (`read` — kompendium, `halls`, `mentor`, `sen`, `once`).
+- Etapy: `state.e2` (pory, zadania), `state.e3` (wystawa, Leitner, ogród uważności…), `state.e4` (grządki, koszyk, poletko, `dom` — rozbudowa, `stats`), `state.e5` (`read` — kompendium, `halls`, `mentor`, `sen`, `once`), `state.e6` (`once`, `pr` — promotor: `works.mgr` / `works.roczna` z `done`, `dates`, `skip`, `custom`, `closed`; `cons` — ostatnie konsultacje bez tekstu fragmentu).
 - Każdy etap ma akcesor tworzący brakujące pola (`e4Data()`, `e5Data()`…), więc stare zapisy działają bez migracji.
 - Ustawienia urządzenia (nie w zapisie): `ad_font`, `ad_zoom2`.
 
 ## Testy
-`tests/etap1_test.py` … `etap5_test.py`, `czcionki_test.py` i `przeglad_test.py` (przegląd całej gry; `tel` = telefon). Wszystkie razem uruchamia `tests/wszystkie.sh` — sam włącza i wyłącza serwer.
+`tests/etap1_test.py` … `etap6_test.py` (Etap 6 testuje obie wersje), `czcionki_test.py` i `przeglad_test.py` (przegląd całej gry; `tel` = telefon; `GAME_URL=…publiczna.html` = wersja publiczna). Wszystkie razem uruchamia `tests/wszystkie.sh` — buduje wersję publiczną, sam włącza i wyłącza serwer i przegląda obie wersje.

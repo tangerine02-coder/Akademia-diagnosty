@@ -1,6 +1,10 @@
 # Podział treści: BAZA i ROZSZERZENIE — propozycja do decyzji
 
-*Szkic AI z 2026-10-05. W grze jeszcze nic się nie zmieniło — to materiał do Twojej decyzji.*
+*Szkic AI z 2026-10-05.* **✅ Przyjęte bez zmian 2026-10-05 i zbudowane (Etap 6).**
+
+> **Jak to działa teraz:** kategorie są w kodzie gry (mapa `TIERS` w bloku „ETAP 6 · WERSJE”). Wersję publiczną buduje `python3 narzedzia/zbuduj_publiczna.py`.
+> Zmiana kategorii zagadnienia = zmiana jednej litery w `TIERS` i ponowne zbudowanie. Do 32 zagadnień 🌍 z tabel doszło 21 nowych (każda katedra ma co najmniej 5) i 14 z Katedry Psychologii Religii i Płci — razem 67.
+> W wersji publicznej zajęcia z pytaniami otwartymi zastępuje ✅ Sprawdzian (pytania zamknięte). Szczegóły i otwarte sprawy: `DO_PRZEJRZENIA.md`, punkty 66–74.
 
 ## Czego dotyczy
 Podział dotyczy **pytań katedr** (176 zagadnień w `QUESTIONS_DB`). Korzystają z nich: zajęcia (pytania otwarte), szybki quiz u mistrza, kompendium i mini gry katedr, egzamin u Brygadzisty, Automat Powtórek oraz tabliczki i nagrobki ze wskazówkami.
