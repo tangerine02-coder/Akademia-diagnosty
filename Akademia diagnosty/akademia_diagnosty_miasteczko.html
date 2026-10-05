@@ -21108,7 +21108,7 @@ window.addEventListener('load', () => {
   .e4-req { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 2px solid var(--parch-300); border-radius: 8px; background: #fffaf0; }
   .e4-req.ok { background: #eaf8e0; border-color: #8cc26a; }
   @media (max-width: 760px) { .e4-plan { grid-template-columns: 1fr; } }
-  @media (max-width: 620px) { .e4-garden { flex-direction: column; } .e4-beds { width: 100%; } }
+  @media (max-width: 620px) { .e4-garden { flex-direction: column; } .e4-beds { width: 100%; gap: 4px; } .e4-bed { min-height: 54px; padding: 3px 2px; } .e4-bed .e4-ic { font-size: 17px; } .e4-bed .tiny { font-size: 9px; } }
   `;
   document.head.appendChild(css);
 })();
@@ -21676,8 +21676,26 @@ window.addEventListener('load', () => {
   };
 
   const base = {};
-  ['talkTo', 'setZone', 'openCafe'].forEach(k => { base[k] = Game.prototype[k]; });
+  ['talkTo', 'setZone', 'openCafe', 'showJournal'].forEach(k => { base[k] = Game.prototype[k]; });
   Object.assign(Game.prototype, {
+    // w „Zadaniach dnia” także cel tygodnia od mentorki
+    showJournal(tab, fromBoard) {
+      const r = base.showJournal.call(this, tab, fromBoard);
+      try {
+        if ((tab || 'quests') !== 'quests') return r;
+        const M = this.e5Mentor(), G = M.goal, today = this.state.day || 1, due = M.met && (!M.last || today >= M.last + WEEK);
+        if (!G && !due) return r;
+        const body = document.querySelector('#modal .panel-body');
+        if (!body || body.querySelector('.e5-jgoal')) return r;
+        const html = G
+          ? `<div class="card e5-jgoal ${G.ok ? '' : 'hl'} row" style="margin-bottom:6px"><span style="font-size:22px">${G.ok ? '✅' : '🧭'}</span><div class="grow"><b>Cel tygodnia: ${esc(GOALS[G.t].text(G.n))}</b>
+              <div class="tiny muted">Postęp: ${Math.min(goalProgress(this, G), G.n)}/${G.n} · plan: ${esc(planText(G))} · spotkanie z mentorką: dzień ${M.last + WEEK}</div></div></div>`
+          : '<div class="card e5-jgoal hl row" style="margin-bottom:6px"><span style="font-size:22px">🧭</span><div class="grow"><b>Mentorka czeka na spotkanie</b><div class="tiny muted">Dr Róża Busola, Rynek — przy ławce.</div></div></div>';
+        const first = body.querySelector('.card');
+        if (first) first.insertAdjacentHTML('beforebegin', html); else body.insertAdjacentHTML('afterbegin', html);
+      } catch (e) { console.warn('ETAP5: dziennik', e); }
+      return r;
+    },
     talkTo(n) {
       if (!n || n.id !== 'busola' || !n.def || inDream(this)) return base.talkTo.call(this, n);
       const s = this.state;

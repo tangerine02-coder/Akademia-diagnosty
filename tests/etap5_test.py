@@ -176,6 +176,8 @@ async def main():
         check(r['goal'] and r['goal']['cue'] == 'rynek' and r['n'] == 1, f'cel zapisany ({r["goal"]})')
         r = await pg.evaluate(TALKM)
         check(r and '🧭 Spotkanie mentorskie' not in r['opts'] and 'Następne spotkanie' in r['pages'][0], 'spotkanie raz w tygodniu; między spotkaniami postęp celu')
+        r = await pg.evaluate("() => { game.closeDialog(true); game.showJournal('quests'); const c = document.querySelector('#modal .e5-jgoal'); const t = c && c.innerText; game.closeModal(true); return t; }")
+        check(r and 'Cel tygodnia' in r and 'Jeśli zobaczę ławkę na Rynku' in r, 'cel tygodnia widać też w „Zadaniach dnia”')
         r = await pg.evaluate("""async () => { game.closeDialog(true); game.setZone('bulwar'); game.setZone('rynek'); await new Promise(r => setTimeout(r, 1200));
           const t1 = document.getElementById('toast').textContent; const M = game.e5Mentor(); return [t1, M.remind === game.state.day]; }""")
         check(r[0].startswith('📌 Twój plan: Jeśli zobaczę ławkę na Rynku') and r[1], f'przypomnienie dokładnie w chwili z planu ({r[0][:60]})')
