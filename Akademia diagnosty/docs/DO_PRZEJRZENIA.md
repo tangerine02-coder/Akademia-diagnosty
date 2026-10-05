@@ -89,6 +89,9 @@
 62. **Tablica Higieny Snu** (na wschód od fontanny): 8 rad — stała pora wstawania (Phillips i in., 2017), światło rano, łóżko do spania (element CBT-I), kofeina, alkohol, krótka drzemka, lista zadań przed snem (Scullin i in., 2018), ekrany. Quiz „Sen: mit czy fakt?” (8 z 10 zdań, m.in. Dement i Kleitman 1957, Harvey i Payne 2002) z nagrodami jak mini gry katedr. Wyzwanie tygodnia „regularny rytm”: 3 noce z rzędu z porą zaśnięcia w granicach godziny → +10 XP i +5 LP, raz w tygodniu.
 63. **Pan Sennik** (przy Wieży Eschera) za 2 🟡 „tłumaczy” sen (zęby, spadanie, egzamin, latanie) ogólnikiem, po czym gra pokazuje, co mówią badania: sny typowe (Nielsen i in., 2003), zęby a podrażnienie zębów (Rozen i Soffer-Dudek, 2018), skurcz hipniczny, hipoteza ciągłości, efekt Barnuma (Forer, 1949). Pierwsza „lekcja” +5 XP. **Kot Drzemka** — ciekawostki o drzemkach, świetle i inercji sennej.
 
+## Podział BAZA / ROZSZERZENIE (5.10)
+64. **Propozycja podziału 176 zagadnień katedr** w `docs/PODZIAL_BAZA_ROZSZERZENIE.md`: 🌍 32 dla każdego, 🎓 96 akademickich, 🔒 48 o konkretnych narzędziach. W grze nic się jeszcze nie zmieniło — czeka na Twoją decyzję i poprawki w tabelach.
+
 ## Relacje, wątki, Momenty (projekt z 1.10, po południu)
 Ten moduł (🫂 Ludzie, 📸 Album, 📈 Mój tydzień, 6 małych wątków) **nie występuje w pliku gry na GitHubie**. Albo nie został jeszcze wbudowany, albo plik w repo jest starszy niż ten na komputerze. Do sprawdzenia przed dalszą pracą.
 19. Progi bliskości w relacjach z mieszkańcami.

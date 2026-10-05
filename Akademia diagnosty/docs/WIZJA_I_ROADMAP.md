@@ -54,7 +54,7 @@ Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: 
 - ⚡ Poza planem: nowa para czcionek (Pixelify Sans + Fraunces) i przycisk „Aa” z wyborem: Nowa, Książkowa, Wyraźna, Klasyczna (dawna).
 
 ### Etap 5 · Wersja akademicka
-- 🔨 Podział na BAZĘ i ROZSZERZENIE; testy tylko w wersji dla studentów. Warunek przed publikacją gry.
+- 🔨 Podział na BAZĘ i ROZSZERZENIE; testy tylko w wersji dla studentów. Warunek przed publikacją gry. Propozycja podziału pytań katedr (🌍 dla każdego / 🎓 akademickie / 🔒 narzędzia): `docs/PODZIAL_BAZA_ROZSZERZENIE.md` — czeka na decyzję.
 - ⚡ Mentorka postaci (zrobione 2026-10-05): Dr Róża Busola przy ławce na Rynku. Raz w tygodniu spotkanie: co się wydarzyło, rozmowa o celu z zeszłego tygodnia (bez oceniania), nowy cel i plan „jeśli–to”. Gra przypomina o planie w wybranej chwili. Szybka rada w każdej chwili.
 - 🔨 Promotor (magisterka, praca roczna) — w wersji akademickiej; zasady do ustalenia z autorką.
 - ⚡ Poza planem (2026-10-05): Wyspa Snu dopracowana — Tablica Higieny Snu (8 rad, quiz „Sen: mit czy fakt?”, cotygodniowe wyzwanie „regularny rytm”), Pan Sennik (wróżba z sennika, a potem badania i efekt Barnuma), Kot Drzemka.

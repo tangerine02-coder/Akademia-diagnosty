@@ -26,6 +26,7 @@ Testy używają Playwright i czystego profilu przeglądarki; zrzuty ekranu trafi
 ## Dokumenty
 - `docs/WIZJA_I_ROADMAP.md` — wizja gry i roadmapa etapów
 - `docs/DO_PRZEJRZENIA.md` — decyzje AI czekające na akceptację autorki
+- `docs/PODZIAL_BAZA_ROZSZERZENIE.md` — propozycja podziału pytań katedr na wersję publiczną i akademicką
 - zadania: tablica POPRAWKI w Notion („Gra Akademia Diagnosty”)
 
 ## Stare wersje
