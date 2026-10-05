@@ -1,6 +1,6 @@
 # 🎯 Akademia Diagnosty — Wizja i Roadmapa
 
-*Dokument żywy. Ostatnia aktualizacja: 2026-10-04.*
+*Dokument żywy. Ostatnia aktualizacja: 2026-10-05.*
 *Sesja brainstorm z AI — decyzje autorki gry.*
 
 > **Jak czytać ten dokument:**
@@ -37,12 +37,13 @@ Kod: osobny `<script>` „ETAP 2 · 2026-10-04” (przed blokiem PROFIL). Test: 
 - ⚡ Silnik „znajdź”: zadania poboczne od mieszkańców — ✉️ Listonosz (4 listy w 4 dzielnicach), 🎣 Rybak (3 spławiki przy wodzie), 🙈 Mała Ida (chowany, codziennie), 🦋 Morfeusza (3 senne motyle, nagroda w LP). Każde kończy się ciekawostką z psychologii. Pasek postępu w rogu ekranu.
 - ⚡ Trening snu „co się zmieniło względem jawy”: 2–5 zmian (napis, kolor budynku lub przedmiotu, wygląd mieszkańca, przedmiot, którego na jawie nie ma). Mgła i poprzestawiane drzewa na niskim poziomie (nie liczą się). Limit czasu od 1:30, rośnie z treningiem do 5:30; +20 s i +5 LP za trafienie; komplet = dzień treningowy. Po czasie postać się budzi. We śnie są teraz mieszkańcy dzielnicy.
 
-### Etap 3 · Nowe miejsca
-- 🔨 Ogród Uważności (mindfulness i medytacja).
-- 🔨 Dom Żyrafy w mieście (✅ NVC) — dom dla istniejących rozmów w stylach.
-- 🔨 Dom Muzyki — poznawcza nauka muzyki; fundator pianina na Bulwarze Empatii.
-- 🔨 Dzielnica Pamięci (✅ nowa dzielnica na mapie; pamięć długotrwała przenosi się z Portu).
-- 🔨 Archiwum Szarlatanerii 2.0 — dla laika przegląd zdyskredytowanych testów i technik, nie testowanie.
+### Etap 3 · Nowe miejsca — ⚡ zrobione 2026-10-05 (bez Katedry Teologii i Płci)
+Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: `tests/etap3_test.py`. Stan gry: `state.e3`.
+- ⚡ Archiwum Szarlatanerii 2.0: przy drzwiach wybór **Wystawa** (dla każdego, zwiedzanie bez testu) albo **Zajęcia** (dotychczasowe pytania). 6 sal, 26 eksponatów: obietnica → co pokazały badania → dlaczego kusiło → lekcja dla diagnosty; eksponaty „sporne” oznaczone. Aleja 6 gablot na Wypartym Przedmieściu, Kustosz też prowadzi na wystawę.
+- ⚡ Dom Żyrafy (NVC) na wschodnim końcu Bulwaru Empatii: 5 pokoi (obserwacja/ocena, uczucia, potrzeby, cztery kroki, scenki). Na pulpicie **Księga Rozmów** — rozmowy z całego miasta (moduł PROFIL) w czterech stylach, z zaznaczoną odpowiedzią gracza.
+- ⚡ Dom Muzyki na Plaży Id: eksperymenty słuchowe (stukanie do rytmu, brakująca podstawa, współbrzmienia), mity o muzyce, pojęcia. Schody Sheparda przed domem, Kapelmistrzyni Fuga. **Pianino na Bulwarze jest grywalne** (klawisze A–K lub dotyk, „Oda do radości”, „Zagraj z pamięci”) — z tabliczką „Dar Domu Muzyki”.
+- ⚡ Ogród Uważności na zachodniej łące Wzgórza Hipotez: Pawilon Uważności (5 pokoi: autopilot, 7 postaw, MBSR/MBCT/ACT, mity, scenki) i 4 ćwiczenia w ogrodzie — Kamień Oddechu (wolny oddech / pudełkowy), Mata Skanowania Ciała, Staw Myśli (myśl, uczucie czy doznanie z ciała), Dzwon Uważności. Energia za ćwiczenie raz dziennie, Pani Oddechowska.
+- ⚡ Dzielnica Pamięci — 10. dzielnica, na wschód od Portu (Most Pamięci, Kanał Lety, Most Mnemozyny). Magazyn Pamięci Długotrwałej (kodowanie, wskazówki, zapominanie, autobiografia, mity), Dom Fałszywych Wspomnień (DRM, świadek stłuczki wg Loftus i Palmer, mity, słownik, przesłuchanie), Pracownia Technik Uczenia (pałac pamięci na trasie przez miasto, ranking technik Dunlosky’ego, mity, plan nauki, słownik). W parku: **Automat Powtórek** (pudełka Leitnera z pytań już zaliczonych w katedrach), Krzywa Ebbinghausa, Fontanna Lety, Kapsuła Czasu (list do siebie za 7 dni). Mieszkańcy: Mnemozyna, Hermann Ebbinghaus, Pan Pewny (świadek), złota rybka. Własna muzyka.
 - 💭 Katedra Teologii i Płci — treść do ustalenia z autorką.
 
 ### Etap 4 · Długa gra

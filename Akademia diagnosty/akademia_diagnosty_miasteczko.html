@@ -16041,9 +16041,11 @@ window.addEventListener('load', () => {
     });
   }
   E1.themeFor = themeFor;
+  E1.THEMES = THEMES; E1.SUBJ_THEME = SUBJ_THEME;   // kolejne etapy dopisują motywy nowych domów
 
   // muzyka wnętrz: każda wyspa ma własny motyw (SONGS dopisane niżej)
   const ISLE_SONG = { wyspa_poznania: 'in_poznanie', kampus: 'in_kampus', wyspa_darwina: 'in_darwin', wyspa_snu: 'in_sen', wyspa_pinela: 'in_pinel', wyspa_lewina: 'in_lewin' };
+  E1.ISLE_SONG = ISLE_SONG;
 
   const itemW = id => (ITEMS[id] && ITEMS[id].w) || 1;
   const bsz0 = buildSubjectZone;
@@ -17968,6 +17970,2199 @@ window.addEventListener('load', () => {
 #e2-chip[hidden]{display:none}
 #e2-chip span{background:rgba(46,28,16,.88);color:var(--parch-100);border:2px solid var(--gold);border-radius:8px;padding:3px 9px;font-family:var(--font-body);font-weight:600;font-size:13px;box-shadow:0 2px 0 rgba(0,0,0,.3)}
 @media (pointer: coarse){#e2-chip{top:auto;bottom:116px;right:10px}}`;
+  document.head.appendChild(css);
+})();
+</script>
+
+<script>
+/* =====================================================================
+   ETAP 3 · 2026-10-05 — osobny skrypt (owija funkcje i Game.prototype).
+   Roadmapa: docs/WIZJA_I_ROADMAP.md → Etap 3 „Nowe miejsca”.
+   Notion: WYPARTE PRZEDMIEŚCIE („Archiwum szarlatanerii rozbudujemy…”),
+   MIEJSCE NVC, DOM MUZYKI, MIEJSCE DO MINDFULNESS, DZIELNICA PAMIĘCI.
+   1) Archiwum Szarlatanerii 2.0 — wystawa: zwiedzanie, nie testowanie,
+   2) Dom Żyrafy (porozumienie bez przemocy) na Bulwarze Empatii,
+   3) Dom Muzyki na Plaży Id; pianino na Bulwarze to jego dar,
+   4) Ogród Uważności na Wzgórzu Hipotez,
+   5) Dzielnica Pamięci — nowa dzielnica na wschód od Portu (most).
+   Treści to szkic AI do przejrzenia przez autorkę [do przejrzenia].
+   Stan gry: state.e3 (zapis w pliku zapisu).
+   ===================================================================== */
+(() => {
+  'use strict';
+
+  const E3 = window.ETAP3 = {};
+  const E1 = window.ETAP1 || { objSprites: {} };
+  if (!E1.objSprites) E1.objSprites = {};
+  const RND = s => mulberry(hashStr('e3|' + s));
+  E3.RND = RND;
+
+  Game.prototype.e3Data = function () {
+    const s = this.state;
+    if (!s.e3 || typeof s.e3 !== 'object') s.e3 = {};
+    return s.e3;
+  };
+
+  // nowa treść w istniejącej dzielnicy: najpierw oryginalna budowa (te same losowania drzew), potem nasze dodatki
+  function extendZone(id, fn) {
+    const def = ZONES[id];
+    if (!def || typeof def.build !== 'function') return;
+    const b0 = def.build;
+    def.build = function (B) {
+      b0.call(this, B);
+      try { fn(B); } catch (e) { console.warn('ETAP3: dzielnica', id, e); }
+    };
+  }
+  E3.extendZone = extendZone;
+
+  // czyści prostokąt (bez budynków): obiekty, płaskie dekoracje, płotki, żywopłoty, kolizje i rezerwacje
+  function clearArea(B, x, y, w, h, terrain) {
+    const Z = B.Z;
+    const hit = (ox, oy, ow, oh) => !(ox + ow <= x || ox >= x + w || oy + oh <= y || oy >= y + h);
+    Z.objects = Z.objects.filter(o => o.type === 'building' || !hit(o.x, o.y, o.fw || 1, o.fh || 1));
+    Z.flats = Z.flats.filter(f => !hit(f.x, f.y, f.w || 1, f.h || 1));
+    Z.interacts = Z.interacts.filter(it => !hit(it.x, it.y, it.w || 1, it.h || 1));
+    Z.fences = Z.fences.filter(f => !hit(f.x, f.y, 1, 1)); Z.fenceSet = new Set(Z.fences.map(f => f.x + ',' + f.y));
+    Z.hedges = Z.hedges.filter(f => !hit(f.x, f.y, 1, 1)); Z.hedgeSet = new Set(Z.hedges.map(f => f.x + ',' + f.y));
+    for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
+      if (!B.in(xx, yy)) continue;
+      const i = B.i(xx, yy);
+      Z.solid[i] = 0; Z.reserved[i] = 0;
+      if (terrain) Z.terrain[i] = terrain;
+    }
+  }
+  E3.clearArea = clearArea;
+
+  // wspólne: ile razy dziś, pierwsza nagroda, mały licznik
+  Game.prototype.e3Once = function (key) {
+    const d = this.e3Data();
+    if (!d.once) d.once = {};
+    if (d.once[key]) return false;
+    d.once[key] = this.state.day || 1;
+    return true;
+  };
+  Game.prototype.e3Today = function (key) {
+    const d = this.e3Data();
+    if (!d.daily) d.daily = {};
+    if (d.daily[key] === this.state.day) return false;
+    d.daily[key] = this.state.day;
+    return true;
+  };
+  // muzyka gry ściszona na czas ćwiczeń słuchowych i oddechowych
+  E3.musicTo = v => { const g = audio.musicGain; if (!g || !audio.ctx) return; g.gain.cancelScheduledValues(audio.ctx.currentTime); g.gain.value = v; };
+  E3.musicBack = () => E3.musicTo(audio.musicOn ? 1 : 0);
+  const touch = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  // tempo ćwiczeń na czas (testy automatyczne ustawiają np. E3.cfg.speed = 20)
+  E3.cfg = { speed: 1 };
+  const sp = () => (E3.cfg && E3.cfg.speed > 0 ? E3.cfg.speed : 1);
+  E3.sp = sp;
+  E3.touch = touch;
+
+  // motywy wnętrz nowych domów (Etap 1 dobiera podłogi, ściany i meble)
+  if (E1.THEMES) Object.assign(E1.THEMES, {
+    zyrafa: { floor: ['deski', '#d8a85c', '#c4944c'], wall: ['kwiatki', '#f6e2a8'], win: 'firanka', hall: ['deski', '#c89a54', '#b08444'], feat: 'rosliny', front: 'drewno',
+      decor: ['kanapa', 'pufa', 'fikus', 'stolik', 'fotel_bujany', 'monstera'], art: ['kolo_emocji', 'plakat_maslow'], rugs: ['dywan_owalny'] },
+    muzyka: { floor: ['parkiet', '#7a4a2a', '#8e5a34'], wall: ['adamaszek', '#6a2a3a'], win: 'luk', hall: ['jodelka', '#8a5a34', '#a8784a'], feat: 'kolumny', front: 'drewno',
+      decor: ['gramofon', 'fotel', 'regal', 'popiersie', 'pufa'], art: ['zegar_dali', 'obraz_kleks'], rugs: ['dywan_pasy'] },
+    uwaznosc: { floor: ['poklad', '#c8b088', '#b49c74'], wall: ['gladka', '#e6ead8'], win: 'wysokie', hall: ['mech', '#7a9a62', '#6a8a54'], feat: 'rosliny', front: 'drewno', calm: true,
+      decor: ['bonsai', 'pufa'], art: [], rugs: [] },
+    pamiec_dz: { floor: ['parkiet', '#6a4a3a', '#7e5a46'], wall: ['ksiazki', '#4a3a52'], win: 'luk', hall: ['jodelka', '#6e4e40', '#86604c'], feat: 'kolumny', front: 'drewno',
+      decor: ['regal', 'globus', 'fotel', 'lampa_oswiecenie', 'gramofon'], art: ['zegar_dali', 'portret_james', 'tablica_korkowa'], rugs: ['dywan_mozg'] }
+  });
+  if (E1.SUBJ_THEME) Object.assign(E1.SUBJ_THEME, {
+    e3_zyrafa: 'zyrafa', e3_muzyka: 'muzyka', e3_uwaznosc: 'uwaznosc',
+    e3_magazyn: 'pamiec_dz', e3_falszywe: 'escher', e3_techniki: 'pracownia'
+  });
+
+  /* =================================================================
+     1) ARCHIWUM SZARLATANERII 2.0 — WYSTAWA
+     Notion: „głównym motywem nie jest testowanie (przynajmniej dla laików),
+     a pokazanie wszystkich testów i technik zdyskredytowanych w psychologii”.
+     Sale z eksponatami: obietnica → co pokazały badania → czemu kusiło → lekcja.
+     Bez treści chronionych testów (plansze, klucze, normy).
+     ================================================================= */
+  const WYSTAWA = [
+    { id: 'czaszki', name: 'Sala Czaszek i Twarzy', icon: '💀', col: '#c8b8a0',
+      intro: 'Pomysł kusi od wieków: zajrzeć w charakter przez to, co widać — kształt głowy, rysy twarzy, pismo. Wszystkie te metody przegrały ze sprawdzaniem.',
+      items: [
+        { id: 'frenologia', name: 'Frenologia', icon: '💀', era: 'ok. 1800–1850',
+          claim: 'Charakter i talenty da się odczytać z wypukłości czaszki: każda cecha ma w mózgu swój „organ”, który rośnie i wypycha kość.',
+          check: 'Już w latach 20. XIX w. Pierre Flourens pokazał w eksperymentach, że funkcje mózgu nie układają się tak, jak twierdzili frenolodzy. W 2018 r. badacze z Oksfordu porównali kształt głów kilku tysięcy osób z ich cechami — bez związku.',
+          why: 'Głowę każdy ma pod ręką, a „pomiar” wyglądał naukowo. Frenolodzy chętnie „potwierdzali” uprzedzenia swoich czasów.',
+          lesson: 'Gall miał rację, że różne części mózgu mają różne zadania (Broca, 1861). Pomylił się co do tego, jak to zmierzyć. Trafna intuicja to jeszcze nie trafna metoda.',
+          src: 'Parker Jones, Alfaro-Almagro i Jbabdi (2018), Cortex' },
+        { id: 'lombroso', name: '„Urodzony przestępca”', icon: '🎭', era: '1876',
+          claim: 'Cesare Lombroso twierdził, że przestępców można poznać po budowie ciała: szczęce, uszach, czaszce — „śladach dawnego człowieka”.',
+          check: 'Charles Goring porównał w 1913 r. tysiące więźniów z osobami spoza więzień. Żadnego „typu przestępcy” nie znalazł. Różnice, które się pojawiały, wiązały się raczej z biedą i niedożywieniem.',
+          why: 'Uspokajało: zło można rozpoznać z daleka. Ten sam mit wraca dziś w obietnicach algorytmów, które „poznają przestępcę po twarzy”.',
+          lesson: 'Gdy wygląd „przewiduje” zachowanie, najpierw szukaj trzeciej zmiennej — np. warunków życia.',
+          src: 'Lombroso (1876); Goring (1913) „The English Convict”' },
+        { id: 'grafologia', name: 'Grafologia', icon: '✒️', era: 'od XIX w. do dziś',
+          claim: 'Z charakteru pisma da się odczytać osobowość, uczciwość i przydatność do pracy.',
+          check: 'Metaanaliza Neter i Ben-Shakhara (1989): grafolodzy nie przewidywali cech ani wyników w pracy lepiej niż laicy. Gdy tekst był przepisany i neutralny, trafność spadała praktycznie do zera — wcześniej wszyscy „czytali” po prostu treść.',
+          why: 'Pismo jest osobiste, a opisy grafologów — ogólne i pochlebne (efekt Barnuma). Wciąż bywa używana przy rekrutacji.',
+          lesson: 'Sprawdzaj, czy metoda działa, gdy odbierzesz jej podpowiedzi z treści.',
+          src: 'Neter i Ben-Shakhar (1989); Dean (1992)' },
+        { id: 'krew', name: 'Osobowość z grupy krwi', icon: '🩸', era: 'Japonia, od lat 70. XX w.',
+          claim: 'Grupa krwi zdradza charakter: A — sumienny, B — indywidualista, 0 — przywódca, AB — artysta.',
+          check: 'Analiza odpowiedzi ponad 10 tysięcy osób z Japonii i USA (Nawata, 2014): grupa krwi nie wyjaśniała praktycznie nic.',
+          why: 'Działa jak horoskop: proste kategorie, pochlebne opisy i samospełniające się proroctwa.',
+          lesson: 'Popularność przekonania nie jest dowodem — nawet gdy wierzą w nie miliony ludzi.',
+          src: 'Nawata (2014), Japanese Journal of Psychology' }
+      ] },
+    { id: 'testy', name: 'Sala Testów, Które Nie Mierzą', icon: '🎨', col: '#d8a0c8',
+      intro: 'Test to obietnica: „powiem o Tobie coś prawdziwego”. Te eksponaty tej obietnicy nie dotrzymały — albo dotrzymują tylko w części. Plansz, kluczy i norm samych testów tu nie pokazujemy: tak wymaga etyka zawodu.',
+      items: [
+        { id: 'luscher', name: 'Test kolorów Lüschera', icon: '🟥', era: '1947',
+          claim: 'Kolejność, w jakiej układasz kolorowe karty od najbardziej do najmniej lubianej, ujawnia osobowość i stan emocjonalny.',
+          check: 'W badaniu Picco i Dzindolet (1994) preferencje kolorów nie wiązały się z opisem siebie, a „ciepłe kolory = ekstrawersja” się nie potwierdziło. Wybory zmieniają się zresztą z dnia na dzień.',
+          why: 'Kolory kojarzą się z emocjami, więc teoria brzmi intuicyjnie, a wynik jest szybki i efektowny.',
+          lesson: 'Intuicyjne skojarzenie (czerwony = energia) to hipoteza do sprawdzenia, nie zasada pomiaru.',
+          src: 'Picco i Dzindolet (1994), Perceptual and Motor Skills' },
+        { id: 'szondi', name: 'Test Szondiego', icon: '🖼️', era: '1935–1947',
+          claim: 'Wybierając najbardziej i najmniej sympatyczne twarze ze zdjęć pacjentów, ujawniasz dziedziczne „popędy”, które kierują Twoim losem.',
+          check: 'Badania z lat 50. pokazały, że wybory są niespójne i zależą od powierzchownych cech twarzy, a przewidywania się nie sprawdzały. W ankiecie ekspertów (Norcross i in., 2006) uznano go za prawdopodobnie zdyskredytowany.',
+          why: 'Wybór twarzy „bez zastanowienia” wydaje się omijać obronę i sięgać w głąb.',
+          lesson: 'To, że coś działa „nieświadomie”, nie zwalnia z dowodu, że mierzy to, co obiecuje.',
+          src: 'Norcross, Koocher i Garofalo (2006); przeglądy z lat 50. XX w.' },
+        { id: 'rysunek', name: 'Rysunek człowieka „z kluczem”', icon: '✏️', era: 'od 1949',
+          claim: 'Szczegóły rysunku zdradzają ukryte cechy: duże oczy — podejrzliwość, mocna kreska — agresję i tak dalej.',
+          check: 'Takie „znaki” w badaniach się nie potwierdzały. Chapman i Chapman (1967) pokazali, że studenci, którym dano losowe rysunki z losowymi opisami, „odkrywali” te same zależności co klinicyści — to iluzoryczna korelacja.',
+          why: 'Związek wydaje się oczywisty („oczy — patrzenie — podejrzliwość”), więc widzimy go, nawet gdy go nie ma.',
+          lesson: 'Rysunek bywa dobrym początkiem rozmowy z dzieckiem. Nie jest skanerem jego wnętrza.',
+          src: 'Chapman i Chapman (1967); Lilienfeld, Wood i Garb (2000)' },
+        { id: 'rorschach', name: 'Plamy atramentowe', icon: '🫧', era: '1921', status: 'sporne',
+          claim: 'Interpretacja plam atramentowych daje pełny obraz osobowości.',
+          check: 'Eksponat sporny. Metaanaliza Mihury i in. (2013) wykazała, że część wskaźników (np. związanych z zaburzeniami myślenia) ma poparcie w badaniach, a wiele innych — nie. Nowsze systemy oceny korzystają tylko z tych lepiej sprawdzonych.',
+          why: 'Ma aurę głębi i tajemnicy. Przez dekady uczono go jako „okno do nieświadomości”.',
+          lesson: 'Nie „cały test działa” albo „cały nie działa” — sprawdza się konkretne wskaźniki do konkretnych pytań.',
+          src: 'Mihura i in. (2013), Psychological Bulletin; Wood i in. (2003)' },
+        { id: 'typy', name: 'Typologia 16 typów', icon: '🔠', era: 'lata 40. XX w.', status: 'sporne',
+          claim: 'Każdy człowiek należy do jednego z 16 typów osobowości.',
+          check: 'Eksponat sporny. Cechy osobowości rozkładają się płynnie, a większość ludzi jest „pośrodku”. W ponownym badaniu po kilku tygodniach nawet co druga osoba dostaje inny typ (Pittenger, 1993), a typ słabo przewiduje wyniki w pracy.',
+          why: 'Etykieta typu jest przyjemna i łatwa do zapamiętania, a opisy — życzliwe.',
+          lesson: 'Do opisu osobowości lepiej sprawdzają się wymiary (np. Wielka Piątka) niż szufladki.',
+          src: 'Pittenger (1993); Pittenger (2005)' }
+      ] },
+    { id: 'klamstwa', name: 'Sala Wykrywaczy Kłamstw', icon: '🔍', col: '#a0c8d8',
+      intro: 'Marzenie wszystkich czasów: urządzenie albo metoda, która pewnie odróżni kłamstwo od prawdy. Na razie nikt go nie spełnił. Ludzie zgadują kłamstwa niewiele lepiej niż rzut monetą (Bond i DePaulo, 2006).',
+      items: [
+        { id: 'poligraf', name: 'Wariograf (poligraf)', icon: '📈', era: 'od lat 20. XX w.', status: 'sporne',
+          claim: 'Maszyna wykrywa kłamstwo.',
+          check: 'Eksponat sporny. Wariograf mierzy pobudzenie: tętno, oddech, pot. Raport amerykańskiej Narodowej Rady Badań (2003) uznał, że przy konkretnym zdarzeniu wypada lepiej niż przypadek, ale daleko mu do pewności, a do przesiewowego „sprawdzania” pracowników się nie nadaje. Zdenerwowany niewinny może wypaść źle, a wytrenowany kłamca — dobrze.',
+          why: 'Wykresy i kable wyglądają obiektywnie. Samo przekonanie, że „maszyna wie”, skłania czasem ludzi do przyznania się.',
+          lesson: 'Pobudzenie to nie kłamstwo. Ten sam wykres ma wiele możliwych przyczyn.',
+          src: 'National Research Council (2003) „The Polygraph and Lie Detection”' },
+        { id: 'oczy', name: 'Kłamstwo w ruchach oczu', icon: '👀', era: 'lata 70. XX w.',
+          claim: 'Programowanie neurolingwistyczne (NLP): kiedy ktoś zmyśla, patrzy w jedną stronę, a kiedy przypomina sobie — w drugą.',
+          check: 'Wiseman i in. (2012) sprawdzili to w trzech badaniach: ruchy oczu nie odróżniały kłamców od mówiących prawdę. Przegląd 35 lat badań nad NLP (Witkowski, 2010) nie znalazł poparcia dla jego podstaw.',
+          why: 'Reguła jest prosta, łatwo ją przećwiczyć i „zobaczyć” — zwłaszcza gdy już wiesz, kto kłamie.',
+          lesson: 'Prosta reguła na złożone zachowanie to sygnał ostrzegawczy.',
+          src: 'Wiseman i in. (2012), PLoS ONE; Witkowski (2010), Polish Psychological Bulletin' },
+        { id: 'glos', name: 'Analizator stresu w głosie', icon: '🎙️', era: 'od lat 70. XX w.',
+          claim: 'Program wykryje kłamstwo w „mikrodrżeniu” głosu.',
+          check: 'W badaniu na zlecenie amerykańskiego Narodowego Instytutu Sprawiedliwości (Damphousse i in., 2007) dwa takie programy wykryły tylko ok. 15% kłamstw o niedawnym zażywaniu narkotyków.',
+          why: 'Wygląda jak nowoczesna technologia, a działa bez kabli i bez zgody badanego.',
+          lesson: 'Technologia nie zwalnia z dowodu trafności — sprawdza się ją jak każdy test.',
+          src: 'Damphousse i in. (2007), National Institute of Justice' },
+        { id: 'lotnisko', name: 'Obserwatorzy zachowań na lotniskach', icon: '🛫', era: '2007–2013',
+          claim: 'Wyszkoleni obserwatorzy rozpoznają terrorystów po kilkudziesięciu sygnałach zachowania i mikroekspresjach.',
+          check: 'Raport GAO (2013) o amerykańskim programie SPOT: brak dowodów, że te sygnały pozwalają wykryć zagrożenie; trafność ocen zachowań niewiele lepsza od przypadku. Zalecono ograniczenie finansowania.',
+          why: 'Popularne seriale o „czytaniu twarzy” obiecują supermoc. Program kosztował setki milionów dolarów.',
+          lesson: 'Nawet duży budżet nie zastąpi badania, czy metoda działa.',
+          src: 'U.S. Government Accountability Office (2013), GAO-14-159' }
+      ] },
+    { id: 'kuracje', name: 'Sala Kuracji Porzuconych', icon: '⚗️', col: '#c8d8a0',
+      intro: 'Metody leczenia, które kiedyś uchodziły za przełom. Niektóre były po prostu nieskuteczne, inne — groźne. Wspólne mają jedno: zbyt późno je sprawdzono.',
+      items: [
+        { id: 'mesmer', name: 'Magnetyzm zwierzęcy', icon: '🧲', era: '1770–1784',
+          claim: 'Franz Anton Mesmer: niewidzialny „fluid magnetyczny” krąży w ciele, a jego przywrócenie leczy choroby.',
+          check: 'W 1784 r. francuska komisja (m.in. Benjamin Franklin i Antoine Lavoisier) przeprowadziła próby z zasłoniętymi oczami: efekty pojawiały się, gdy ludzie SĄDZILI, że są „magnetyzowani”, a nie wtedy, gdy byli. Wniosek: działa wyobraźnia. To jedno z pierwszych badań „na ślepo”.',
+          why: 'Seanse były widowiskowe, a ludzie naprawdę czuli zmiany — tyle że z powodu oczekiwań.',
+          lesson: 'Na początku historii hipnozy i placebo stoi… dobrze zaprojektowany eksperyment.',
+          src: 'Raport komisji królewskiej (1784)' },
+        { id: 'lobotomia', name: 'Lobotomia', icon: '🧊', era: '1935–lata 50.',
+          claim: 'Przecięcie połączeń płatów czołowych leczy ciężkie zaburzenia psychiczne.',
+          check: 'Za leukotomię Egas Moniz dostał w 1949 r. Nagrodę Nobla, choć brakowało rzetelnych badań i długich obserwacji. Wiele osób traciło spontaniczność i zdolność planowania; zdarzały się zgony. Metodę porzucono, gdy pojawiły się leki przeciwpsychotyczne i wyszły na jaw szkody.',
+          why: 'Szpitale były przepełnione, a innych metod prawie nie było. „Spokojny pacjent” wyglądał jak wyleczony.',
+          lesson: 'Nawet Nobel nie zastępuje kontrolowanych badań i pytania: „jak żyje się pacjentowi po latach?”.',
+          src: 'Valenstein (1986) „Great and Desperate Cures”' },
+        { id: 'insulina', name: 'Śpiączka insulinowa', icon: '💉', era: '1933–lata 50.',
+          claim: 'Wywoływanie śpiączki dużymi dawkami insuliny leczy schizofrenię.',
+          check: 'Harold Bourne (1953) zakwestionował jej skuteczność, a próba z 1957 r. pokazała, że pacjenci po śpiączce insulinowej nie mieli się lepiej niż ci uśpieni innym środkiem. Metoda była ryzykowna i z czasem ją porzucono.',
+          why: 'Pacjenci dostawali dużo uwagi i opieki — to też mogło poprawiać ich stan.',
+          lesson: 'Grupa porównawcza rozdziela „działa metoda” od „działa troska wokół metody”.',
+          src: 'Bourne (1953), The Lancet; Ackner, Harris i Oldham (1957)' },
+        { id: 'wspomnienia', name: '„Odzyskiwanie wypartych wspomnień”', icon: '🕳️', era: 'lata 80. i 90. XX w.',
+          claim: 'Hipnoza, sugestywne pytania i „ćwiczenia wyobraźni” pozwalają odkryć wyparte wspomnienia krzywdy.',
+          check: 'Badania Elizabeth Loftus pokazały, że sugestia potrafi stworzyć fałszywe wspomnienia całych zdarzeń. Takie metody prowadziły do oskarżeń, które potem okazywały się bezpodstawne. Krzywda w dzieciństwie zdarza się naprawdę i trzeba ją traktować poważnie — problemem były techniki, które podsuwały wspomnienia.',
+          why: 'Dawały prostą odpowiedź na złożone cierpienie, a „odzyskane” obrazy bywały bardzo żywe.',
+          lesson: 'Żywość i emocje wspomnienia nie dowodzą, że zdarzenie miało miejsce. Pytaj otwarcie, nie podsuwaj.',
+          src: 'Loftus i Pickrell (1995); Loftus (1993), American Psychologist' },
+        { id: 'fc', name: 'Ułatwiona komunikacja', icon: '⌨️', era: 'lata 90. XX w.',
+          claim: 'Osoba, która nie mówi, pisze na klawiaturze, gdy „facylitator” podtrzymuje jej dłoń — i ujawnia bogaty świat wewnętrzny.',
+          check: 'Gdy facylitator nie widział pytania albo obrazka, odpowiedzi znikały. Badania z ukrytą informacją (Wheeler i in., 1993) pokazały, że to on nieświadomie prowadził dłoń — jak przy tabliczce do seansów. Zdarzały się na tej podstawie fałszywe oskarżenia.',
+          why: 'Wszyscy pragnęli, żeby to była prawda, a facylitatorzy byli szczerze przekonani, że nie poruszają dłonią (efekt ideomotoryczny).',
+          lesson: 'Sprawdzona komunikacja wspomagająca (AAC) jest bardzo cenna. Właśnie dlatego trzeba sprawdzać, czyj to głos.',
+          src: 'Wheeler i in. (1993); stanowisko ASHA (2018)' },
+        { id: 'rebirthing', name: '„Terapie przywiązania” przez przymus', icon: '⛓️', era: 'lata 70.–2000',
+          claim: 'Siłowe przytrzymywanie dziecka albo „ponowne narodziny” pod kocami przełamią opór i odbudują więź.',
+          check: 'Brak dowodów skuteczności, za to realne ryzyko: w 2000 r. podczas takiej sesji zmarła dziesięcioletnia dziewczynka, a stan Kolorado zakazał metody. Grupa zadaniowa APSAC (2006) uznała przymusowe techniki za nie do przyjęcia.',
+          why: 'Rodzice zmagający się z trudnym zachowaniem dziecka szukali szybkiej, mocnej metody.',
+          lesson: 'Przywiązanie buduje się przez bezpieczeństwo i wrażliwość, nie przez przymus.',
+          src: 'Chaffin i in. (2006), raport grupy zadaniowej APSAC' }
+      ] },
+    { id: 'checi', name: 'Sala Dobrych Chęci', icon: '🧯', col: '#e8c890',
+      intro: 'Te eksponaty stworzyli ludzie, którzy chcieli pomóc. Okazało się, że dobre intencje to za mało: trzeba sprawdzić, czy pomoc nie szkodzi.',
+      items: [
+        { id: 'scared', name: 'Programy „Scared Straight”', icon: '🚔', era: 'od 1978',
+          claim: 'Pokażmy zagrożonej młodzieży więzienie i porozmawiajmy o nim z więźniami — przestraszą się i nie popełnią przestępstw.',
+          check: 'Przeglądy badań z losowym przydziałem (Petrosino i in., 2003, 2013): uczestnicy częściej, a nie rzadziej, łamali potem prawo niż ich rówieśnicy bez programu.',
+          why: 'Program wyglądał świetnie w telewizji i dawał poczucie, że „coś robimy”.',
+          lesson: 'Interwencja może zaszkodzić. Bez grupy porównawczej tego nie zobaczysz.',
+          src: 'Petrosino i in. (2013), Campbell Systematic Reviews' },
+        { id: 'debriefing', name: 'Obowiązkowy debriefing po traumie', icon: '🗣️', era: 'lata 80.–90.',
+          claim: 'Jedna sesja zaraz po traumatycznym zdarzeniu, w której każdy opowiada o przeżyciach, zapobiega PTSD.',
+          check: 'Przegląd Cochrane (Rose i in., 2002): jednorazowy debriefing nie zapobiegał PTSD, a w części badań wiązał się z gorszymi wynikami. Zalecenia (np. WHO) mówią raczej o pierwszej pomocy psychologicznej: bezpieczeństwo, wsparcie, kontakt z bliskimi — i o specjalistycznej pomocy dla osób, u których objawy trwają.',
+          why: 'Wydawało się oczywiste, że „trzeba to z siebie wyrzucić” — od razu i wszyscy.',
+          lesson: 'Ludzie różnie radzą sobie po trudnych przeżyciach. Wspieraj, nie zmuszaj do opowiadania.',
+          src: 'Rose i in. (2002), Cochrane; wytyczne WHO (2013)' },
+        { id: 'lodowka', name: 'Teoria „matki-lodówki”', icon: '🧊', era: 'lata 40.–60.',
+          claim: 'Autyzm wywołuje chłodne, zdystansowane wychowanie.',
+          check: 'Badania bliźniąt (Folstein i Rutter, 1977) i późniejsze badania genetyczne pokazały, że autyzm to stan neurorozwojowy o silnym podłożu biologicznym. Teoria przyniosła ogromne cierpienie i poczucie winy wielu rodzinom.',
+          why: 'Przypadki obserwowane w klinice „pasowały” do teorii, a obwinianie rodziców było wtedy modne.',
+          lesson: 'Zanim wskażesz winnego, sprawdź alternatywne wyjaśnienia — i pamiętaj, że teoria też może krzywdzić.',
+          src: 'Folstein i Rutter (1977); Bettelheim (1967) jako przykład historyczny' },
+        { id: 'konwersja', name: 'Terapie „zmiany orientacji”', icon: '🚫', era: 'XX w.–dziś',
+          claim: 'Orientację seksualną da się „wyleczyć” terapią.',
+          check: 'Raport grupy zadaniowej Amerykańskiego Towarzystwa Psychologicznego (2009): brak rzetelnych dowodów skuteczności i ryzyko poważnych szkód psychicznych. Orientacja seksualna nie jest zaburzeniem. Wiele krajów takich praktyk zakazuje.',
+          why: 'Wynikały z uprzedzeń i presji społecznej, a nie z badań.',
+          lesson: 'Pomoc zaczyna się od pytania, czego potrzebuje człowiek — nie otoczenie.',
+          src: 'APA Task Force (2009)' }
+      ] },
+    { id: 'diagnozy', name: 'Sala Porzuconych Diagnoz', icon: '📜', col: '#b8a8d8',
+      intro: 'Diagnozy też mają historię. Niektóre opisywały prawdziwe cierpienie złym językiem, inne służyły władzy zamiast pacjentom. Nauka potrafi się poprawiać — i to jest jej siła.',
+      items: [
+        { id: 'histeria', name: 'Histeria', icon: '🌀', era: 'od starożytności do 1980',
+          claim: 'Wędrująca macica (starożytność), a potem „słabe nerwy kobiet” tłumaczą bardzo różne objawy.',
+          check: 'Objawy pacjentek były prawdziwe, ale wyjaśnienie — nie. W 1980 r. termin zniknął z amerykańskiej klasyfikacji DSM; objawy opisuje się dziś m.in. jako zaburzenia dysocjacyjne i czynnościowe.',
+          why: 'Diagnoza pasowała do przekonań o „naturze kobiet” i pozwalała nie szukać dalej.',
+          lesson: 'Etykieta, która wyjaśnia wszystko, zwykle nie wyjaśnia niczego.',
+          src: 'DSM-III (1980); historia medycyny' },
+        { id: 'drapetomania', name: 'Drapetomania', icon: '⛓️', era: '1851',
+          claim: 'Samuel Cartwright opisał „chorobę”, która sprawia, że zniewoleni ludzie uciekają od właścicieli.',
+          check: 'To nie była nauka, tylko usprawiedliwienie niewolnictwa przebrane za medycynę. Dziś to podręcznikowy przykład nadużycia diagnozy.',
+          why: 'Pozwalała uznać dążenie do wolności za objaw — i „leczyć” je przemocą.',
+          lesson: 'Pytaj zawsze: komu służy ta diagnoza?',
+          src: 'Cartwright (1851); analizy historyków medycyny' },
+        { id: 'dsm1973', name: 'Homoseksualność jako „zaburzenie”', icon: '🏳️‍🌈', era: 'do 1973 (DSM) i 1990 (WHO)',
+          claim: 'Homoseksualność to zaburzenie psychiczne.',
+          check: 'Evelyn Hooker (1957) dała ekspertom wyniki testów gejów i heteroseksualnych mężczyzn bez informacji, kto jest kim. Eksperci nie potrafili ich odróżnić. W 1973 r. Amerykańskie Towarzystwo Psychiatryczne usunęło homoseksualność z DSM, a WHO w 1990 r. z klasyfikacji ICD.',
+          why: 'Klinicyści widzieli głównie osoby, które przyszły po pomoc, i uogólniali na wszystkich.',
+          lesson: 'Badanie „na ślepo” i porównanie z osobami spoza gabinetu potrafią obalić nawet utrwalone przekonanie.',
+          src: 'Hooker (1957); APA (1973); WHO (1990)' }
+      ] }
+  ];
+  E3.WYSTAWA = WYSTAWA;
+  const EXHIBITS = WYSTAWA.flatMap(h => h.items.map(it => Object.assign({ hall: h.id }, it)));
+  E3.EXHIBITS = EXHIBITS;
+
+  Game.prototype.e3Wyst = function () {
+    const d = this.e3Data();
+    if (!d.wyst || typeof d.wyst !== 'object') d.wyst = { seen: {}, halls: {}, all: false };
+    if (!d.wyst.seen) d.wyst.seen = {};
+    if (!d.wyst.halls) d.wyst.halls = {};
+    return d.wyst;
+  };
+  Game.prototype.e3WystawaWelcome = function () {
+    const n = Object.keys(this.e3Wyst().seen).length;
+    this.showDialogue({
+      name: NPCS.sceptyk ? NPCS.sceptyk.name : 'Kustosz', npc: NPCS.sceptyk || undefined,
+      pages: [n ? `Witaj ponownie w Archiwum. Na wystawie obejrzano już ${n} z ${EXHIBITS.length} eksponatów. Dokąd idziemy?`
+        : 'Archiwum ma teraz dwa skrzydła. WYSTAWA jest dla każdego: co obiecywano, co sprawdzono i czemu ludzie wciąż wierzą. ZAJĘCIA to pytania na kolejne poziomy dla przyszłych diagnostów.'],
+      options: [
+        { label: '🕯️ Wystawa: zdyskredytowane testy i metody', fn: () => this.e3OpenWystawa() },
+        { label: '📚 Zajęcia u Kustosza (pytania)', fn: () => { const b = (this.zone.buildings || []).find(x => x.loc === 'archiwum'); if (b) this.enterBuilding(b); } },
+        { label: '🚪 Wyjdź', fn: null }
+      ]
+    });
+  };
+  Game.prototype.e3OpenWystawa = function (hallId) {
+    const W = this.e3Wyst(), seenN = Object.keys(W.seen).length;
+    if (hallId) return this.e3OpenSala(hallId);
+    const cards = WYSTAWA.map(h => {
+      const k = h.items.filter(it => W.seen[it.id]).length;
+      return `<button class="card e3-hall" data-hall="${h.id}" style="border-left:6px solid ${h.col}"><span class="e3-hall-ic">${h.icon}</span><div class="grow"><b>${esc(h.name)}</b><div class="tiny muted">${k}/${h.items.length} obejrzanych${W.halls[h.id] ? ' · ✓ sala zwiedzona' : ''}</div></div><span>▶</span></button>`;
+    }).join('');
+    const m = this.openModal(this.panel('🕯️ Archiwum Szarlatanerii — Wystawa',
+      `<p>Zwiedzanie, nie egzamin. Każdy eksponat to historia metody, która obiecywała więcej, niż mogła dać: <b>obietnica</b>, <b>co pokazały badania</b>, <b>dlaczego kusiło</b> i <b>lekcja dla diagnosty</b>.</p>
+       <div class="row mt"><span class="tag purple">${seenN}/${EXHIBITS.length} eksponatów</span>${W.all ? '<span class="tag">✓ cała wystawa</span>' : ''}</div>
+       <div class="col mt">${cards}</div>
+       <p class="small muted mt">Eksponaty „sporne” to metody, w których część założeń ma poparcie w badaniach, a część nie. Szkic treści — do przejrzenia przez autorkę gry.</p>`,
+      '<button class="btn" data-close>Zamknij</button>', 'wide'));
+    m.querySelectorAll('[data-hall]').forEach(b => b.addEventListener('click', () => { audio.click(); this.e3OpenSala(b.dataset.hall); }));
+  };
+  Game.prototype.e3OpenSala = function (hallId) {
+    const W = this.e3Wyst(), h = WYSTAWA.find(x => x.id === hallId);
+    if (!h) return this.e3OpenWystawa();
+    const rows = h.items.map(it => `<button class="card e3-ex" data-ex="${it.id}"><span class="e3-hall-ic">${it.icon}</span><div class="grow"><b>${esc(it.name)}</b>${it.status === 'sporne' ? ' <span class="tag">sporne</span>' : ''}<div class="tiny muted">${esc(it.era)}</div></div><span>${W.seen[it.id] ? '👁' : '▶'}</span></button>`).join('');
+    const m = this.openModal(this.panel(`${h.icon} ${esc(h.name)}`,
+      `<p>${esc(h.intro)}</p><div class="col mt">${rows}</div>`,
+      '<button class="btn" id="e3-back">◀ Wszystkie sale</button><span class="grow"></span><button class="btn" data-close>Zamknij</button>', 'wide'));
+    m.querySelector('#e3-back').addEventListener('click', () => { audio.click(); this.e3OpenWystawa(); });
+    m.querySelectorAll('[data-ex]').forEach(b => b.addEventListener('click', () => { audio.click(); this.e3OpenEksponat(b.dataset.ex); }));
+  };
+  Game.prototype.e3OpenEksponat = function (exId) {
+    const W = this.e3Wyst(), it = EXHIBITS.find(x => x.id === exId);
+    if (!it) return this.e3OpenWystawa();
+    const h = WYSTAWA.find(x => x.id === it.hall), idx = h.items.findIndex(x => x.id === exId);
+    const first = !W.seen[exId];
+    W.seen[exId] = this.state.day || 1;
+    let reward = '';
+    if (first) {
+      this.addXP(2);
+      if (!W.halls[h.id] && h.items.every(x => W.seen[x.id])) {
+        W.halls[h.id] = this.state.day || 1;
+        this.addXP(10); this.addMoney(5, true);
+        reward = `<div class="fb ok mt">🕯️ Sala zwiedzona: ${esc(h.name)}! +10 XP, +5 🟡</div>`;
+        audio.success();
+      }
+      if (!W.all && EXHIBITS.every(x => W.seen[x.id])) {
+        W.all = true; this.addXP(30); this.addMoney(15, true);
+        reward += '<div class="fb ok mt">🏛️ Cała wystawa obejrzana! Kustosz wpisuje Cię do księgi honorowych zwiedzających. +30 XP, +15 🟡</div>';
+        setTimeout(() => audio.levelUp(), 250);
+      }
+      this.save();
+    }
+    const prev = h.items[idx - 1], next = h.items[idx + 1];
+    const sec = (ic, title, txt) => txt ? `<div class="e3-ex-sec"><b>${ic} ${title}</b><p>${esc(txt)}</p></div>` : '';
+    const m = this.openModal(this.panel(`${it.icon} ${esc(it.name)}`,
+      `<div class="row"><span class="tag">${esc(it.era)}</span>${it.status === 'sporne' ? '<span class="tag purple">eksponat sporny</span>' : '<span class="tag">zdyskredytowane</span>'}<span class="tag">${h.icon} ${esc(h.name)}</span></div>
+       ${sec('📣', 'Obietnica', it.claim)}${sec('🔬', 'Co pokazały badania', it.check)}${sec('🧲', 'Dlaczego kusiło (i kusi)', it.why)}${sec('🎓', 'Lekcja dla diagnosty', it.lesson)}
+       <p class="small muted mt">📚 ${esc(it.src)}</p>${reward}`,
+      `<button class="btn" id="e3-sala">◀ ${esc(h.name)}</button><span class="grow"></span>${prev ? '<button class="btn" id="e3-prev">◀ Poprzedni</button>' : ''}${next ? '<button class="btn btn-green" id="e3-next">Następny ▶</button>' : '<button class="btn" data-close>Zamknij</button>'}`, 'wide'));
+    m.querySelector('#e3-sala').addEventListener('click', () => { audio.click(); this.e3OpenSala(h.id); });
+    const pb = m.querySelector('#e3-prev'), nb = m.querySelector('#e3-next');
+    if (pb) pb.addEventListener('click', () => { audio.click(); this.e3OpenEksponat(prev.id); });
+    if (nb) nb.addEventListener('click', () => { audio.click(); this.e3OpenEksponat(next.id); });
+  };
+
+  // aleja gablot na Wypartym Przedmieściu: po jednej na salę + tabliczka
+  const GAB_X = [3, 5, 7, 9, 11, 13];
+  extendZone('wyparte', B => {
+    clearArea(B, 2, 21, 15, 2, null);
+    B.rect(2, 22, 16, 1, 'path');
+    WYSTAWA.forEach((h, k) => B.obj('e3_gablota', GAB_X[k], 21, { hall: h.id, interact: 'e3_gablota' }));
+    B.Z.interacts.forEach(it => { if (it.kind === 'e3_gablota' && it.hall == null) { const o = B.Z.objects.find(o => o.type === 'e3_gablota' && o.x === it.x && o.y === it.y); if (o) it.hall = o.hall; } });
+    B.obj('sign', 15, 21);
+    B.interact(15, 21, { kind: 'e3_aleja' });
+  });
+
+  E1.objSprites.e3_gablota = o => cached('e3_gab|' + o.hall, () => makeSprite(16, 22, g => {
+    R(g, 1, 14, 14, 7, '#5a3a28'); R(g, 0, 13, 16, 2, '#7a5034'); R(g, 2, 16, 12, 1, '#4a2e1e'); R(g, 2, 19, 12, 1, '#4a2e1e');
+    R(g, 2, 2, 12, 11, '#2a2a3a');
+    R(g, 3, 3, 10, 9, '#3e4458');
+    const ink = '#1a1a22', bone = '#ece4d0';
+    switch (o.hall) {
+      case 'czaszki': disc(g, 8, 7, 3.2, bone); R(g, 6, 9, 5, 2, bone); P(g, 7, 7, ink); P(g, 9, 7, ink); P(g, 8, 10, ink); break;
+      case 'testy': [[5, 5], [10, 5], [6, 8], [9, 8], [7, 6], [8, 6]].forEach(([x, y]) => R(g, x, y, 1 + (x % 2), 2, '#e8e0f0')); R(g, 7, 9, 2, 2, '#e8e0f0'); break;
+      case 'klamstwa': line(g, 3, 8, 5, 5, '#7af0a0'); line(g, 5, 5, 7, 10, '#7af0a0'); line(g, 7, 10, 9, 4, '#7af0a0'); line(g, 9, 4, 12, 8, '#7af0a0'); break;
+      case 'kuracje': R(g, 6, 4, 4, 2, '#a8b8c8'); R(g, 5, 6, 6, 5, '#7ac8a0'); R(g, 6, 7, 4, 1, '#c8f0d8'); break;
+      case 'checi': line(g, 8, 4, 4, 11, '#f2c94c'); line(g, 8, 4, 12, 11, '#f2c94c'); line(g, 4, 11, 12, 11, '#f2c94c'); R(g, 8, 7, 1, 2, ink); P(g, 8, 10, ink); break;
+      default: R(g, 5, 4, 6, 7, '#f4ecd8'); R(g, 4, 4, 1, 7, '#c8b890'); R(g, 11, 4, 1, 7, '#c8b890'); R(g, 6, 6, 4, 1, '#8a7a60'); R(g, 6, 8, 3, 1, '#8a7a60');
+    }
+    R(g, 2, 2, 12, 1, '#c8d8e0'); R(g, 2, 2, 1, 11, '#a8b8c0'); R(g, 13, 2, 1, 11, '#a8b8c0'); R(g, 2, 12, 12, 1, '#a8b8c0');
+    P(g, 4, 3, 'rgba(255,255,255,0.8)'); P(g, 5, 4, 'rgba(255,255,255,0.5)');
+  }, { shadow: [8, 21, 7, 1.5] }));
+
+  /* =================================================================
+     2) DOM ŻYRAFY — porozumienie bez przemocy (NVC) na Bulwarze Empatii
+     Notion: „Dodajmy miejsce, domek, może wyspę NVC”. Roadmapa: dom dla
+     istniejących rozmów w stylach (moduł PROFIL: nvc / ocena / rada / unik).
+     ================================================================= */
+  SUBJECTS.e3_zyrafa = {
+    name: 'Dom Żyrafy', subject: 'Porozumienie bez przemocy (NVC)', icon: '🦒', color: '#d8a23a', zone: 'bulwar', laik: true,
+    src: 'Marshall B. Rosenberg — „Porozumienie bez przemocy. O języku serca”. NVC to model komunikacji, nie terapia; badań nad jego skutecznością jest niewiele i bywają słabej jakości.',
+    intro: 'Rosenberg wybrał żyrafę na symbol języka serca — mówił, że ma wielkie serce i z wysoka widzi szerzej. Jej przeciwieństwo to szakal: ocenia, przykleja etykiety, żąda. Tu ćwiczysz cztery kroki: obserwacja, uczucia, potrzeby, prośba. Na pulpicie w holu leży też Księga Rozmów miasta.',
+    rooms: [
+      { id: 'obserwacja', name: 'Pokój Obserwacji', icon: '👀', kind: 'sort', light: '#ffd06a',
+        intro: 'Pierwszy krok: opisz, co się stało, tak jak zarejestrowałaby to kamera — bez oceny. Posortuj zdania.',
+        bins: ['👀 Obserwacja', '⚖️ Ocena'],
+        items: [['Spóźniłeś się dziś 20 minut.', 0], ['Zawsze się spóźniasz.', 1], ['Jesteś leniwy.', 1], ['W tym tygodniu trzy razy nie wyniosłeś śmieci.', 0], ['Mówisz do mnie podniesionym głosem.', 0], ['Krzyczysz na mnie jak zwykle.', 1], ['Nie odpisałaś na moją wiadomość od wczoraj.', 0], ['Olewasz mnie.', 1], ['Zjadłaś ostatni kawałek ciasta.', 0], ['Jesteś egoistką.', 1]],
+        outro: 'Rosenberg przypominał myśl Krishnamurtiego, że obserwowanie bez oceniania to najwyższa forma ludzkiej inteligencji. Słowa „zawsze”, „nigdy” i „jak zwykle” prawie zawsze przemycają ocenę.' },
+      { id: 'uczucia', name: 'Pokój Uczuć', icon: '💛', kind: 'sort', light: '#ff9ab8',
+        intro: 'Drugi krok: nazwij uczucie. Uwaga na myśli przebrane za uczucia — mówią, co ktoś nam ZROBIŁ, a nie co czujemy.',
+        bins: ['💛 Uczucie', '💭 Myśl udająca uczucie'],
+        items: [['Jestem zaniepokojona.', 0], ['Czuję się zignorowany.', 1], ['Jest mi smutno.', 0], ['Czuję, że mnie wykorzystujesz.', 1], ['Jestem zmęczona i zniechęcona.', 0], ['Czuję się oszukany.', 1], ['Czuję ulgę.', 0], ['Czuję, że nie masz racji.', 1], ['Jestem podekscytowany.', 0], ['Czuję się niedoceniona.', 1]],
+        outro: '„Czuję, że…” zwykle zapowiada myśl. Zignorowany, oszukany, wykorzystany — to interpretacje cudzego zachowania. Uczucie to stan w nas: smutek, niepokój, ulga, złość, radość.' },
+      { id: 'potrzeby', name: 'Pokój Potrzeb', icon: '🌱', kind: 'sort', light: '#9ae07a',
+        intro: 'Trzeci krok: znajdź potrzebę. Potrzeby są wspólne dla wszystkich ludzi, a strategie to konkretne sposoby ich zaspokojenia. Posortuj.',
+        bins: ['🌱 Potrzeba', '🛠️ Strategia'],
+        items: [['Odpoczynek', 0], ['Żebyś wyłączył telewizor o 22:00', 1], ['Bliskość', 0], ['Wspólny wyjazd nad morze w sierpniu', 1], ['Szacunek', 0], ['Żebyś pytała mnie o zdanie przed zakupami', 1], ['Autonomia', 0], ['Nowy telefon', 1], ['Zrozumienie', 0], ['Żeby szef dał mi podwyżkę', 1]],
+        outro: 'Kłócimy się zwykle o strategie, a potrzeby mamy podobne. Gdy nazwiemy potrzebę, nagle pojawia się więcej sposobów, żeby ją zaspokoić — także takich, które pasują obu stronom.' },
+      { id: 'kroki', name: 'Pokój Czterech Kroków', icon: '🦒', kind: 'order', light: '#8ad0ff',
+        intro: 'Ułóż wypowiedź żyrafy w kolejności: obserwacja → uczucie → potrzeba → prośba.',
+        items: ['Kiedy widzę kubki na biurku od trzech dni,', 'czuję zniechęcenie,', 'bo zależy mi na porządku we wspólnym pokoju.', 'Czy odniesiesz je dziś do kuchni?'],
+        outro: 'Prośba w NVC jest konkretna, wykonalna i powiedziana pozytywnie („odniesiesz do kuchni”, a nie „przestań bałaganić”). I jest prośbą tylko wtedy, gdy odmowa jest dopuszczalna.' },
+      { id: 'scenki', name: 'Pokój Rozmów', icon: '🎭', kind: 'scena', light: '#c79aff',
+        intro: 'Prośba czy żądanie? Słuchanie czy naprawianie? Trzy sytuacje — każdy wybór jest dozwolony, zobaczysz jego skutek.',
+        items: [
+          { s: 'Prosisz współlokatorkę: „Czy umyjesz dziś naczynia?”. Ona odpowiada: „Dziś nie dam rady, mam kolokwium”. Co mówisz?', o: [
+            ['„No jasne, jak zwykle mam wszystko na głowie.”', 'Okazuje się, że to było żądanie — odmowa spotkała się z karą. Następnym razem współlokatorka zgodzi się z poczucia winy albo wcale.', false],
+            ['„Rozumiem. Zależy mi, żeby zlew był pusty przed weekendem — kiedy będzie Ci pasowało?”', 'Umawiacie się na czwartek wieczór. Twoja potrzeba porządku i jej potrzeba spokoju przed kolokwium — obie się mieszczą.', true],
+            ['Nic nie mówię i zmywam {sama|sam|samo}, trzaskając talerzami.', 'Naczynia czyste, ale napięcie zostaje. Talerze też to odczuły.', false]],
+            why: 'Prośbę od żądania odróżnia reakcja na „nie”. Jeśli odmowa uruchamia karę lub wyrzut, było to żądanie. Odmowa to zaproszenie do szukania innej strategii.' },
+          { s: 'Przyjaciel mówi: „Szef znowu skrytykował mój projekt przy całym zespole”. Jak odpowiadasz?', o: [
+            ['„Musisz mu się postawić! Idź jutro i powiedz mu, co o tym myślisz.”', 'Przyjaciel kiwa głową, ale wygląda na bardziej spiętego. Rada przyszła, zanim poczuł się wysłuchany.', false],
+            ['„To brzmi upokarzająco. Potrzebowałeś, żeby docenił Twoją pracę?”', 'Przyjaciel oddycha głębiej: „Właśnie. Siedziałem nad tym tydzień”. Rozmowa się otwiera.', true],
+            ['„Mój szef jest jeszcze gorszy, posłuchaj…”', 'Rozmowa przeskakuje na Ciebie. Przyjaciel milknie.', false]],
+            why: 'Empatia w NVC to zgadywanie uczuć i potrzeb rozmówcy, zanim przejdziemy do rad. Rady nie są złe — po prostu działają lepiej, gdy ktoś czuje się wysłuchany.' },
+          { s: 'Ktoś mówi do Ciebie: „Jesteś {beznadziejna|beznadziejny|beznadziejne}, znowu wszystko {zawaliłaś|zawaliłeś|zawaliłoś}!”. Słyszysz to „uszami żyrafy”. Co sobie myślisz?', o: [
+            ['„Ma rację, jestem {beznadziejna|beznadziejny|beznadziejne}.”', 'To słuchanie uszami szakala skierowanymi do środka: bierzesz ocenę jako prawdę o sobie.', false],
+            ['„Jak śmie tak do mnie mówić!”', 'Uszy szakala skierowane na zewnątrz: odpowiadasz oceną na ocenę. Kłótnia gotowa.', false],
+            ['„Ta osoba jest pewnie bardzo zdenerwowana i potrzebuje, żeby sprawa została dopilnowana.”', 'Nie zgadzasz się z oceną, ale słyszysz za nią uczucie i potrzebę. Łatwiej zapytać: „Co jest teraz najpilniejsze?”.', true]],
+            why: 'Za każdą oceną kryje się czyjeś uczucie i niezaspokojona potrzeba. Usłyszenie ich nie oznacza zgody na ocenę — ani na złe traktowanie. Granice też można stawiać językiem żyrafy.' }
+        ] }
+    ]
+  };
+
+  // Dom Żyrafy: wąski domek na wschodnim końcu Bulwaru, obok Gabinetu Wywiadu
+  extendZone('bulwar', B => {
+    clearArea(B, 34, 2, 4, 10, null);
+    B.building({ id: 'zyrafa', subject: 'e3_zyrafa', style: 'cottage', x: 34, y: 3, w: 4, h: 4, wall: '#f2cf6a', roof: '#8a5a2a', trim: '#fff6dc', sign: 'ŻYRAFA', nWin: 4 });
+    B.rect(35, 7, 2, 5, 'cobble');
+  });
+
+  // Księga Rozmów: rozmowy w stylach z całego miasta (moduł PROFIL) — porównanie wszystkich odpowiedzi
+  const STYLE_INFO = {
+    nvc: ['🦒', 'Żyrafa', 'zgadujesz uczucie i potrzebę — rozmowa się otwiera'],
+    ocena: ['⚖️', 'Ocena', 'oceniasz osobę albo sytuację — rozmowa często się zamyka'],
+    rada: ['🛠️', 'Rada', 'naprawiasz problem — bywa trafna, ale za wcześnie'],
+    unik: ['🙈', 'Zmiana tematu', 'odchodzisz od trudnego tematu — ulga dziś, ciężar później']
+  };
+  Game.prototype.e3KsiegaRozmow = function () {
+    const T = (window.PROFIL && window.PROFIL.TALKS) || [];
+    const p = this.profData ? this.profData() : null, done = (p && p.talks) || {};
+    if (!T.length) return this.say('Księga Rozmów', 'Księga jest jeszcze pusta.', '📖');
+    const g = s => (this.prG ? this.prG(String(s).replace('zapytałeś/aś', '{zapytałaś|zapytałeś|zapytałoś}')) : s);
+    const cards = T.map(t => {
+      const d = NPCS[t.npc] || { name: t.npc }, mine = done[t.id] && done[t.id].st;
+      const rows = ['nvc', 'ocena', 'rada', 'unik'].map(st => {
+        const r = t.r[st]; if (!r) return '';
+        const I = STYLE_INFO[st];
+        return `<div class="e3-talk ${st === 'nvc' ? 'nvc' : ''} ${mine === st ? 'mine' : ''}"><b>${I[0]} ${I[1]}${mine === st ? ' · Twoja odpowiedź' : ''}</b><div>„${esc(g(r[0]))}”</div><div class="small muted">→ ${esc(g(r[1]))}</div></div>`;
+      }).join('');
+      return `<details class="card mt" ${mine ? '' : ''}><summary><b>${esc(d.name)}:</b> „${esc(g(t.text))}” ${mine ? '<span class="tag">✓ rozmowa w mieście</span>' : '<span class="tag">jeszcze przed Tobą</span>'}</summary>${rows}</details>`;
+    }).join('');
+    const tally = Object.values(done).reduce((a, x) => { if (x && x.st) a[x.st] = (a[x.st] || 0) + 1; return a; }, {});
+    const tl = Object.keys(STYLE_INFO).map(k => `<span class="tag">${STYLE_INFO[k][0]} ${STYLE_INFO[k][1]}: ${tally[k] || 0}</span>`).join('');
+    this.openModal(this.panel('📖 Księga Rozmów miasta',
+      `<p>Tu trafiają rozmowy, które mieszkańcy prowadzą z Tobą w mieście. Każdą można zobaczyć na cztery sposoby — tak, jak mogła się potoczyć. Żadna odpowiedź nie jest „zakazana”: to mapa skutków, nie ocena.</p>
+       <div class="row mt" style="flex-wrap:wrap">${tl}</div>${cards}
+       <p class="small muted mt">${Object.keys(STYLE_INFO).map(k => `${STYLE_INFO[k][0]} ${STYLE_INFO[k][1]} — ${STYLE_INFO[k][2]}.`).join(' ')}</p>`,
+      '<button class="btn" data-close>Zamknij</button>', 'wide'));
+    if (this.e3Once('ksiega')) this.addXP(5);
+  };
+
+  /* =================================================================
+     3) DOM MUZYKI — poznawcza nauka muzyki (Plaża Id) + pianino na Bulwarze
+     Notion: „dom muzyczny, żeby się uczyć muzyki poznawczo; pianino na
+     Bulwarze Empatii będzie z tamtego miejsca (dom jest jego fundatorem)”.
+     Eksperymenty słuchowe: stukanie do rytmu, brakująca podstawa, współbrzmienia.
+     ================================================================= */
+  MG_KIND.e3rytm = { name: 'Eksperyment: stukanie do rytmu', icon: '🥁', pass: 0.5 };
+  MG_KIND.e3podstawa = { name: 'Eksperyment: brakująca podstawa', icon: '🎚️', pass: 0.01 };
+  MG_KIND.e3interwal = { name: 'Eksperyment: współbrzmienia', icon: '🎶', pass: 0.6 };
+  const hz = midi => 440 * Math.pow(2, (midi - 69) / 12);
+  // dźwięk złożony z wybranych harmonicznych (bez podstawy)
+  function complexTone(f0, harmonics, at, dur, vol) {
+    harmonics.forEach(h => audio.tone(f0 * h, dur, { type: 'sine', vol: vol / Math.sqrt(harmonics.length), at }));
+  }
+
+  MINIGAMES.e3rytm = function (ctx) {
+    audio.init(); E3.musicTo(0);
+    const BPM = 100, IOI = 60 / BPM, LEAD = 4, TAPS = 12, WIN = 0.12;
+    let phase = 'idle', t0 = 0, taps = [], ended = false;
+    const tmos = [];
+    const m = this.mgPanel(ctx, `<div class="mg-top"><span class="tag">🥁 ${BPM} uderzeń na minutę</span><span class="grow"></span><span class="small muted">🔊 Włącz dźwięk · muzyka gry jest na chwilę wyciszona</span></div>
+      <p class="small">Najpierw posłuchaj czterech wyższych stuknięć. Potem stukaj razem z kolejnymi dwunastoma — ${E3.touch() ? 'przyciskiem' : 'Spacją albo przyciskiem'}. Staraj się trafiać dokładnie w dźwięk.</p>
+      <div class="e3-beat" id="e3-beat">🥁</div>
+      <div class="mg-tf"><button class="btn btn-green" id="e3-start">▶ Start${E3.touch() ? '' : ' [Enter]'}</button><button class="btn btn-purple e3-tapbtn" id="e3-tap" disabled>👆 STUK${E3.touch() ? '' : ' [spacja]'}</button></div>
+      <div id="mg-fb" class="small center mt"></div>`);
+    const beat = m.querySelector('#e3-beat'), bStart = m.querySelector('#e3-start'), bTap = m.querySelector('#e3-tap'), fb = m.querySelector('#mg-fb');
+    const lat = () => (audio.ctx && (audio.ctx.outputLatency || audio.ctx.baseLatency)) || 0;
+    const start = () => {
+      if (phase !== 'idle' || ctx.dead || !audio.ctx) return;
+      phase = 'run'; taps = []; bStart.disabled = true; bTap.disabled = false; fb.textContent = 'Słuchaj…';
+      t0 = audio.ctx.currentTime + 0.5;
+      for (let k = 0; k < LEAD + TAPS; k++) {
+        const at = t0 + k * IOI - audio.ctx.currentTime;
+        audio.tone(k < LEAD ? 1318.5 : 987.8, 0.06, { type: 'square', vol: 0.07, at });
+        audio.tone(k < LEAD ? 659.3 : 493.9, 0.08, { type: 'sine', vol: 0.06, at });
+        tmos.push(setTimeout(() => {
+          if (ctx.dead) return;
+          beat.classList.remove('on'); void beat.offsetWidth; beat.classList.add('on');
+          if (k === LEAD - 1) fb.textContent = 'Teraz stukaj razem z rytmem!';
+        }, (at + lat()) * 1000));
+      }
+      tmos.push(setTimeout(end, (t0 + (LEAD + TAPS) * IOI - audio.ctx.currentTime + 0.6) * 1000));
+    };
+    const tap = () => {
+      if (phase !== 'run' || ctx.dead) return;
+      taps.push(audio.ctx.currentTime - lat());
+      bTap.classList.remove('hit'); void bTap.offsetWidth; bTap.classList.add('hit');
+      audio.tone(220, 0.03, { type: 'triangle', vol: 0.03 });
+    };
+    const end = () => {
+      if (ended || ctx.dead) return;
+      ended = true; phase = 'done'; bTap.disabled = true;
+      const asyn = [];
+      for (let k = LEAD; k < LEAD + TAPS; k++) {
+        const tb = t0 + k * IOI;
+        let best = null;
+        taps.forEach(t => { const d = t - tb; if (Math.abs(d) <= IOI / 2 && (best == null || Math.abs(d) < Math.abs(best))) best = d; });
+        if (best != null) asyn.push(best);
+      }
+      const hits = asyn.filter(d => Math.abs(d) <= WIN).length;
+      const mean = asyn.length ? asyn.reduce((a, b) => a + b, 0) / asyn.length : 0;
+      const sd = asyn.length > 1 ? Math.sqrt(asyn.reduce((a, b) => a + (b - mean) * (b - mean), 0) / (asyn.length - 1)) : 0;
+      const ms = v => Math.round(v * 1000);
+      const dir = mean < -0.005 ? `przed dźwiękiem (średnio ${Math.abs(ms(mean))} ms)` : mean > 0.005 ? `po dźwięku (średnio ${ms(mean)} ms)` : 'prawie idealnie w dźwięk';
+      ctx.finish(hits / TAPS, `<p class="center">Trafienia (±${ms(WIN)} ms): <b>${hits}/${TAPS}</b>${asyn.length ? ` · stukasz ${dir} · rozrzut ±${ms(sd)} ms` : ''}</p>
+        <p class="small">Większość ludzi stuka <b>odrobinę przed</b> dźwiękiem — zwykle kilkadziesiąt milisekund. To tzw. ujemna średnia asynchronia: mózg nie czeka na dźwięk, tylko <b>przewiduje</b> następne uderzenie. U muzyków jest zwykle mniejsza, a rytm równiejszy (Repp, 2005).</p>
+        <p class="small muted">Na telefonie i w słuchawkach Bluetooth dźwięk dociera z opóźnieniem, więc wynik może być przesunięty. To zabawa, nie pomiar.</p>`);
+    };
+    bStart.addEventListener('click', start);
+    bTap.addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
+    ctx.key = e => {
+      if (e.repeat) return;
+      if (e.code === 'Space') { e.preventDefault(); if (phase === 'idle') start(); else tap(); }
+      if (e.code === 'Enter' && phase === 'idle') start();
+    };
+    ctx.cleanups.push(() => { tmos.forEach(clearTimeout); E3.musicBack(); });
+    this.mgKeys(ctx);
+  };
+
+  MINIGAMES.e3podstawa = function (ctx) {
+    audio.init(); E3.musicTo(0);
+    // pary dźwięków złożonych: podstawa idzie w jedną stronę, widmo (barwa) w drugą (Schneider i in., 2005)
+    const PAIRS = shuffle(Math.random, [
+      { a: [200, [4, 5, 6]], b: [250, [2, 3, 4]], f0up: true },
+      { a: [250, [2, 3, 4]], b: [200, [4, 5, 6]], f0up: false },
+      { a: [180, [5, 6, 7]], b: [240, [2, 3, 4]], f0up: true },
+      { a: [240, [2, 3, 4]], b: [180, [5, 6, 7]], f0up: false },
+      { a: [160, [4, 5, 6]], b: [200, [2, 3, 4]], f0up: true },
+      { a: [200, [2, 3, 4]], b: [160, [4, 5, 6]], f0up: false }
+    ]);
+    let i = -1, f0votes = 0, phase = 'demo';
+    const tmos = [];
+    const m = this.mgPanel(ctx, `<div class="mg-top"><span class="tag" id="e3-n">Pokaz</span><span class="grow"></span><span class="small muted">🔊 Najlepiej w słuchawkach</span></div>
+      <div id="e3-box"></div><div id="mg-fb" class="small center mt"></div>`);
+    const box = m.querySelector('#e3-box');
+    const demo = () => {
+      box.innerHTML = `<p>Za chwilę usłyszysz dwa dźwięki. Pierwszy składa się z samych wyższych tonów (600, 800 i 1000 Hz) — <b>bez</b> tonu 200 Hz. Drugi to czysty ton 200 Hz.</p>
+        <div class="mg-tf"><button class="btn" id="e3-demo">▶ Posłuchaj pokazu</button><button class="btn btn-green" id="e3-go">Dalej: próby ▶</button></div>
+        <p class="small muted mt">Czy brzmią na podobną wysokość? Dla większości ludzi tak — mózg „dopowiada” brakującą podstawę.</p>`;
+      box.querySelector('#e3-demo').addEventListener('click', () => { complexTone(200, [3, 4, 5], 0.05, 0.9, 0.16); audio.tone(200, 0.9, { type: 'sine', vol: 0.18, at: 1.25 }); });
+      box.querySelector('#e3-go').addEventListener('click', next);
+    };
+    const play = () => {
+      const P = PAIRS[i];
+      complexTone(P.a[0], P.a[1], 0.05, 0.7, 0.16);
+      complexTone(P.b[0], P.b[1], 1.0, 0.7, 0.16);
+      phase = 'answer';
+    };
+    const next = () => {
+      i++;
+      if (i >= PAIRS.length) return end();
+      m.querySelector('#e3-n').textContent = `Próba ${i + 1}/${PAIRS.length}`;
+      box.innerHTML = `<p>Czy <b>drugi</b> dźwięk jest wyższy, czy niższy od pierwszego? Nie ma złych odpowiedzi — każdy mózg słyszy to trochę inaczej.</p>
+        <div class="mg-tf"><button class="btn" id="e3-play">▶ Odtwórz [spacja]</button></div>
+        <div class="mg-tf mt"><button class="btn btn-green" id="e3-up">⬆ Wyższy [↑]</button><button class="btn btn-purple" id="e3-down">⬇ Niższy [↓]</button></div>`;
+      box.querySelector('#e3-play').addEventListener('click', play);
+      box.querySelector('#e3-up').addEventListener('click', () => answer(true));
+      box.querySelector('#e3-down').addEventListener('click', () => answer(false));
+      tmos.push(setTimeout(() => { if (!ctx.dead) play(); }, 300));
+    };
+    const answer = up => {
+      if (phase !== 'answer' || ctx.dead) return;
+      phase = 'wait';
+      if (up === PAIRS[i].f0up) f0votes++;
+      audio.blip();
+      tmos.push(setTimeout(next, 250));
+    };
+    const end = () => {
+      const n = PAIRS.length, k = f0votes;
+      const kind = k >= 4 ? 'słuchasz raczej <b>podstawy</b> (tonu, którego fizycznie nie było)' : k <= 2 ? 'słuchasz raczej <b>widma</b> — barwy i wysokich składowych' : 'słuchasz <b>mieszanie</b> — raz podstawy, raz widma';
+      ctx.finish(1, `<p class="center">Odpowiedzi zgodne z podstawą: <b>${k}/${n}</b> — ${kind}.</p>
+        <p class="small">To zjawisko <b>brakującej podstawy</b>: z układu wyższych tonów mózg wylicza ton podstawowy, którego w dźwięku nie ma. Dzięki temu w małym głośniku telefonu słyszysz „bas”, którego głośnik fizycznie nie potrafi zagrać. Ludzie różnią się tym, czy słyszą raczej podstawę, czy widmo; wiąże się to m.in. z doświadczeniem muzycznym i budową kory słuchowej (Schneider i in., 2005).</p>`);
+    };
+    ctx.key = e => {
+      if (e.code === 'Space') { e.preventDefault(); if (i >= 0 && i < PAIRS.length) play(); }
+      if (e.code === 'ArrowUp') answer(true);
+      if (e.code === 'ArrowDown') answer(false);
+    };
+    ctx.cleanups.push(() => { tmos.forEach(clearTimeout); E3.musicBack(); });
+    this.mgKeys(ctx);
+    demo();
+  };
+
+  MINIGAMES.e3interwal = function (ctx) {
+    audio.init(); E3.musicTo(0);
+    const IV = shuffle(Math.random, [
+      ['oktawa', 12, 0], ['kwinta', 7, 0], ['kwarta', 5, 0], ['tercja wielka', 4, 0],
+      ['sekunda mała', 1, 1], ['septyma wielka', 11, 1], ['tryton', 6, 1], ['sekunda wielka', 2, 1]
+    ]);
+    let i = 0, ok = 0, phase = 'idle';
+    const tmos = [];
+    const m = this.mgPanel(ctx, `<div class="mg-top"><span class="tag" id="e3-n">1/${IV.length}</span><span class="tag" id="e3-ok">✔ 0</span><span class="grow"></span><span class="small muted">🔊 Włącz dźwięk</span></div>
+      <p class="small">Dwa dźwięki zabrzmią naraz. Brzmią <b>gładko</b> (konsonans) czy <b>szorstko, „trąc się”</b> (dysonans)?</p>
+      <div class="mg-tf"><button class="btn" id="e3-play">▶ Posłuchaj [spacja]</button></div>
+      <div class="mg-tf mt"><button class="btn btn-green" id="e3-c" disabled>🙂 Gładko [1]</button><button class="btn btn-purple" id="e3-d" disabled>😬 Szorstko [2]</button></div>
+      <div id="mg-fb" class="small center mt"></div>`);
+    const fb = m.querySelector('#mg-fb'), bc = m.querySelector('#e3-c'), bd = m.querySelector('#e3-d');
+    const play = () => {
+      if (ctx.dead || i >= IV.length) return;
+      const root = 57 + Math.floor(Math.random() * 5), [, semi] = IV[i];
+      ['triangle', 'sawtooth'].forEach((type, k) => {
+        audio.tone(hz(root), 1.3, { type, vol: k ? 0.025 : 0.07, at: 0.05 });
+        audio.tone(hz(root + semi), 1.3, { type, vol: k ? 0.025 : 0.07, at: 0.05 });
+      });
+      phase = 'answer'; bc.disabled = bd.disabled = false;
+    };
+    const answer = v => {
+      if (phase !== 'answer' || ctx.dead) return;
+      phase = 'wait'; bc.disabled = bd.disabled = true;
+      const [name, , diss] = IV[i], good = v === diss;
+      if (good) { ok++; audio.blip(); } else audio.click();
+      m.querySelector('#e3-ok').textContent = '✔ ' + ok;
+      fb.innerHTML = `${good ? '✔' : '•'} To była <b>${name}</b> — w muzyce zachodniej uchodzi za ${diss ? 'dysonans' : 'konsonans'}.`;
+      i++;
+      if (i >= IV.length) { tmos.push(setTimeout(end, 900)); return; }
+      m.querySelector('#e3-n').textContent = `${i + 1}/${IV.length}`;
+      tmos.push(setTimeout(play, 1300));
+    };
+    const end = () => ctx.finish(ok / IV.length, `<p class="center">Zgodność z typową oceną: <b>${ok}/${IV.length}</b></p>
+      <p class="small">Szorstkość dysonansu bierze się m.in. z „dudnienia” bliskich sobie składowych dźwięku (Plomp i Levelt, 1965). Ale to, co brzmi przyjemnie, zależy też od kultury: Tsimane’ z amazońskiej Boliwii, mało znający muzykę zachodnią, oceniali dysonanse jako równie przyjemne jak konsonanse (McDermott i in., 2016).</p>`);
+    m.querySelector('#e3-play').addEventListener('click', play);
+    bc.addEventListener('click', () => answer(0)); bd.addEventListener('click', () => answer(1));
+    ctx.key = e => {
+      if (e.code === 'Space') { e.preventDefault(); if (phase !== 'wait') play(); }
+      if (e.code === 'Digit1' || e.code === 'Numpad1') answer(0);
+      if (e.code === 'Digit2' || e.code === 'Numpad2') answer(1);
+    };
+    ctx.cleanups.push(() => { tmos.forEach(clearTimeout); E3.musicBack(); });
+    this.mgKeys(ctx);
+  };
+
+  SUBJECTS.e3_muzyka = {
+    name: 'Dom Muzyki', subject: 'Muzyka i umysł', icon: '🎼', color: '#8a3a5a', zone: 'plaza', laik: true,
+    src: 'Repp (2005) — synchronizacja z rytmem; Schneider i in. (2005) — słuchacze podstawy i widma; Plomp i Levelt (1965), McDermott i in. (2016) — dysonans; Salimpoor i in. (2011) — dopamina i dreszcze; Sala i Gobet (2017) — nauka muzyki a inne umiejętności; Liikkanen (2012) — „robaczki uszne”.',
+    intro: 'To Dom Muzyki ufundował pianino na Bulwarze Empatii — „żeby miasto miało na czym ćwiczyć ucho”. Tu sprawdzisz, jak mózg słyszy rytm, wysokość dźwięku i współbrzmienia. Włącz dźwięk!',
+    rooms: [
+      { id: 'rytm', name: 'Sala Rytmu', icon: '🥁', kind: 'e3rytm', light: '#ffb060',
+        intro: 'Stukaj razem z metronomem. Zmierzymy, czy wyprzedzasz dźwięk, spóźniasz się, czy trafiasz idealnie — i jak równo stukasz.',
+        outro: 'Rytm to przewidywanie. Nawet noworodki reagują, gdy w regularnym rytmie zabraknie uderzenia (Winkler i in., 2009).' },
+      { id: 'podstawa', name: 'Sala Brakującego Tonu', icon: '🎚️', kind: 'e3podstawa', light: '#8ad0ff',
+        intro: 'Usłyszysz pary dźwięków ułożonych tak, że ich podstawa idzie w jedną stronę, a barwa w drugą. Którą drogą pójdzie Twój mózg?' },
+      { id: 'interwal', name: 'Sala Współbrzmień', icon: '🎶', kind: 'e3interwal', light: '#c79aff',
+        intro: 'Osiem par dźwięków granych naraz. Oceń, czy brzmią gładko, czy szorstko.' },
+      { id: 'mity', name: 'Pracownia Mitów o Muzyce', icon: '🧚', kind: 'mit', light: '#ff9ab8',
+        intro: 'Muzyka i mózg to temat pełen obietnic. Co z tego jest prawdą?',
+        items: [
+          ['Nauka gry na instrumencie wyraźnie podnosi ogólną inteligencję i oceny w szkole.', false, 'Dzieci uczące się muzyki często mają lepsze wyniki — ale w dużej mierze dlatego, że naukę zaczynają dzieci z bardziej sprzyjających warunków. W badaniach z losowym przydziałem efekt jest mały albo żaden (Sala i Gobet, 2017). Muzykę warto uprawiać dla niej samej.', 'Z korelacji „muzycy mają wyższe wyniki” łatwo zrobić przyczynę.'],
+          ['Dreszcze przy ulubionej muzyce wiążą się z wydzielaniem dopaminy w mózgu.', true, 'Salimpoor i in. (2011) pokazali, że dopamina wydziela się już w oczekiwaniu na ulubiony fragment, a potem w chwili szczytu. Ten sam układ nagrody reaguje na jedzenie czy pieniądze.'],
+          ['Słuch absolutny ma mniej więcej co druga osoba.', false, 'To rzadka umiejętność — w krajach zachodnich szacuje się ją na około 1 osobę na 10 tysięcy. Częściej występuje u osób, które bardzo wcześnie zaczęły naukę muzyki i mówią językami tonalnymi (Deutsch i in., 2006).'],
+          ['Melodia, która sama „chodzi po głowie”, to bardzo częste zjawisko.', true, 'Tzw. robaczka usznego (earworm) większość ludzi doświadcza co tydzień (Liikkanen, 2012). Zwykle to fragment refrenu i znika sam — pomaga czasem dokończenie piosenki albo zajęcie się czymś angażującym.'],
+          ['Smutna muzyka zawsze pogarsza nastrój.', false, 'Wiele osób lubi smutną muzykę i czuje się przy niej zrozumianych, wzruszonych albo pocieszonych. Smutek w sztuce przeżywamy inaczej niż smutek w życiu.'],
+          ['Ludzie na całym świecie odbierają współbrzmienia tak samo.', false, 'Tsimane’ z Boliwii, mało znający muzykę zachodnią, oceniali dysonanse równie przyjemnie jak konsonanse (McDermott i in., 2016). Upodobania muzyczne kształtuje też kultura.'],
+          ['Długa nauka gry na instrumencie wiąże się ze zmianami w mózgu, np. w obszarach słuchowych i ruchowych.', true, 'Mózgi zawodowych muzyków różnią się od mózgów osób niegrających (Gaser i Schlaug, 2003). To przykład neuroplastyczności — choć część różnic może też wynikać z tego, kto w ogóle zostaje muzykiem.'],
+          ['Do odczuwania rytmu potrzebna jest nauka muzyki.', false, 'Już noworodki reagują, gdy w regularnym rytmie zabraknie uderzenia (Winkler i in., 2009). Poczucie rytmu ma mocne podstawy biologiczne — a ćwiczenie je szlifuje.']
+        ] },
+      { id: 'pojecia', name: 'Pokój Pojęć', icon: '🎹', kind: 'pairs', light: '#9ae07a',
+        intro: 'Połącz pojęcie z jego opisem.',
+        pairs: [['Słuch absolutny', 'rozpoznaje dźwięk bez dźwięku odniesienia'], ['Amuzja', 'kłopot z melodiami mimo dobrego słuchu'], ['Robaczek uszny', 'melodia, która sama wraca w głowie'], ['Konsonans', 'współbrzmienie odbierane jako zgodne'], ['Tempo', 'szybkość pulsu w uderzeniach na minutę'], ['Iluzja Sheparda', 'dźwięk, który zdaje się rosnąć bez końca'], ['Synkopa', 'akcent przesunięty poza mocną część taktu']],
+        outro: 'Muzyka to laboratorium przewidywania: mózg ciągle zgaduje, co zabrzmi dalej, i nagradza nas, gdy zgadnie — albo gdy przyjemnie się pomyli.' }
+    ]
+  };
+
+  // Dom Muzyki na Plaży Id (przyjemność muzyki to też „zasada przyjemności”); obok rzeźba Schody Sheparda
+  extendZone('plaza', B => {
+    clearArea(B, 26, 2, 11, 7, null);
+    B.building({ id: 'muzyka', subject: 'e3_muzyka', style: 'classic', x: 27, y: 3, w: 9, h: 4, wall: '#f0dcc8', roof: '#8a3a5a', trim: '#fff8ec', sign: 'DOM MUZYKI' });
+    B.rect(30, 7, 3, 2, 'planks');
+    B.obj('e3_shepard', 37, 6, { interact: 'e3_shepard' });
+    B.npc('fuga', 34, 8);
+  });
+  NPCS.fuga = { name: 'Kapelmistrzyni Fuga', kind: 'human', wander: 1,
+    look: { skin: SKIN_TONES[2], hair: 'kok', hairC: '#5b3519', top: '#8a3a5a', bottom: '#2a2a3a', acc: 'glasses' },
+    lines: [
+      'To my ufundowaliśmy pianino na Bulwarze Empatii. Muzyka zaczyna się od słuchania — a tam wszyscy umieją słuchać.',
+      'Mózg nie czeka na muzykę, tylko ją przewiduje. Dlatego zaskoczenie w dobrym momencie przechodzi po plecach dreszczem.',
+      'Ta rzeźba obok to Schody Sheparda. Wejdź na nie uchem: idą w górę bez końca, a i tak wracają na początek.',
+      'Pierwszy raz słyszysz piosenkę — jest obca. Dziesiąty raz — zaczyna się podobać. To efekt czystej ekspozycji, w muzyce działa wyjątkowo mocno.',
+      'Robaczek uszny? Najlepiej… dośpiewać piosenkę do końca. Mózg nie lubi niedokończonych spraw.'
+    ] };
+
+  // Schody Sheparda: skala, która zdaje się rosnąć bez końca (Shepard, 1964)
+  Game.prototype.e3Shepard = function () {
+    audio.init();
+    if (!audio.ctx) return;
+    E3.musicTo(0);
+    const STEP = 0.32, STEPS = 24, base = 32.7;
+    for (let s = 0; s < STEPS; s++) for (let o = 0; o < 8; o++) {
+      const f = base * Math.pow(2, o + (s % 12) / 12), x = Math.log2(f / 520);
+      const amp = 0.07 * Math.exp(-(x * x) / 1.1);
+      if (amp > 0.004) audio.tone(f, STEP * 1.05, { type: 'sine', vol: amp, at: 0.05 + s * STEP });
+    }
+    clearTimeout(this._e3shep);
+    this._e3shep = setTimeout(E3.musicBack, (STEPS * STEP + 0.6) * 1000);
+    this.say('Schody Sheparda', ['♪ Dźwięk wspina się w górę… i w górę… i w górę. Po dwunastu krokach jest dokładnie tam, gdzie zaczął.',
+      'To iluzja Rogera Sheparda (1964). Każdy dźwięk składa się z tych samych tonów w wielu oktawach naraz, a najgłośniejsze są te środkowe. Mózg śledzi kierunek kroków — „w górę!” — i nie zauważa, że całość się zapętla. Podobny trik wykorzystują filmy, żeby budować napięcie, które rośnie bez końca.'], '🌀');
+    if (this.e3Once('shepard')) this.addXP(3);
+  };
+  E1.objSprites.e3_shepard = () => cached('e3_shep', () => makeSprite(16, 30, g => {
+    R(g, 3, 26, 10, 3, '#8a8494'); R(g, 4, 25, 8, 1, '#a8a2b4');
+    for (let k = 0; k < 7; k++) { const y = 23 - k * 3, x = 2 + ((k * 3) % 9); R(g, x, y, 6, 2, k % 2 ? '#c8a040' : '#e8c860'); R(g, x, y + 2, 6, 1, '#8a6a20'); }
+    R(g, 7, 2, 2, 23, '#6a5a3a'); disc(g, 8, 2, 2, '#f2d060'); P(g, 7, 1, '#fff6c0');
+  }, { shadow: [8, 29, 6, 1.5] }));
+
+  /* ---------- pianino na Bulwarze Empatii: dar Domu Muzyki ---------- */
+  const PIANO_KEYS = [
+    ['C4', 60, 'KeyA', 0], ['C♯', 61, 'KeyW', 1], ['D', 62, 'KeyS', 0], ['D♯', 63, 'KeyE', 1], ['E', 64, 'KeyD', 0], ['F', 65, 'KeyF', 0],
+    ['F♯', 66, 'KeyT', 1], ['G', 67, 'KeyG', 0], ['G♯', 68, 'KeyY', 1], ['A', 69, 'KeyH', 0], ['A♯', 70, 'KeyU', 1], ['H', 71, 'KeyJ', 0], ['C5', 72, 'KeyK', 0]
+  ];
+  const pianoNote = (midi, at = 0, dur = 0.9) => {
+    audio.tone(hz(midi), dur, { type: 'triangle', vol: 0.085, at });
+    audio.tone(hz(midi) * 2, dur * 0.6, { type: 'sine', vol: 0.02, at });
+  };
+  Game.prototype.e3Pianino = function () {
+    audio.init(); E3.musicTo(0.15);
+    const whites = PIANO_KEYS.filter(k => !k[3]);
+    const keysHtml = PIANO_KEYS.map(([n, midi, code, black], i) => {
+      const wi = PIANO_KEYS.slice(0, i).filter(k => !k[3]).length;
+      const lab = E3.touch() ? '' : `<i>${code.replace('Key', '')}</i>`;
+      return black ? `<button class="e3-key black" data-m="${midi}" style="left:calc(${wi} * (100% / ${whites.length}) - 3.2%)">${lab}</button>`
+        : `<button class="e3-key white" data-m="${midi}" style="left:calc(${wi} * (100% / ${whites.length}))">${lab}<b>${n}</b></button>`;
+    }).join('');
+    const S = { mode: 'free', seq: [], pos: 0, len: 3, best: 0 };
+    const m = this.openModal(this.panel('🎹 Pianino uliczne',
+      `<p class="small">Na boku pianina mosiężna tabliczka: <b>„Dar Domu Muzyki z Plaży Id. Grajcie śmiało — ucho też się ćwiczy”.</b></p>
+       <div class="e3-piano">${keysHtml}</div>
+       <div class="row mt" style="flex-wrap:wrap"><button class="btn btn-sm" id="e3-p-oda">🎵 Melodia: „Oda do radości”</button><button class="btn btn-sm btn-purple" id="e3-p-sim">🧠 Zagraj z pamięci</button><span class="grow"></span><span class="small muted" id="e3-p-st">${E3.touch() ? 'Dotykaj klawiszy.' : 'Klawisze A–K (białe) i W E T Y U (czarne).'}</span></div>
+       <div id="e3-p-fb" class="small mt"></div>`,
+      '<span class="small muted">Pan Obserwator notuje: „reakcja społeczna: pozytywna, kaczki: obojętne”.</span><span class="grow"></span><button class="btn" data-close>Zamknij</button>', 'wide'),
+      { onClose: () => { window.removeEventListener('keydown', kd); E3.musicBack(); } });
+    const st = m.querySelector('#e3-p-st'), fb = m.querySelector('#e3-p-fb'), root = m.querySelector('.e3-piano');
+    const flash = midi => { const el = m.querySelector(`[data-m="${midi}"]`); if (el) { el.classList.remove('on'); void el.offsetWidth; el.classList.add('on'); } };
+    const press = midi => {
+      pianoNote(midi); flash(midi);
+      if (S.mode !== 'sim-in') return;
+      if (midi === S.seq[S.pos]) {
+        S.pos++;
+        if (S.pos >= S.seq.length) {
+          S.best = Math.max(S.best, S.seq.length);
+          S.mode = 'sim-wait'; fb.innerHTML = `✔ Brawo! Melodia z ${S.seq.length} dźwięków. Teraz o jeden dłuższa…`;
+          if (S.seq.length >= 5 && this.e3Today('pianino_pamiec')) { this.addXP(5); fb.innerHTML += ' <b>+5 XP</b>'; }
+          setTimeout(() => simRound(S.seq.length + 1), 1100);
+        }
+      } else {
+        S.mode = 'free'; audio.error();
+        fb.innerHTML = `Koniec gry: najdłuższa powtórzona melodia — <b>${S.best} dźwięków</b>. Pamięć robocza na dźwięki zwykle mieści kilka elementów; muzycy „grupują” je w motywy i interwały, tak jak my grupujemy cyfry w numerze telefonu.`;
+        st.textContent = E3.touch() ? 'Dotykaj klawiszy.' : 'Klawisze A–K (białe) i W E T Y U (czarne).';
+      }
+    };
+    const simRound = len => {
+      if (!root.isConnected) return;
+      const pool = [60, 62, 64, 65, 67, 69, 71, 72];
+      S.seq = Array.from({ length: Math.min(len, 10) }, () => pool[Math.floor(Math.random() * pool.length)]);
+      S.pos = 0; S.mode = 'sim-play'; st.textContent = 'Słuchaj…';
+      S.seq.forEach((midi, k) => { pianoNote(midi, 0.2 + k * 0.45, 0.4); setTimeout(() => flash(midi), (0.2 + k * 0.45) * 1000); });
+      setTimeout(() => { if (S.mode === 'sim-play') { S.mode = 'sim-in'; st.textContent = `Twoja kolej: ${S.seq.length} dźwięków`; } }, (0.2 + S.seq.length * 0.45) * 1000);
+    };
+    m.querySelectorAll('.e3-key').forEach(b => b.addEventListener('pointerdown', e => { e.preventDefault(); press(+b.dataset.m); }));
+    m.querySelector('#e3-p-oda').addEventListener('click', () => {
+      S.mode = 'free';
+      [64, 64, 65, 67, 67, 65, 64, 62, 60, 60, 62, 64, 64, 62, 62].forEach((midi, k) => { const at = 0.1 + k * 0.32 + (k === 13 ? 0.16 : 0) + (k === 14 ? 0.24 : 0); pianoNote(midi, at, 0.35); setTimeout(() => flash(midi), at * 1000); });
+      fb.textContent = 'Ludwig van Beethoven, IX Symfonia (1824). Melodia porusza się prawie wyłącznie krokami sąsiednich dźwięków — dlatego tak łatwo ją zapamiętać i zaśpiewać.';
+    });
+    m.querySelector('#e3-p-sim').addEventListener('click', () => { S.best = 0; fb.textContent = ''; simRound(3); });
+    const kd = e => {
+      if (!root.isConnected) { window.removeEventListener('keydown', kd); E3.musicBack(); return; }
+      if (!this.modalOpen || e.repeat) return;
+      const k = PIANO_KEYS.find(x => x[2] === e.code);
+      if (k) { e.preventDefault(); press(k[1]); }
+    };
+    window.addEventListener('keydown', kd);
+    if (this.e3Today('pianino')) { this.addEnergy(2); }
+  };
+
+  /* =================================================================
+     4) OGRÓD UWAŻNOŚCI — zachodnia łąka Wzgórza Hipotez
+     Notion: „Zrób miejsce na mindfulness i medytacje”.
+     Pawilon Uważności (wiedza, mity, scenki) + cztery ćwiczenia w ogrodzie:
+     Kamień Oddechu, Mata Skanowania Ciała, Staw Myśli, Dzwon Uważności.
+     ================================================================= */
+  const gg = (game, s) => (game && game.prG ? game.prG(s) : String(s).replace(/\{([^{}]*)\}/g, (_, a) => a.split('|')[0]));
+  E3.g = gg;
+
+  SUBJECTS.e3_uwaznosc = {
+    name: 'Pawilon Uważności', subject: 'Uważność i medytacja', icon: '🪷', color: '#5a9a6a', zone: 'wzgorze', laik: true,
+    src: 'Kabat-Zinn (1990, 1994); Bishop i in. (2004); Wegner i in. (1987); Killingsworth i Gilbert (2010); Goyal i in. (2014); Kuyken i in. (2016); Farias i in. (2020); Kral i in. (2022); badanie MYRIAD (Kuyken i in., 2022); Robinson i in. (2013).',
+    intro: 'Uważność (ang. mindfulness) to celowe kierowanie uwagi na to, co dzieje się teraz — z ciekawością i bez oceniania. To umiejętność, a nie stan „pustej głowy”: umysł ucieka, a ćwiczenie polega na zauważeniu tego i łagodnym powrocie. W ogrodzie wokół pawilonu możesz poćwiczyć, a tu sprawdzisz, co o medytacji mówią badania.',
+    rooms: [
+      { id: 'autopilot', name: 'Pokój Autopilota', icon: '🧭', kind: 'quiz', light: '#9ae07a',
+        intro: 'Ile dnia spędzamy „gdzie indziej”? I czym właściwie jest uważność?',
+        items: [
+          { q: 'Jak brzmi klasyczna definicja uważności Jona Kabata-Zinna?', a: ['Zwracanie uwagi w szczególny sposób: celowo, w chwili obecnej i bez oceniania', 'Oczyszczenie umysłu ze wszystkich myśli', 'Głęboki relaks, w którym nic się nie czuje', 'Skupianie się wyłącznie na pozytywnych myślach'],
+            why: 'Uważność nie polega na wyłączaniu myśli ani na myśleniu pozytywnym. Chodzi o zauważanie — także myśli i trudnych uczuć — zamiast działania na autopilocie.' },
+          { q: 'Jak często według badania Killingswortha i Gilberta (2010) umysł błądzi poza tym, co właśnie robimy?', a: ['W prawie połowie chwil (ok. 47%)', 'W około 5% chwil', 'Prawie nigdy — poniżej 1%', 'Zawsze — w 100% chwil'],
+            why: 'Ponad dwa tysiące osób odpowiadało w ciągu dnia na pytania w aplikacji na telefon. Umysł wędrował w niemal połowie pomiarów, a w tych chwilach ludzie byli średnio mniej zadowoleni. To jednak korelacja, nie dowód przyczyny.' },
+          { q: 'Na czym polega ćwiczenie z rodzynką z pierwszych zajęć programu MBSR?', a: ['Je się jedną rodzynkę bardzo powoli, wszystkimi zmysłami, jakby pierwszy raz', 'Liczy się rodzynki w paczce, żeby ćwiczyć skupienie', 'Wyobraża się rodzynkę, ale jej nie je', 'Rodzynka jest nagrodą za udaną medytację'],
+            why: 'Rodzynka pokazuje, ile umyka nam przy jedzeniu „w biegu”. To pierwsze zetknięcie z przejściem z autopilota w zwykłe, uważne doświadczanie.' },
+          { q: 'Ile tygodni trwa klasyczny program MBSR (redukcja stresu oparta na uważności)?', a: ['8 tygodni', 'Jeden weekend', 'Dwa lata', 'Trzy dni'],
+            why: 'Jon Kabat-Zinn stworzył program w 1979 r. na Uniwersytecie Massachusetts, na początku dla osób z przewlekłym bólem i chorobami. Są cotygodniowe zajęcia, dzień ciszy i codzienna praktyka w domu.' },
+          { q: 'Co się działo w eksperymencie, w którym ludzie mieli NIE myśleć o białym niedźwiedziu (Wegner i in., 1987)?', a: ['Gdy potem wolno już było, myśleli o nim częściej niż osoby, które go nie tłumiły', 'Szybko zapominali o niedźwiedziu', 'Zasypiali z nudów', 'Zaczynali myśleć o czarnym niedźwiedziu'],
+            why: 'Tłumienie myśli często daje efekt odbicia. Dlatego w uważności zamiast walczyć z myślą, zauważa się ją i pozwala jej odpłynąć.' },
+          { q: 'Model Bishopa i in. (2004) opisuje uważność jako połączenie dwóch elementów. Jakich?', a: ['Kierowania uwagą na „tu i teraz” oraz postawy ciekawości, otwartości i akceptacji', 'Rozluźnienia mięśni i głębokiego snu', 'Pozytywnego myślenia i motywacji', 'Hipnozy i sugestii'],
+            why: 'Pierwszy element to „gdzie jest uwaga”, drugi — „jak patrzę”: z ciekawością zamiast z oceną.' }
+        ] },
+      { id: 'postawy', name: 'Sala Siedmiu Postaw', icon: '🌱', kind: 'pairs', light: '#ffd06a',
+        intro: 'Jon Kabat-Zinn opisał siedem postaw, które są „glebą” praktyki. Połącz postawę z jej opisem.',
+        pairs: [['Nieosądzanie', 'zauważam „to nudne”, „to miłe” i nie idę za tą oceną'], ['Cierpliwość', 'pozwalam rzeczom dziać się we własnym tempie'], ['Umysł początkującego', 'patrzę na znane rzeczy jak pierwszy raz'],
+          ['Zaufanie', 'opieram się też na własnym doświadczeniu, nie tylko na autorytetach'], ['Niedążenie', 'nie medytuję po to, żeby „zaliczyć” relaks'], ['Akceptacja', 'widzę rzeczy takimi, jakie są w tej chwili'], ['Odpuszczanie', 'nie trzymam się kurczowo myśli ani uczuć']],
+        outro: 'Postawy pochodzą z książki „Full Catastrophe Living” (1990). Akceptacja nie oznacza rezygnacji ani zgody na wszystko — to uczciwe zobaczenie, „jak jest”, zanim zdecyduję, co zrobić.' },
+      { id: 'programy', name: 'Sortownia Programów', icon: '🗂️', kind: 'sort', light: '#8ad0ff',
+        intro: 'Trzy podejścia, w których uważność odgrywa ważną rolę. Przypisz cechy do właściwego.',
+        bins: ['MBSR', 'MBCT', 'ACT'],
+        items: [['Stworzył go Jon Kabat-Zinn w 1979 r.', 0], ['Na początku dla osób z przewlekłym bólem i chorobami', 0], ['Redukcja stresu oparta na uważności', 0],
+          ['Łączy uważność z elementami terapii poznawczej', 1], ['Ma zapobiegać nawrotom depresji', 1], ['Autorzy: Segal, Williams i Teasdale', 1], ['Ćwiczenie „trzyminutowa przestrzeń oddechowa”', 1],
+          ['Steven Hayes — terapia akceptacji i zaangażowania', 2], ['Defuzja: „mam myśl, że…” zamiast „jestem…”', 2], ['Działanie zgodne z własnymi wartościami', 2]],
+        outro: 'MBCT ma dobre dowody u osób z nawracającą depresją: w metaanalizie Kuykena i in. (2016) zmniejszała ryzyko nawrotu w ciągu ok. 60 tygodni. W ACT uważność jest jednym z sześciu procesów — obok akceptacji, defuzji, wartości i działania.' },
+      { id: 'mity', name: 'Pracownia Mitów o Medytacji', icon: '🧚', kind: 'mit', light: '#ff9ab8',
+        intro: 'Medytację otacza mnóstwo obietnic. Co z tego jest prawdą, a co mitem?',
+        items: [
+          ['Dobra medytacja to taka, w której nie pojawia się żadna myśl.', false, 'Myśli pojawiają się zawsze — także u doświadczonych osób. Ćwiczeniem jest zauważenie, że uwaga odpłynęła, i powrót. Każdy powrót to jedno „powtórzenie”, jak na siłowni.'],
+          ['Programy uważności mogą zmniejszać objawy lęku i depresji.', true, 'Metaanaliza Goyala i in. (2014; 47 badań) wykazała umiarkowane dowody na niewielką poprawę w zakresie lęku, depresji i bólu. Nie znaleziono jednak przewagi nad innymi aktywnymi formami pomocy: lekami, ruchem czy psychoterapią.'],
+          ['Medytacja jest całkowicie bezpieczna dla każdego i nie ma skutków ubocznych.', false, 'W przeglądzie Fariasa i in. (2020) niepożądane doświadczenia — np. nasilony lęk czy obniżony nastrój — pojawiały się średnio u ok. 8% praktykujących. Zwykle są łagodne i mijają, ale w kryzysie lub po traumie lepiej ćwiczyć z doświadczonym nauczycielem.'],
+          ['Osiem tygodni MBSR na pewno widocznie zmienia budowę mózgu.', false, 'Wcześniejsze, małe badania sugerowały zmiany istoty szarej. Największe jak dotąd badanie z losowym przydziałem (Kral i in., 2022; 218 osób) ich nie potwierdziło. Efekty psychologiczne nie muszą wynikać ze zmian budowy mózgu.'],
+          ['MBCT może zmniejszać ryzyko nawrotu u osób z nawracającą depresją.', true, 'Metaanaliza danych 1258 pacjentów (Kuyken i in., 2016) pokazała mniejsze ryzyko nawrotu w ciągu ok. 60 tygodni w porównaniu z osobami, które MBCT nie dostały.'],
+          ['Lekcje uważności dla całej klasy niezawodnie poprawiają zdrowie psychiczne nastolatków.', false, 'Duże badanie MYRIAD (84 szkoły, ponad 8 tysięcy uczniów) nie wykazało przewagi takich lekcji nad zwykłymi zajęciami z kompetencji społeczno-emocjonalnych. Dobre intencje to za mało — programy trzeba sprawdzać.'],
+          ['Uważność to umiejętność, którą da się ćwiczyć, a nie wrodzony talent.', true, 'Ludzie różnią się tym, jak uważni są na co dzień, ale treningi zwykle podnoszą wyniki w kwestionariuszach uważności. Jak przy każdej umiejętności liczy się regularna praktyka.'],
+          ['Żeby praktykować uważność, trzeba przyjąć buddyzm.', false, 'Uważność ma korzenie w praktykach buddyjskich (w języku pali: sati), ale programy takie jak MBSR i MBCT są świeckie. Można je praktykować niezależnie od światopoglądu.']
+        ] },
+      { id: 'scenki', name: 'Pokój Codziennych Chwil', icon: '🍵', kind: 'scena', light: '#c79aff',
+        intro: 'Uważność przydaje się nie tylko na poduszce. Cztery zwykłe sytuacje — każdy wybór jest dozwolony, zobaczysz jego skutek.',
+        items: [
+          { s: 'Jutro egzamin. Siedzisz nad notatkami, serce wali, a w głowie brzmi: „Na pewno nie zdam”. Co robisz?', o: [
+            ['Mówię sobie stanowczo: „Przestań się stresować!”.', 'Napięcie rośnie — teraz stresujesz się też tym, że się stresujesz. Tłumienie rzadko działa na zawołanie.', false],
+            ['Zauważam: „serce bije szybko, pojawiła się myśl, że nie zdam”. Robię kilka spokojnych oddechów i wracam do jednej strony notatek.', 'Myśl jeszcze wraca, ale już Tobą nie rządzi. Po kwadransie czytasz dalej, a serce zwalnia.', true],
+            ['Przez godzinę rozmyślam, dlaczego zawsze tak mam przed egzaminami.', 'Rozpamiętywanie bez końca (ruminacja) zabiera godzinę nauki i nie daje odpowiedzi. Lęk zostaje.', false]],
+            why: 'Uważność nie usuwa lęku na zawołanie. Pomaga nazwać to, co się dzieje („to myśl”, „to ciało”), i wrócić do działania. Ruminacja i tłumienie myśli zwykle podtrzymują niepokój.' },
+          { s: 'Jesz obiad, przewijając telefon. Po chwili talerz jest pusty, a Ty nie pamiętasz smaku. Co możesz zrobić następnym razem?', o: [
+            ['Zjeść przynajmniej pierwsze kęsy bez telefonu i zauważyć smak, zapach i konsystencję.', 'Posiłek trwa podobnie długo, ale wreszcie wiesz, co {jadłaś|jadłeś|jadłoś}. To mała wersja ćwiczenia z rodzynką.', true],
+            ['Nic — jedzenie to tylko paliwo.', 'Można i tak. Ale jedzenie w rozproszeniu wiąże się z tym, że później zjada się więcej (Robinson i in., 2013) — i umyka jedna z prostych przyjemności dnia.', false],
+            ['Jeść szybciej, żeby mieć więcej czasu na telefon.', 'Zyskujesz pięć minut, ale dalej nie wiesz, co {jadłaś|jadłeś|jadłoś}. Autopilot ma się świetnie.', false]],
+            why: 'Uważność nie wymaga godziny medytacji. Praktyka nieformalna to zwykłe czynności — jedzenie, mycie zębów, spacer — wykonywane z pełną uwagą.' },
+          { s: 'Medytujesz od dwóch minut i nagle orientujesz się, że od dawna planujesz weekend, zamiast czuć oddech. Co teraz?', o: [
+            ['Złoszczę się na siebie: „Nawet medytować nie umiem!”.', 'Do błądzącej myśli dochodzi ocena siebie. Zamiast jednej myśli masz dwie — a oddech dalej czeka.', false],
+            ['Uśmiecham się w duchu: „planowanie” — i łagodnie wracam do oddechu.', 'Właśnie to jest ćwiczenie! Każde zauważenie i powrót wzmacnia uwagę. Tego nie da się zrobić „źle”.', true],
+            ['Przerywam — skoro myśli uciekają, medytacja nie jest dla mnie.', 'Szkoda! Błądzenie umysłu to nie porażka, tylko materiał do ćwiczenia. Zdarza się każdemu, także mistrzom.', false]],
+            why: 'Uwaga ucieka w niemal połowie chwil dnia (Killingsworth i Gilbert, 2010). Moment, w którym to zauważasz, jest właśnie momentem uważności.' },
+          { s: 'Po ćwiczeniu oddechowym czujesz się gorzej: pojawił się niepokój, wracają trudne wspomnienia. Co robisz?', o: [
+            ['Zaciskam zęby i medytuję dłużej, aż przejdzie.', 'Forsowanie praktyki przy silnym dyskomforcie może go nasilić. Medytacja to nie test wytrzymałości.', false],
+            ['Otwieram oczy, rozglądam się, czuję stopy na podłodze. Robię przerwę, a jeśli to wraca — rozmawiam z nauczycielem medytacji albo psychologiem.', 'Wracasz do tego, co tu i teraz. Szukanie wsparcia to rozsądny krok, a nie porażka.', true],
+            ['Uznaję, że coś jest ze mną nie tak, i nikomu nie mówię.', 'Takie doświadczenia nie są rzadkie (ok. 8% praktykujących w przeglądzie Fariasa i in., 2020) i nie znaczą, że coś jest z Tobą nie tak. Warto o nich mówić.', false]],
+            why: 'Medytacja zwykle jest bezpieczna, ale nie zawsze przyjemna. Osoby w kryzysie albo po traumie lepiej, żeby ćwiczyły z kimś doświadczonym — łagodniej, krócej, z otwartymi oczami.' }
+        ] }
+    ]
+  };
+
+  // ogród na zachodniej łące Wzgórza: pawilon, ścieżka, staw, żywopłot z wejściem od głównej drogi
+  extendZone('wzgorze', B => {
+    clearArea(B, 2, 2, 12, 10, 'grass');
+    B.building({ id: 'pawilon_uw', subject: 'e3_uwaznosc', style: 'greenhouse', x: 3, y: 2, w: 8, h: 4, nWin: 5, wall: '#b8906a', roof: '#4f8a5a', trim: '#ffffff', sign: 'PAWILON UWAŻNOŚCI' });
+    B.rect(7, 6, 1, 7, 'path');
+    // staw myśli
+    B.rect(9, 7, 3, 3, 'water'); B.rect(12, 8, 1, 2, 'water');
+    clearArea(B, 8, 12, 3, 1, null);                           // drzewo zasłaniało wejście do ogrodu
+    B.flat('lily', 10, 8); B.flat('lily', 11, 9); B.flat('lily', 9, 7);
+    B.interact(9, 7, { kind: 'e3_staw', w: 4, h: 4 });
+    // żywopłot: wschód (od strony Obserwatorium) i południe z wejściem na ścieżkę
+    for (let y = 2; y <= 11; y++) B.addHedge(13, y);
+    for (let x = 2; x <= 12; x++) if (x < 6 || x > 8) B.addHedge(x, 11);
+    // stanowiska ćwiczeń
+    B.obj('e3_zafu', 4, 8, { interact: 'e3_oddech' });
+    B.obj('e3_mata', 3, 9, { fw: 2, interact: 'e3_skan' });
+    B.obj('e3_dzwon', 12, 4, { interact: 'e3_dzwon' });
+    B.obj('e3_toro', 12, 7);
+    B.Z.lights.push({ x: 12 * 16 + 8, y: 7 * 16 + 4, r: 42, col: '#ffd98a', s: 0.8 });
+    B.obj('bench', 12, 10);
+    // kwiaty i krzewy
+    [[6, 6], [8, 6], [2, 7], [5, 10], [8, 10], [11, 6]].forEach(([x, y], k) => B.flat(k % 2 ? 'wildflowers' : 'flowers', x, y));
+    B.obj('bush', 2, 2); B.obj('bush', 11, 2);
+    B.obj('sign', 6, 12);
+    B.sign(6, 12, 'OGRÓD UWAŻNOŚCI · Tu niczego nie trzeba osiągać. Kamień Oddechu, Mata Skanowania Ciała, Staw Myśli i Dzwon Uważności — każde ćwiczenie trwa 1–2 minuty. W Pawilonie: co o medytacji mówią badania.');
+    B.npc('oddechowska', 8, 8);
+  });
+
+  NPCS.oddechowska = { name: 'Pani Oddechowska', kind: 'human', wander: 1,
+    look: { skin: SKIN_TONES[1], hair: 'dlugie', hairC: '#b9b9c2', top: '#5a9a6a', bottom: '#e8e4d8', acc: 'flower' },
+    lines: [
+      'Uważność to nie pusta głowa. To zauważanie, że głowa jest pełna — i powrót do oddechu. Choćby sto razy dziennie.',
+      'Na Kamieniu Oddechu ćwiczymy wolny oddech: cztery sekundy wdechu, sześć wydechu. Minuta wystarczy, żeby zacząć.',
+      'Staw Myśli uczy, że myśl to tylko myśl. „Nigdy mi się nie uda” brzmi jak fakt, a jest liściem na wodzie.',
+      'Medytacja nie zawsze jest przyjemna. Jeśli robi się bardzo trudno — otwórz oczy, poczuj stopy, zrób przerwę. To też jest uważność.',
+      'Dzwon nie służy do budzenia. Służy do wracania — do oddechu, do chwili, do siebie.',
+      'Mówię, że to ogród, a nie poligon. Tu się niczego nie wygrywa. No, może odrobinę spokoju.'
+    ] };
+
+  /* ---------- sprite'y ogrodu ---------- */
+  E1.objSprites.e3_zafu = () => cached('e3_zafu', () => makeSprite(16, 12, g => {
+    R(g, 1, 6, 14, 6, '#2f3f6a'); R(g, 1, 6, 14, 1, '#4a5a8a'); R(g, 2, 11, 12, 1, '#222c4a');
+    ell(g, 8, 6, 5, 3.4, '#7a4bb0'); ell(g, 8, 5, 4, 2.2, '#9a6ad0'); R(g, 6, 4, 3, 1, '#c8a0f0');
+  }, { shadow: [8, 11, 7, 1.5] }));
+  E1.objSprites.e3_mata = () => cached('e3_mata', () => makeSprite(32, 10, g => {
+    R(g, 1, 3, 26, 6, '#5aa06a'); R(g, 1, 3, 26, 1, '#7ac08a'); R(g, 1, 8, 26, 1, '#3f7a4a');
+    ell(g, 28, 5.5, 3, 3.5, '#4a8a5a'); ell(g, 28, 5.5, 1.6, 2, '#2f6a3f');
+    R(g, 3, 4, 5, 3, '#f4ecd8'); R(g, 3, 4, 5, 1, '#ffffff');
+  }, { shadow: [15, 9, 14, 1.2] }));
+  E1.objSprites.e3_dzwon = () => cached('e3_dzwon', () => makeSprite(16, 30, g => {
+    R(g, 2, 7, 2, 23, '#7a5034'); R(g, 12, 7, 2, 23, '#7a5034'); R(g, 2, 7, 1, 23, '#9a6a44');
+    R(g, 0, 4, 16, 3, '#5a3a24'); R(g, 1, 2, 14, 2, '#8a3a2a'); R(g, 3, 0, 10, 2, '#a84a3a');
+    R(g, 7, 7, 2, 3, '#3a3a40');
+    R(g, 6, 10, 4, 2, '#b8862a'); R(g, 5, 12, 6, 4, '#c8963a'); R(g, 4, 16, 8, 3, '#c8963a'); R(g, 3, 19, 10, 2, '#a87a2a');
+    R(g, 6, 12, 1, 6, '#f0c870'); P(g, 7, 11, '#ffe6a0'); R(g, 7, 21, 2, 2, '#6a4a1a');
+    R(g, 13, 13, 3, 2, '#8a6a44');
+  }, { shadow: [8, 29, 7, 1.5] }));
+  E1.objSprites.e3_toro = () => cached('e3_toro', () => makeSprite(14, 24, g => {
+    R(g, 2, 21, 10, 3, '#8a8a90'); R(g, 5, 14, 4, 7, '#9a9aa2'); R(g, 3, 12, 8, 2, '#8a8a90');
+    R(g, 3, 7, 8, 5, '#a8a8b0'); R(g, 5, 8, 4, 3, '#ffd870'); P(g, 6, 9, '#fff4c0');
+    R(g, 1, 5, 12, 2, '#7a7a82'); R(g, 3, 3, 8, 2, '#8a8a92'); R(g, 6, 0, 2, 3, '#7a7a82');
+  }, { shadow: [7, 23, 6, 1.4] }));
+
+  /* ---------- wspólne: dane i nagrody ogrodu ---------- */
+  Game.prototype.e3Ogrod = function () {
+    const d = this.e3Data();
+    if (!d.ogrod || typeof d.ogrod !== 'object') d.ogrod = {};
+    return d.ogrod;
+  };
+  // raz dziennie energia (i potrzeba z modułu PROFIL), za pierwszym razem XP; licznik sesji
+  Game.prototype.e3OgrodReward = function (key, energy, need) {
+    const o = this.e3Ogrod();
+    o[key] = (o[key] || 0) + 1;
+    const parts = [];
+    if (this.e3Today('ogrod_' + key)) {
+      this.addEnergy(energy); parts.push(`+${energy} ⚡`);
+      if (need && this.prNeed && this.profData) { try { this.prNeed(need[0], need[1]); } catch (e) {} }
+    }
+    if (this.e3Once('ogrod_' + key)) { this.addXP(5); parts.push('+5 XP'); }
+    if (['oddech', 'skan', 'staw', 'dzwon'].every(k => o[k]) && this.e3Once('ogrod_all')) {
+      this.addXP(10); this.addMoney(5, true); parts.push('🪷 wszystkie cztery ćwiczenia ogrodu: +10 XP, +5 🟡');
+      setTimeout(() => audio.success(), 200);
+    }
+    this.save();
+    return parts.length ? `<div class="fb ok mt">${parts.join(' · ')}</div>`
+      : '<div class="small muted mt">Energia za to ćwiczenie jest raz dziennie — ćwiczyć możesz, ile chcesz.</div>';
+  };
+  // okno ćwiczenia wciąż otwarte? (#modal jest wspólny — sprawdzamy własny korzeń, nie samo okno)
+  const alive = S => !S.dead && !!S.root && S.root.isConnected;
+  E3.alive = alive;
+
+  /* ---------- Kamień Oddechu: wolny oddech ---------- */
+  const PACES = {
+    wolny: { name: 'Wolny oddech 4–6', desc: '4 s wdechu i 6 s wydechu — ok. 6 oddechów na minutę.', cycles: 6, ph: [['Wdech', 4, 'in'], ['Wydech', 6, 'out']] },
+    pudelko: { name: 'Oddech „pudełkowy”', desc: 'Wdech, pauza, wydech, pauza — po 4 s.', cycles: 4, ph: [['Wdech', 4, 'in'], ['Zatrzymaj', 4, 'hold'], ['Wydech', 4, 'out'], ['Pauza', 4, 'rest']] }
+  };
+  Game.prototype.e3Oddech = function () {
+    audio.init();
+    const S = { pace: 'wolny', run: false, dead: false, raf: 0, last: -1 };
+    const m = this.openModal(this.panel('🪷 Kamień Oddechu', `<div class="e3-garden">
+      <p>Usiądź wygodnie. Oddychaj nosem, jeśli możesz. Kółko rośnie przy wdechu i maleje przy wydechu — po prostu za nim podążaj.</p>
+      <div class="row mt" style="flex-wrap:wrap;gap:6px" id="e3-br-pace">${Object.entries(PACES).map(([k, p]) => `<button class="btn btn-sm ${k === S.pace ? 'btn-green' : ''}" data-p="${k}">${p.name}</button>`).join('')}
+        <span class="grow"></span><label class="small"><input type="checkbox" id="e3-br-snd" checked> cichy sygnał</label></div>
+      <div class="small muted mt" id="e3-br-desc">${PACES[S.pace].desc}</div>
+      <div class="e3-breath"><div class="e3-br-ring"></div><div class="e3-br-c" id="e3-br-c"></div><div class="e3-br-txt" id="e3-br-txt">${esc(gg(this, 'Gotow{a|y|e}?'))}</div></div>
+      <div class="center small muted" id="e3-br-st">ok. 1 minuta</div>
+      <div id="e3-br-end"></div></div>`,
+      '<button class="btn" data-close>Zamknij</button><span class="grow"></span><button class="btn btn-green" id="e3-br-go">▶ Zacznij</button>', 'narrow'),
+      { onClose: () => { S.dead = true; cancelAnimationFrame(S.raf); E3.musicBack(); } });
+    S.root = m.querySelector('.e3-garden');
+    const circ = m.querySelector('#e3-br-c'), txt = m.querySelector('#e3-br-txt'), st = m.querySelector('#e3-br-st'), go = m.querySelector('#e3-br-go'), end = m.querySelector('#e3-br-end');
+    const setScale = v => { circ.style.transform = `scale(${v.toFixed(3)})`; };
+    setScale(0.45);
+    m.querySelectorAll('#e3-br-pace [data-p]').forEach(b => b.addEventListener('click', () => {
+      if (S.run) return;
+      S.pace = b.dataset.p; audio.click();
+      m.querySelectorAll('#e3-br-pace [data-p]').forEach(x => x.classList.toggle('btn-green', x === b));
+      m.querySelector('#e3-br-desc').textContent = PACES[S.pace].desc;
+    }));
+    const cue = kind => {
+      if (!m.querySelector('#e3-br-snd').checked) return;
+      const f = { in: 392, out: 293.7, hold: 349.2, rest: 261.6 }[kind];
+      audio.tone(f, 1.6, { type: 'sine', vol: 0.045 });
+    };
+    const finish = () => {
+      S.run = false; E3.musicBack();
+      txt.textContent = '🙏'; setScale(0.6); st.textContent = 'Koniec. Zostań chwilę w ciszy.';
+      go.textContent = '↻ Jeszcze raz'; go.disabled = false;
+      const reward = this.e3OgrodReward('oddech', 6, ['spokoj', 6]);
+      end.innerHTML = `<p class="mt"><b>Jak teraz jest?</b></p><div class="row" style="flex-wrap:wrap;gap:6px">
+        <button class="btn btn-sm" data-f="0">🙂 spokojniej</button><button class="btn btn-sm" data-f="1">😐 bez zmian</button><button class="btn btn-sm" data-f="2">🙁 gorzej</button></div><div id="e3-br-fb"></div>${reward}`;
+      const FB = [
+        'Dobrze to zauważyć. Wolny oddech (poniżej 10 oddechów na minutę) wiąże się w badaniach z większą zmiennością rytmu serca i poczuciem odprężenia (przegląd: Zaccaro i in., 2018).',
+        'To też w porządku. Ćwiczenie nie musi niczego „dawać” od razu — chodzi o zauważanie, a nie o wymuszanie relaksu.',
+        'Dziękuję za szczerość. Skupienie na oddechu bywa niewygodne. Spróbuj z otwartymi oczami albo skup się na stopach lub dźwiękach wokół. A jeśli trudno jest często — porozmawiaj z kimś zaufanym albo ze specjalistą.'
+      ];
+      end.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => {
+        audio.click(); end.querySelectorAll('[data-f]').forEach(x => x.classList.toggle('btn-green', x === b));
+        end.querySelector('#e3-br-fb').innerHTML = `<div class="fb ai small mt">${esc(FB[+b.dataset.f])}</div>`;
+      }));
+    };
+    const loop = () => {
+      if (!alive(S)) return;
+      const P = PACES[S.pace], cyc = P.ph.reduce((a, x) => a + x[1], 0), total = cyc * P.cycles;
+      const t = (performance.now() - S.t0) / 1000 * sp();
+      if (t >= total) return finish();
+      let tc = t % cyc, k = 0;
+      while (tc >= P.ph[k][1]) { tc -= P.ph[k][1]; k++; }
+      const [name, dur, kind] = P.ph[k], f = tc / dur, ease = 0.5 - 0.5 * Math.cos(Math.PI * f);
+      setScale(kind === 'in' ? 0.45 + 0.55 * ease : kind === 'out' ? 1 - 0.55 * ease : kind === 'hold' ? 1 : 0.45);
+      const idx = Math.floor(t / cyc) * 10 + k;
+      if (idx !== S.last) { S.last = idx; cue(kind); }
+      txt.textContent = `${name} ${Math.ceil(dur - tc)}`;
+      st.textContent = `Oddech ${Math.min(P.cycles, Math.floor(t / cyc) + 1)} z ${P.cycles}`;
+      S.raf = requestAnimationFrame(loop);
+    };
+    go.addEventListener('click', () => {
+      if (S.run) return;
+      audio.click(); E3.musicTo(0.12);
+      S.run = true; S.t0 = performance.now(); S.last = -1; end.innerHTML = ''; go.disabled = true;
+      S.raf = requestAnimationFrame(loop);
+    });
+  };
+
+  /* ---------- Mata: krótkie skanowanie ciała ---------- */
+  const SKAN = [
+    ['stopy', 'Stopy', 'Poczuj stopy: nacisk podłoża, ciepło albo chłód, może mrowienie. Niczego nie musisz zmieniać.'],
+    ['lydki', 'Łydki i kolana', 'Przenieś uwagę wyżej. Jeśli nic nie czujesz — to też jest wrażenie: „brak wyraźnego czucia”.'],
+    ['uda', 'Uda i biodra', 'Zauważ ciężar ciała. Które miejsca stykają się z krzesłem albo z podłogą?'],
+    ['brzuch', 'Brzuch', 'Brzuch unosi się przy wdechu i opada przy wydechu. Pozwól mu oddychać po swojemu.'],
+    ['klatka', 'Klatka piersiowa', 'Poczuj ruch oddechu w klatce piersiowej. Może też bicie serca?'],
+    ['dlonie', 'Ręce i dłonie', 'Dłonie: ciepło, puls, dotyk ubrania. Potem całe ręce, aż do barków.'],
+    ['barki', 'Barki i szyja', 'Tu często mieszka napięcie. Jeśli je czujesz — po prostu je zauważ. Może zelżeje samo, a może nie.'],
+    ['twarz', 'Twarz', 'Czoło, oczy, policzki, szczęka. Czy szczęka jest zaciśnięta?'],
+    ['cale', 'Całe ciało', 'Teraz poczuj całe ciało naraz — oddychające, tu i teraz.']
+  ];
+  const STEP_S = 8;
+  const BODY_SVG = `<svg viewBox="0 0 100 200" class="e3-body" aria-hidden="true">
+    <circle class="e3-bp" data-part="twarz" cx="50" cy="20" r="13"/>
+    <rect class="e3-bp" data-part="barki" x="27" y="36" width="46" height="11" rx="5"/>
+    <rect class="e3-bp" data-part="klatka" x="31" y="48" width="38" height="27" rx="4"/>
+    <rect class="e3-bp" data-part="brzuch" x="32" y="76" width="36" height="22" rx="4"/>
+    <rect class="e3-bp" data-part="dlonie" x="15" y="40" width="10" height="56" rx="5"/><rect class="e3-bp" data-part="dlonie" x="75" y="40" width="10" height="56" rx="5"/>
+    <circle class="e3-bp" data-part="dlonie" cx="20" cy="102" r="6"/><circle class="e3-bp" data-part="dlonie" cx="80" cy="102" r="6"/>
+    <rect class="e3-bp" data-part="uda" x="32" y="99" width="36" height="13" rx="4"/><rect class="e3-bp" data-part="uda" x="33" y="112" width="15" height="34" rx="5"/><rect class="e3-bp" data-part="uda" x="52" y="112" width="15" height="34" rx="5"/>
+    <rect class="e3-bp" data-part="lydki" x="34" y="147" width="13" height="34" rx="5"/><rect class="e3-bp" data-part="lydki" x="53" y="147" width="13" height="34" rx="5"/>
+    <ellipse class="e3-bp" data-part="stopy" cx="39" cy="188" rx="9" ry="5"/><ellipse class="e3-bp" data-part="stopy" cx="61" cy="188" rx="9" ry="5"/>
+  </svg>`;
+  Game.prototype.e3Skan = function () {
+    audio.init();
+    const S = { i: -1, dead: false, timer: 0, run: false };
+    const m = this.openModal(this.panel('🧘 Mata Skanowania Ciała', `<div class="e3-garden">
+      <p>Krótka wersja ćwiczenia z programu MBSR. Uwaga przesuwa się po ciele od stóp do głowy — po ok. 8 sekund na każdą część. Możesz zamknąć oczy i tylko słuchać sygnałów, albo czytać.</p>
+      <div class="e3-scan"><div class="e3-scan-fig">${BODY_SVG}</div>
+        <div class="grow"><div class="e3-scan-h" id="e3-sk-h">Połóż się albo usiądź wygodnie.</div><p id="e3-sk-p" class="small">Gdy będziesz {gotowa|gotowy|gotowe}, kliknij „Zacznij”.</p>
+          <div class="e3-dots" id="e3-sk-dots">${SKAN.map(() => '<i></i>').join('')}</div></div></div>
+      <div id="e3-sk-end"></div></div>`.replace('{gotowa|gotowy|gotowe}', gg(this, '{gotowa|gotowy|gotowe}')),
+      '<button class="btn" data-close>Zamknij</button><span class="grow"></span><button class="btn" id="e3-sk-next" disabled>Dalej ▶</button><button class="btn btn-green" id="e3-sk-go">▶ Zacznij</button>', 'wide'),
+      { onClose: () => { S.dead = true; clearTimeout(S.timer); E3.musicBack(); } });
+    S.root = m.querySelector('.e3-garden');
+    const h = m.querySelector('#e3-sk-h'), p = m.querySelector('#e3-sk-p'), go = m.querySelector('#e3-sk-go'), nx = m.querySelector('#e3-sk-next'), end = m.querySelector('#e3-sk-end');
+    const parts = [...m.querySelectorAll('.e3-bp')], dots = [...m.querySelectorAll('#e3-sk-dots i')];
+    const show = () => {
+      clearTimeout(S.timer);
+      if (!alive(S)) return;
+      if (S.i >= SKAN.length) {
+        S.run = false; nx.disabled = true; go.disabled = false; go.textContent = '↻ Jeszcze raz'; E3.musicBack();
+        parts.forEach(el => el.classList.remove('on'));
+        h.textContent = '🙏 Koniec skanowania'; p.textContent = 'Zanim wstaniesz, poruszaj palcami dłoni i stóp.';
+        end.innerHTML = `<div class="fb ai small mt">💡 Skanowanie ciała to jedna z praktyk programu MBSR (Kabat-Zinn) — pełna wersja trwa 30–45 minut. Chodzi o zauważanie wrażeń, nie o relaks na siłę. Czasem zauważysz napięcie, dyskomfort albo nic — każde z tych doświadczeń jest w porządku.</div>${this.e3OgrodReward('skan', 6, ['cialo', 6])}`;
+        return;
+      }
+      const [id, name, tip] = SKAN[S.i];
+      parts.forEach(el => { el.classList.toggle('on', id === 'cale' || el.dataset.part === id); });
+      dots.forEach((d, k) => { d.classList.toggle('on', k === S.i); d.classList.toggle('done', k < S.i); });
+      h.textContent = name; p.textContent = tip;
+      audio.tone(id === 'cale' ? 523.3 : 440, 1.2, { type: 'sine', vol: 0.035 });
+      S.timer = setTimeout(() => { S.i++; show(); }, STEP_S * 1000 / sp());
+    };
+    go.addEventListener('click', () => {
+      if (S.run) return;
+      audio.click(); E3.musicTo(0.12);
+      S.run = true; S.i = 0; end.innerHTML = ''; go.disabled = true; nx.disabled = false;
+      show();
+    });
+    nx.addEventListener('click', () => { if (!S.run) return; audio.click(); S.i++; show(); });
+  };
+
+  /* ---------- Staw Myśli: myśl, uczucie czy doznanie z ciała? ---------- */
+  const LBL = [['💭', 'myśl'], ['💗', 'uczucie'], ['🫀', 'doznanie z ciała']];
+  const LISCIE = [
+    ['Muszę jeszcze odpisać na maila', 0], ['Czuję niepokój przed jutrem', 1], ['Swędzi mnie nos', 2],
+    ['{Jestem beznadziejna|Jestem beznadziejny|Jestem beznadziejne} ze statystyki', 0], ['Robi mi się smutno', 1], ['Ściska mnie w żołądku', 2],
+    ['Ciekawe, co będzie na obiad', 0], ['Złość na współlokatora', 1], ['Ciepło słońca na twarzy', 2],
+    ['Znowu mi się nie uda', 0], ['Ulga, że już piątek', 1], ['Kolano trochę pobolewa', 2],
+    ['A co, jeśli na egzaminie wszystko wyleci mi z głowy?', 0], ['Wzruszenie przy tej piosence', 1], ['Zimne dłonie', 2],
+    ['Za dziesięć minut odjeżdża autobus', 0], ['Wstyd po wczorajszej rozmowie', 1], ['Szybkie bicie serca', 2]
+  ];
+  const LEAF_N = 9, LEAF_T = 15;
+  E3.LISCIE = LISCIE;
+  Game.prototype.e3Staw = function () {
+    audio.init();
+    const rnd = Math.random;
+    const newQueue = () => shuffle(rnd, [0, 1, 2].flatMap(t => shuffle(rnd, LISCIE.filter(x => x[1] === t)).slice(0, LEAF_N / 3)));
+    let queue = newQueue();
+    const S = { dead: false, raf: 0, run: false, leaves: [], spawned: 0, nextAt: 0, sel: null, ok: 0, bad: 0, gone: 0, t0: 0, lastT: 0 };
+    const m = this.openModal(this.panel('🍃 Staw Myśli', `<div class="e3-garden">
+      <p>Po stawie płyną liście. Na każdym jest coś, co może pojawić się w głowie podczas medytacji. Nazwij to: <b>myśl</b>, <b>uczucie</b> czy <b>doznanie z ciała</b>? Nie musisz złapać każdego liścia — niektóre mogą po prostu odpłynąć.</p>
+      <div class="e3-pond" id="e3-pond"><div class="e3-pond-hint" id="e3-pond-hint">Kliknij „Zacznij”, a liście zaczną płynąć.</div></div>
+      <div class="row mt e3-lbls">${LBL.map(([ic, n], k) => `<button class="btn e3-lbl" data-l="${k}" disabled>${ic} ${n} <span class="tiny muted">[${k + 1}]</span></button>`).join('')}</div>
+      <div class="small muted mt">Kliknij liść, żeby go wybrać (zatrzyma się), a potem nazwę. Bez wybierania nazwa trafi do liścia, który płynie najdłużej.</div>
+      <div id="e3-st-end"></div></div>`,
+      '<button class="btn" data-close>Zamknij</button><span class="grow"></span><button class="btn btn-green" id="e3-st-go">▶ Zacznij</button>', 'wide'),
+      { onClose: () => { S.dead = true; cancelAnimationFrame(S.raf); window.removeEventListener('keydown', kd); } });
+    S.root = m.querySelector('.e3-garden');
+    const pond = m.querySelector('#e3-pond'), go = m.querySelector('#e3-st-go'), end = m.querySelector('#e3-st-end');
+    const lbls = [...m.querySelectorAll('.e3-lbl')];
+    const W = () => pond.clientWidth || 300;
+    const spawn = () => {
+      const [txt, type] = queue[S.spawned++];
+      const el = document.createElement('button');
+      el.className = 'e3-leaf'; el.type = 'button';
+      el.innerHTML = `<span>🍂</span> ${esc(gg(this, txt))}`;
+      const lane = S.spawned % 3;
+      el.style.top = (8 + lane * 31) + '%';
+      pond.appendChild(el);
+      const L = { el, type, x: -el.offsetWidth - 10, done: false, paused: false, speed: (W() + el.offsetWidth + 20) / LEAF_T };
+      el.style.transform = `translateX(${L.x}px)`;
+      el.addEventListener('click', () => {
+        if (L.done || !S.run) return;
+        audio.click();
+        if (S.sel && S.sel !== L) { S.sel.paused = false; S.sel.el.classList.remove('sel'); }
+        S.sel = S.sel === L ? null : L; L.paused = S.sel === L; L.pauseT = (performance.now() - S.t0) / 1000 * sp(); el.classList.toggle('sel', L.paused);
+      });
+      S.leaves.push(L);
+    };
+    const label = k => {
+      if (!S.run) return;
+      const L = (S.sel && !S.sel.done) ? S.sel : S.leaves.filter(x => !x.done).sort((a, b) => b.x - a.x)[0];
+      if (!L) return;
+      L.done = true; L.paused = false; S.sel = null; L.el.classList.remove('sel');
+      const good = k === L.type;
+      if (good) { S.ok++; L.el.classList.add('ok'); audio.tone(659.3, 0.25, { type: 'sine', vol: 0.05 }); }
+      else { S.bad++; L.el.classList.add('bad'); audio.tone(330, 0.25, { type: 'sine', vol: 0.04 }); }
+      L.speed *= 2.2;
+      L.el.insertAdjacentHTML('beforeend', ` <b class="e3-leaf-tag">${good ? '✓ ' + LBL[k][1] : 'raczej: ' + LBL[L.type][1]}</b>`);
+    };
+    lbls.forEach(b => b.addEventListener('click', () => label(+b.dataset.l)));
+    const kd = e => {
+      if (!alive(S)) { window.removeEventListener('keydown', kd); return; }
+      if (!this.modalOpen || !S.run) return;
+      const n = parseInt(e.key, 10); if (n >= 1 && n <= 3) { e.preventDefault(); label(n - 1); }
+    };
+    window.addEventListener('keydown', kd);
+    const finish = () => {
+      S.run = false; lbls.forEach(b => { b.disabled = true; }); go.disabled = false; go.textContent = '↻ Jeszcze raz';
+      const n = S.ok + S.bad;
+      end.innerHTML = `<div class="fb ${S.ok >= 6 ? 'ok' : 'ai'} mt">Nazwane liście: <b>${n}</b> z ${LEAF_N} · trafnie: <b>${S.ok}</b>${S.gone ? ` · odpłynęły same: ${S.gone}` : ''}.</div>
+        <div class="fb ai small mt">💡 To ćwiczenie nawiązuje do „liści na strumieniu” z terapii akceptacji i zaangażowania (ACT) i do notowania w medytacji. Myśl „Nigdy mi się nie uda” to tylko myśl — wydarzenie w umyśle, a nie fakt. Patrzenie na myśli z dystansu to <b>defuzja poznawcza</b>. W praktyce notowania liczy się samo zauważenie; tu dodatkowo ćwiczysz odróżnianie myśli od uczuć i wrażeń z ciała.</div>
+        ${this.e3OgrodReward('staw', 4, ['spokoj', 4])}`;
+    };
+    const loop = now => {
+      if (!alive(S)) return;
+      const dt = Math.min(0.05, (now - S.lastT) / 1000 || 0) * sp(); S.lastT = now;
+      const t = (now - S.t0) / 1000 * sp();
+      if (S.spawned < LEAF_N && t >= S.nextAt) { spawn(); S.nextAt = t + 3.6; }
+      const w = W();
+      S.leaves.forEach(L => {
+        if (L.gone) return;
+        if (L.paused && t - (L.pauseT || 0) > 10) { L.paused = false; L.el.classList.remove('sel'); if (S.sel === L) S.sel = null; }   // wybrany liść nie stoi w nieskończoność
+        if (!L.paused) L.x += L.speed * dt;
+        L.el.style.transform = `translateX(${L.x.toFixed(1)}px)`;
+        if (L.x > w + 10) { L.gone = true; L.el.remove(); if (!L.done) { L.done = true; S.gone++; if (S.sel === L) S.sel = null; } }
+      });
+      if (S.spawned >= LEAF_N && S.leaves.every(L => L.gone)) return finish();
+      S.raf = requestAnimationFrame(loop);
+    };
+    go.addEventListener('click', () => {
+      if (S.run) return;
+      audio.click();
+      const hint = m.querySelector('#e3-pond-hint'); if (hint) hint.remove();
+      if (S.spawned) {   // kolejna runda w tym samym oknie
+        S.leaves.forEach(L => L.el.remove());
+        Object.assign(S, { leaves: [], spawned: 0, sel: null, ok: 0, bad: 0, gone: 0 });
+        queue = newQueue(); end.innerHTML = '';
+      }
+      S.run = true; S.t0 = performance.now(); S.lastT = S.t0; S.nextAt = 0;
+      lbls.forEach(b => { b.disabled = false; }); go.disabled = true;
+      S.raf = requestAnimationFrame(loop);
+    });
+  };
+
+  /* ---------- Dzwon Uważności: słuchanie aż do ciszy ---------- */
+  const BELL = [[1, 0.1, 14], [2.32, 0.04, 9], [4.25, 0.025, 6], [6.63, 0.012, 3.5], [9.38, 0.008, 2.5]];
+  const ring = (f0 = 220) => {
+    BELL.forEach(([r, v, d]) => {
+      audio.tone(f0 * r, d, { type: 'sine', vol: v });
+      if (r === 1) audio.tone(f0 * r + 1.3, d * 0.9, { type: 'sine', vol: v * 0.45 });   // delikatne dudnienie
+    });
+  };
+  Game.prototype.e3Dzwon = function () {
+    audio.init();
+    const S = { t0: 0, ringing: false, dead: false };
+    const m = this.openModal(this.panel('🔔 Dzwon Uważności', `<div class="e3-garden">
+      <p>Uderz w dzwon i słuchaj, jak dźwięk powoli cichnie. Kiedy przestaniesz go słyszeć — kliknij „Już nie słyszę”.</p>
+      <div class="e3-bell" id="e3-bell">🔔</div>
+      <div class="center small muted" id="e3-bell-st">Na czas słuchania muzyka gry ucichnie.</div>
+      <div id="e3-bell-end"></div></div>`,
+      '<button class="btn" data-close>Zamknij</button><span class="grow"></span><button class="btn" id="e3-bell-stop" disabled>Już nie słyszę</button><button class="btn btn-green" id="e3-bell-go">🔔 Uderz</button>', 'narrow'),
+      { onClose: () => { S.dead = true; clearTimeout(S.back); E3.musicBack(); } });
+    S.root = m.querySelector('.e3-garden');
+    const bell = m.querySelector('#e3-bell'), st = m.querySelector('#e3-bell-st'), go = m.querySelector('#e3-bell-go'), stop = m.querySelector('#e3-bell-stop'), end = m.querySelector('#e3-bell-end');
+    go.addEventListener('click', () => {
+      if (S.ringing) return;
+      E3.musicTo(0); ring();
+      S.ringing = true; S.t0 = performance.now();
+      bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring');
+      go.disabled = true; stop.disabled = false; end.innerHTML = ''; st.textContent = 'Słuchaj…';
+      clearTimeout(S.back); S.back = setTimeout(() => { if (!S.dead) E3.musicBack(); }, 16000);
+    });
+    stop.addEventListener('click', () => {
+      if (!S.ringing || !alive(S)) return;
+      const sec = (performance.now() - S.t0) / 1000;
+      S.ringing = false; stop.disabled = true; go.disabled = false; go.textContent = '🔔 Jeszcze raz';
+      if (sec * sp() < 4) { st.textContent = 'Tak szybko? Spróbuj jeszcze raz — tym razem posłuchaj do samego końca.'; return; }
+      st.textContent = '';
+      end.innerHTML = `<div class="fb ok mt">${esc(gg(this, `Słuchał{aś|eś|oś} przez ${sec.toFixed(1).replace('.', ',')} s.`))}</div>
+        <div class="fb ai small mt">💡 Dzwon wybrzmiewa ok. 14 sekund, ale ostatnie sekundy są tak ciche, że wynik zależy od głośności głośników i hałasu wokół — to nie test słuchu. Chodzi o uwagę: czy udało się zostać z dźwiękiem do końca? W tradycji Thich Nhat Hanha dźwięk dzwonu to zaproszenie, by na chwilę się zatrzymać i wrócić do oddechu.</div>
+        ${this.e3OgrodReward('dzwon', 3, ['spokoj', 3])}`;
+    });
+  };
+
+  /* =================================================================
+     5) DZIELNICA PAMIĘCI — nowa dzielnica na wschód od Portu (most)
+     Notion: „Zrobimy dzielnicę na pamięć długotrwałą (aktualnie jest w Porcie)”.
+     Magazyn Pamięci przeprowadza się z Portu. Trzy domy-przedmioty:
+     Magazyn Pamięci Długotrwałej, Dom Fałszywych Wspomnień, Pracownia Technik
+     Uczenia + park: Automat Powtórek (pudełka Leitnera z pytań miasta),
+     Krzywa Ebbinghausa, Fontanna Lety, Kapsuła Czasu.
+     ================================================================= */
+  const DZ = 'dzielnica_pamieci';
+  E3.DZ = DZ;
+
+  // muzyka dzielnicy: pozytywka w molu — motyw wraca, ale za drugim razem kończy się inaczej (jak odtwarzane wspomnienie)
+  SONGS.pamiec = { bpm: 76, root: 57, scale: [0, 2, 3, 5, 7, 8, 10], wave: 'triangle', echo: true, soft: 0.85,
+    mel: [4, null, 2, null, 0, null, 2, 4, 5, null, 4, null, 2, null, null, null, 4, null, 2, null, 0, null, 2, 4, 3, null, 1, null, 0, null, null, null],
+    bass: [0, 0, 5, 5, 3, 3, 4, 4] };
+  SONGS.in_pamiec = { bpm: 64, root: 57, scale: [0, 2, 3, 5, 7, 8, 10], wave: 'sine', echo: true, soft: 0.8,
+    mel: [0, null, null, 2, null, null, 4, null, 3, null, null, null, 2, null, null, null, 0, null, null, 2, null, null, 4, null, 5, null, 4, null, 2, null, null, null],
+    bass: [0, 0, 3, 3, 5, 5, 4, 4] };
+  if (E1.ISLE_SONG) E1.ISLE_SONG[DZ] = 'in_pamiec';
+
+  ZONES[DZ] = {
+    name: 'Dzielnica Pamięci', icon: '🗝️', gx: 3, gy: 2, mapColor: ['#b8a8d8', '#3f5a8a'], song: 'pamiec', particles: 'leaves',
+    motto: 'Wszystko tu pamiętamy. Prawie wszystko. Mniej więcej.',
+    desc: 'Dzielnica za Mostem Pamięci, na wschód od Portu. Magazyn Pamięci Długotrwałej, Dom Fałszywych Wspomnień i Pracownia Technik Uczenia, a w parku nad morzem: Automat Powtórek, Krzywa Ebbinghausa, Fontanna Lety i Kapsuła Czasu.',
+    topics: [],
+    busAt: [14, 9],
+    pal: { grass: '#7fa86a', grass2: '#6f9a5c', cobble: '#9a96a8', brick: '#a8746a', water: '#3f86b8', planks: '#9a7048', path: '#b89c78', sand: '#e6cf9a' },
+    build(B) {
+      B.fill('grass'); B.patches('grass2', 12, 1.5, 3);
+      B.rect(0, 0, 3, ZH, 'water'); B.rect(0, 12, 3, 4, 'planks');            // cieśnina i dalszy ciąg mostu z Portu
+      B.rect(0, 21, ZW, ZH - 21, 'water'); B.rect(3, 19, ZW - 3, 2, 'brick');  // morze i promenada
+      B.rect(3, 12, ZW - 3, 4, 'cobble');                                      // ulica Wspomnień
+      B.rect(24, 0, 2, 21, 'water');                                           // Kanał Lety
+      B.rect(24, 12, 2, 4, 'planks'); B.rect(24, 19, 2, 2, 'planks');          // Most Mnemozyny i kładka na promenadzie
+      B.border('trees', 2, { skip: ['W', 'S'], kinds: ['oak', 'birch', 'pine', 'oak'] });
+      B.building({ id: 'magazyn_dz', subject: 'e3_magazyn', style: 'warehouse', x: 4, y: 3, w: 11, h: 5, wall: '#8a6a9a', roof: '#3f4a6a', trim: '#efe6f4', sign: 'MAGAZYN PAMIĘCI', e3sign: true });
+      B.rect(9, 8, 1, 4, 'cobble');
+      B.building({ id: 'pracownia_dz', subject: 'e3_techniki', style: 'clocktower', x: 17, y: 3, w: 5, h: 5, nWin: 4, wall: '#c8b89a', roof: '#3f6a8a', trim: '#f4ecd8', sign: 'PRACOWNIA' });
+      B.rect(19, 8, 1, 4, 'cobble');
+      B.building({ id: 'falszywe_dz', subject: 'e3_falszywe', style: 'e3_krzywy', x: 28, y: 3, w: 8, h: 5, nWin: 5, wall: '#c8b8e8', roof: '#4a3a6a', trim: '#fff6ff', sign: 'FAŁSZYWE WSPOMNIENIA' });
+      B.rect(32, 8, 1, 4, 'cobble');
+      // park nad morzem
+      B.obj('e3_krzywa', 6, 17, { fw: 3, interact: 'e3_krzywa' });
+      B.obj('e3_fiszkomat', 16, 17, { interact: 'e3_fiszkomat' });
+      B.obj('fountain', 29, 16, { fw: 4, fh: 3, interact: 'e3_lete' });
+      B.obj('e3_kapsula', 36, 17, { interact: 'e3_kapsula' });
+      [[12, 18], [20, 18], [35, 18]].forEach(([c, r]) => B.obj('bench', c, r));
+      [[5, 11], [15, 11], [22, 11], [27, 11], [36, 11], [4, 16], [13, 16], [22, 16], [27, 16], [37, 16]].forEach(([c, r]) => B.obj('lamp', c, r));
+      B.obj('signpost', 4, 10);
+      B.sign(4, 10, 'DZIELNICA PAMIĘCI · Magazyn Pamięci Długotrwałej (kodowanie i wydobywanie) · Pracownia Technik Uczenia (jak się uczyć, żeby pamiętać) · Dom Fałszywych Wspomnień (pamięć, która składa się od nowa). W parku nad morzem: Automat Powtórek, Krzywa Ebbinghausa, Fontanna Lety i Kapsuła Czasu.');
+      B.scatter('tree', 9, { terrain: ['grass', 'grass2'], kinds: ['oak', 'birch', 'willow'], minDist: 3 });
+      B.scatter('flowers', 14, { terrain: ['grass', 'grass2'], flat: true });
+      B.scatter('lily', 5, { terrain: ['water'], flat: true, area: [24, 2, 2, 9] });
+      B.npc('mnemozyna', 12, 9); B.npc('ebbinghaus', 10, 17); B.npc('pewny', 27, 17); B.npc('rybka', 24, 6);
+    }
+  };
+  // dzielnica przy Porcie: czwarta kolumna dolnego rzędu siatki miasta
+  if (ZONE_GRID[2] && !ZONE_GRID[2].includes(DZ)) ZONE_GRID[2].push(DZ);
+
+  // Port: most na wschód, płotek wzdłuż brzegu, Magazyn się przeprowadził
+  extendZone('port', B => {
+    clearArea(B, 33, 12, 1, 1, null);                          // pachołek stał na wjeździe na most
+    B.rect(34, 12, 6, 4, 'planks');
+    for (let y = 0; y < ZH; y++) if ((y < 12 || y > 15) && B.T(39, y) !== 'water') B.addFence(39, y, 'barrier');
+    B.obj('signpost', 32, 11);
+    B.sign(32, 11, 'MOST PAMIĘCI → Dzielnica Pamięci. Magazyn Pamięci Długotrwałej przeprowadził się na drugi brzeg — razem z Domem Fałszywych Wspomnień i Pracownią Technik Uczenia.');
+    const mag = B.Z.buildings.find(b => b.id === 'magazyn');
+    if (mag) mag.locked = 'Na drzwiach kartka: „Przeprowadzka! Magazyn Pamięci Długotrwałej działa teraz w Dzielnicy Pamięci — przez most na wschód. Pojemność: praktycznie nieograniczona. Problem: znaleźć właściwy klucz. Klucze wydajemy na miejscu”.';
+  });
+
+  // odznaka Kartografa liczy dzielnice z siatki miasta — teraz jest ich 10
+  (typeof ALL_BADGES !== 'undefined' ? ALL_BADGES : []).forEach(b => { if (b.id === 'kartograf') b.desc = 'Odwiedź wszystkie 10 dzielnic miasta (także Dzielnicę Pamięci za mostem).'; });
+
+  /* ---------- mieszkańcy ---------- */
+  NPCS.mnemozyna = { name: 'Mnemozyna', kind: 'human', wander: 2,
+    look: { skin: SKIN_TONES[2], hair: 'dlugie', hairC: '#2a1a10', top: '#4a3a6a', bottom: '#2a2a3a', acc: 'none' },
+    lines: [
+      'Jestem Mnemozyna, opiekunka tej dzielnicy. W mitach byłam matką muz — bez pamięci nie ma ani nauki, ani sztuki.',
+      'Magazyn przeprowadził się tu z Portu. Pojemność pamięci długotrwałej jest ogromna. Kłopot w tym, żeby trafić we właściwą półkę — dlatego uczymy się zostawiać wskazówki.',
+      'Wspomnienia nie leżą w szufladach jak zdjęcia. Za każdym razem składamy je od nowa. Zajrzyj do Domu Fałszywych Wspomnień, to się przekonasz.',
+      'Automat Powtórek w parku wydaje karty z pytaniami, które już znasz. Najlepiej wracać do nich wtedy, gdy zaczynają się zacierać.',
+      'Kanał nazywa się Leta, jak rzeka zapomnienia. Most nad nim to Most Mnemozyny. Skromnie, wiem.'
+    ] };
+  NPCS.ebbinghaus = { name: 'Hermann Ebbinghaus', kind: 'human', wander: 2,
+    look: { skin: SKIN_TONES[0], hair: 'krotkie', hairC: '#5b3519', top: '#3b3f4a', bottom: '#2a2a33', acc: 'glasses', beard: '#5b3519' },
+    lines: [
+      'Przez lata uczyłem się na pamięć list bezsensownych sylab: DAX, BUP, ZOL. Byłem swoim jedynym badanym. Dzięki temu wiemy, jak szybko zapominamy.',
+      'Moja metoda oszczędności: ile czasu zaoszczędzę, ucząc się listy drugi raz? Nawet gdy myślisz, że nic nie pamiętasz, ponowna nauka idzie szybciej.',
+      'Zapominamy najszybciej tuż po nauce, potem coraz wolniej. Moja krzywa wisi tu obok, na tablicy.',
+      'Naukę rozłożoną w czasie zapamiętywałem lepiej niż wkuwaną naraz. Dziś nazywacie to efektem rozłożenia w czasie.'
+    ] };
+  NPCS.pewny = { name: 'Pan Pewny, świadek', kind: 'human', wander: 3,
+    look: { skin: SKIN_TONES[3], hair: 'jez', hairC: '#2a1a10', top: '#c0473a', bottom: '#3b3f4a', acc: 'cap' },
+    lines: [
+      'Widziałem wszystko! Czerwony samochód, kierowca w kapeluszu. Jestem pewien na sto procent. …Choć wczoraj mówiłem, że był niebieski.',
+      'Policjant zapytał, jak szybko auta się ROZTRZASKAŁY. No to powiedziałem, że bardzo szybko! Szkło było wszędzie. …Chyba było.',
+      'Moja pewność rośnie z każdym opowiedzeniem tej historii. A pamięć? Psycholożka z Domu Fałszywych Wspomnień mówi, że niekoniecznie.',
+      'Najcenniejsza jest pierwsza relacja, mówią. Potem nasłuchałem się gazet i sąsiadów… i teraz sam nie wiem, co widziałem, a co słyszałem.'
+    ] };
+  NPCS.rybka = { name: 'Złota rybka', kind: 'e3_rybka', wander: 3, water: true,
+    lines: [
+      'Blub. (Złota rybka patrzy z wyrzutem. Mit o trzech sekundach pamięci słyszała już tysiąc razy — i wszystkie pamięta.)',
+      'Blub blub. (W badaniach złote rybki uczą się reagować na dźwięk albo światło przed karmieniem i pamiętają to tygodniami.)',
+      'Blub. (Rybka okrąża kanał zawsze tą samą trasą. Bo pamięta drogę.)'
+    ] };
+  // złota rybka: nowy rodzaj zwierzęcia w kanale
+  {
+    const baseAnimal = animalSprite;
+    animalSprite = function (npc, frame) {
+      if (npc.kind !== 'e3_rybka') return baseAnimal(npc, frame);
+      return cached('an|e3_rybka|' + frame, () => makeSprite(11, 7, g => {
+        ell(g, 5, 3, 3.6, 2.2, '#f0882a'); ell(g, 5, 2.4, 2.6, 1.2, '#ffb050');
+        R(g, 0, 1 + frame, 2, 2, '#e0701a'); R(g, 0, 3 - frame, 2, 2, '#e0701a');
+        P(g, 7, 2, EYE); P(g, 8, 3, '#c85a10'); P(g, 5, 0, '#e0701a');
+        R(g, 1, 6, 9, 1, 'rgba(255,255,255,0.55)');
+      }, {}));
+    };
+  }
+
+  // styl 'warehouse' nie rysuje szyldu — Magazyn w Dzielnicy Pamięci dostaje tabliczkę nad bramą
+  {
+    const baseBS = buildingSprite;
+    buildingSprite = function (b, level) {
+      const spr = baseBS(b, level);
+      if (b && b.e3sign && b.style === 'warehouse' && b.sign && spr && spr.c && !spr.signRect) {
+        const W = b.w * 16, MX = 4, wy = Math.max(20, b.h * 16 - 32 + 14), doorX = MX + (b.doorCol - b.x) * 16 + 8;
+        const sw = Math.min(W - 6, Math.max(30, b.sign.length * 3 + 10)), sx = clamp(doorX - sw / 2, MX + 2, MX + W - sw - 2), sy = wy + 1;
+        const g = spr.c.getContext('2d');
+        R(g, sx + 1, sy + 1, sw, 8, '#6b4526'); R(g, sx + 2, sy + 2, sw - 2, 6, '#f4e6c4');
+        spr.signRect = { x: sx, y: sy, w: sw, h: 8 };
+      }
+      return spr;
+    };
+  }
+
+  /* ---------- budynek z krzywymi ścianami (Dom Fałszywych Wspomnień) ---------- */
+  SPECIAL_BUILDINGS.e3_krzywy = {
+    h: () => 100,
+    draw(g, o) {
+      const { W, MX, SH, doorX, C, n, win } = o, wallH = 56, top = SH - wallH, lean = 0.13;
+      const offAt = y => Math.round((SH - y) * lean);            // im wyżej, tym bardziej w prawo
+      for (let y = top; y < SH; y++) {
+        const off = offAt(y);
+        R(g, MX + off, y, W, 1, (SH - y) % 9 === 0 ? shade(C.wall, -0.1) : C.wall);
+        P(g, MX + off, y, shade(C.wall, -0.3)); P(g, MX + off + W - 1, y, shade(C.wall, -0.3));
+      }
+      // dach z dwóch połaci o różnych kątach + krzywy komin
+      const rTop = top - 32, ox = offAt(top);
+      for (let y = rTop; y < top; y++) {
+        const t = (y - rTop) / (top - rTop), cx = MX + ox + W * 0.42 + (top - y) * 0.35;
+        const l = Math.round(cx - (W * 0.42 + 6) * t), r = Math.round(cx + (W * 0.58 + 6) * t);
+        R(g, l, y, Math.max(1, r - l), 1, (y - rTop) % 6 === 0 ? shade(C.roof, 0.15) : C.roof);
+      }
+      R(g, MX + ox - 6, top - 2, W + 12, 3, shade(C.roof, -0.3));
+      const chx = MX + ox + Math.round(W * 0.62);
+      for (let k = 0; k < 14; k++) R(g, chx + Math.round(k * 0.4), rTop + 18 - k, 6, 1, k % 4 === 0 ? '#8a5a4a' : '#a86a52');
+      // schody, które donikąd nie prowadzą (ukłon w stronę Eschera i Penrose'a)
+      for (let k = 0; k < 4; k++) R(g, MX + ox + 6 + k * 4, top - 8 - k * 3, 5, 2, shade(C.trim, -0.1));
+      // okna: każde inne i na innej wysokości
+      const kinds = ['round', 'arched', 'rect', 'arched', 'round', 'rect'];
+      const step = (W - 24) / Math.max(1, n);
+      for (let i = 0; i < n; i++) {
+        const y = top + 8 + ((i * 7) % 3) * 6, x = Math.round(MX + 12 + step * i + step / 2 - 4) + offAt(y + 6);
+        if (Math.abs(x + 4 - doorX) < 10 && y > SH - 34) continue;
+        sbWin(g, x, y, kinds[i % kinds.length], C, win);
+      }
+      // ramka obrazu wisząca krzywo
+      line(g, MX + ox + W - 18, top + 30, MX + ox + W - 8, top + 27, C.trim); line(g, MX + ox + W - 18, top + 38, MX + ox + W - 8, top + 35, C.trim);
+      sbDoor(g, doorX, SH, C);
+      sbSign(g, doorX + 4, top - 13, 80, o);
+    }
+  };
+
+  /* ---------- sprite'y parku ---------- */
+  E1.objSprites.e3_krzywa = () => cached('e3_krzywa', () => makeSprite(48, 34, g => {
+    R(g, 4, 20, 2, 14, '#5a3a24'); R(g, 42, 20, 2, 14, '#5a3a24');
+    R(g, 0, 0, 48, 24, '#5a3a24'); R(g, 2, 2, 44, 20, '#2f4a3a');
+    R(g, 5, 4, 1, 15, '#e8e4d8'); R(g, 5, 18, 38, 1, '#e8e4d8');
+    const pts = [[6, 4], [9, 11], [12, 13], [17, 14.5], [22, 15], [28, 16], [35, 16.5], [42, 17]];
+    for (let k = 1; k < pts.length; k++) line(g, pts[k - 1][0], pts[k - 1][1], pts[k][0], pts[k][1], '#f2c94c');
+    pts.forEach(([x, y]) => P(g, x, Math.round(y), '#ffffff'));
+    R(g, 30, 5, 12, 1, '#c8d8c8'); R(g, 30, 7, 9, 1, '#c8d8c8'); R(g, 30, 9, 11, 1, '#c8d8c8');
+  }, { shadow: [24, 33, 20, 2] }));
+  E1.objSprites.e3_fiszkomat = () => cached('e3_fiszkomat', () => makeSprite(16, 30, g => {
+    R(g, 1, 2, 14, 28, '#3f6a8a'); R(g, 1, 2, 14, 2, '#6a9ac0'); R(g, 1, 28, 14, 2, '#2a4a62');
+    R(g, 3, 6, 10, 10, '#d8eef6'); for (let k = 0; k < 3; k++) { R(g, 4, 7 + k * 3, 8, 2, ['#ff9a8a', '#ffd06a', '#9ae07a'][k]); }
+    R(g, 3, 18, 6, 2, '#1a2a3a'); R(g, 11, 18, 2, 2, '#f2c94c'); R(g, 4, 23, 8, 3, '#2a3a4a'); R(g, 5, 24, 6, 1, '#f4ecd8');
+    R(g, 2, 0, 12, 2, '#f2c94c');
+  }, { shadow: [8, 29, 7, 1.5] }));
+  E1.objSprites.e3_kapsula = () => cached('e3_kapsula', () => makeSprite(14, 20, g => {
+    R(g, 1, 14, 12, 6, '#8a8a90'); R(g, 1, 14, 12, 1, '#a8a8b0');
+    ell(g, 7, 9, 4.5, 6, '#c8963a'); ell(g, 7, 8, 3, 4.6, '#e8b85a'); R(g, 3, 9, 9, 1, '#8a6a2a'); R(g, 6, 2, 2, 2, '#8a6a2a');
+    P(g, 5, 6, '#fff2c0');
+  }, { shadow: [7, 19, 6, 1.4] }));
+
+  /* ---------- Automat Powtórek: pudełka Leitnera z pytań, które już znasz ---------- */
+  const LEIT_DAYS = [0, 1, 2, 4, 8, 16];
+  Game.prototype.e3Leit = function () {
+    const d = this.e3Data();
+    if (!d.leit || typeof d.leit !== 'object') d.leit = { cards: {}, sessions: 0 };
+    if (!d.leit.cards) d.leit.cards = {};
+    return d.leit;
+  };
+  Game.prototype.e3LeitDue = function () {
+    const L = this.e3Leit(), s = this.state, today = s.day || 1;
+    const known = QUESTIONS_DB.filter(q => s.stats.answeredQuestions[q.id]);
+    const due = known.filter(q => !L.cards[q.id] || L.cards[q.id].next <= today);
+    due.sort((a, b) => ((L.cards[a.id] || { next: today + 0.5 }).next - (L.cards[b.id] || { next: today + 0.5 }).next) || ((L.cards[a.id] || {}).box || 9) - ((L.cards[b.id] || {}).box || 9));
+    return { known, due };
+  };
+  Game.prototype.e3Fiszkomat = function () {
+    const L = this.e3Leit(), s = this.state, today = s.day || 1;
+    const { known, due } = this.e3LeitDue();
+    const boxes = [1, 2, 3, 4, 5].map(b => known.filter(q => L.cards[q.id] && L.cards[q.id].box === b).length);
+    const fresh = known.filter(q => !L.cards[q.id]).length;
+    const nextDay = Math.min(...known.map(q => (L.cards[q.id] ? L.cards[q.id].next : today)).filter(d => d > today), Infinity);
+    let body = `<p>Automat wydaje karty z pytaniami, na które już ${gg(this, '{odpowiedziałaś|odpowiedziałeś|odpowiedziałoś}')} w katedrach miasta. Najpierw odpowiedz w myślach (albo na kartce), potem odkryj odpowiedź i oceń się uczciwie. Dobrze zapamiętane karty wracają coraz rzadziej — po 1, 2, 4, 8 i 16 dniach — a trudne już jutro.</p>
+      <div class="e3-leit mt">${boxes.map((n, k) => `<div class="e3-box"><b>${n}</b><span>pudełko ${k + 1}</span><i>co ${LEIT_DAYS[k + 1]} ${k ? 'dni' : 'dzień'}</i></div>`).join('')}</div>
+      <p class="small muted mt">Nowe karty (jeszcze nie powtarzane): ${fresh} · dziś do powtórki: <b>${due.length}</b></p>`;
+    let foot = '<button class="btn" data-close>Zamknij</button>';
+    if (!known.length) body += '<div class="fb ai mt">Automat jest jeszcze pusty. Najpierw zalicz kilka pytań w katedrach miasta (np. w Instytucie EBA na Rynku) — wtedy trafią tu jako karty do powtórek.</div>';
+    else if (!due.length) body += `<div class="fb ok mt">Na dziś wszystko powtórzone! ${isFinite(nextDay) ? `Następne karty czekają w dniu ${nextDay}.` : ''} Rozłożenie powtórek w czasie to jeden z najlepiej udokumentowanych sposobów na trwałą pamięć (Cepeda i in., 2006).</div>`;
+    else foot += `<span class="grow"></span><button class="btn btn-green" id="e3-lt-go">▶ Powtórka: ${Math.min(5, due.length)} ${Math.min(5, due.length) === 1 ? 'karta' : Math.min(5, due.length) < 5 ? 'karty' : 'kart'}</button>`;
+    const m = this.openModal(this.panel('🗃️ Automat Powtórek · pudełka Leitnera', `<div class="e3-garden">${body}</div>`, foot, 'narrow'));
+    const go = m.querySelector('#e3-lt-go');
+    if (go) go.addEventListener('click', () => { audio.click(); this.e3LeitSession(due.slice(0, 5)); });
+  };
+  Game.prototype.e3LeitSession = function (cards) {
+    const L = this.e3Leit(), s = this.state, today = s.day || 1;
+    const S = { i: 0, shown: false, res: [0, 0, 0], dead: false };
+    const m = this.openModal(this.panel('🗃️ Automat Powtórek', '<div class="e3-garden"><div id="e3-lt"></div></div>', '', 'narrow'),
+      { onClose: () => { S.dead = true; window.removeEventListener('keydown', kd); } });
+    S.root = m.querySelector('.e3-garden');
+    const box = m.querySelector('#e3-lt');
+    const grade = k => {
+      if (!S.shown || S.dead) return;
+      const q = cards[S.i], c = L.cards[q.id] || { box: 0, n: 0 };
+      c.box = k === 2 ? Math.min(5, Math.max(1, c.box) + 1) : k === 1 ? Math.max(1, c.box) : 1;
+      c.next = today + LEIT_DAYS[c.box]; c.n = (c.n || 0) + 1; c.last = today;
+      L.cards[q.id] = c; S.res[k]++;
+      audio.tone(k === 2 ? 659.3 : k === 1 ? 523.3 : 392, 0.18, { type: 'sine', vol: 0.05 });
+      S.i++; S.shown = false;
+      show();
+    };
+    const show = () => {
+      if (!alive(S)) return;
+      if (S.i >= cards.length) {
+        L.sessions = (L.sessions || 0) + 1;
+        let reward = '';
+        if (this.e3Today('leitner')) { this.addXP(6); this.addMoney(3, true); reward = '<div class="fb ok mt">Pierwsza powtórka dnia: +6 XP, +3 🟡</div>'; }
+        this.save();
+        box.innerHTML = `<p class="center" style="font-size:28px">🗃️</p><p class="center"><b>Powtórka gotowa!</b></p>
+          <p class="center small">✓ pamiętane: ${S.res[2]} · ~ częściowo: ${S.res[1]} · ✗ do jutra: ${S.res[0]}</p>${reward}
+          <div class="fb ai small mt">💡 Przypominanie sobie (zanim zobaczysz odpowiedź) utrwala wiedzę lepiej niż ponowne czytanie — to efekt testowania (Roediger i Karpicke, 2006). A trudność przypomnienia to dobry znak: im bardziej się wysilasz, tym trwalszy ślad.</div>
+          <div class="row mt"><span class="grow"></span><button class="btn" data-close>Zamknij</button></div>`;
+        box.querySelector('[data-close]').addEventListener('click', () => { audio.click(); this.closeModal(); });
+        return;
+      }
+      const q = cards[S.i], Lc = LOCATIONS[q.locId] || { icon: '📚', short: '' }, c = L.cards[q.id];
+      box.innerHTML = `<div class="row"><span class="tag">Karta ${S.i + 1}/${cards.length}</span><span class="tag">${Lc.icon} ${esc(Lc.short)}</span><span class="grow"></span><span class="tag">${c ? 'pudełko ' + c.box : 'nowa'}</span></div>
+        <div class="fiszka mt"><p class="q-topic">${esc(q.topic)}</p><p class="fz-q">${esc(q.question)}</p><div id="e3-lt-a"></div></div>
+        <div class="row mt" id="e3-lt-btn"><span class="grow"></span><button class="btn btn-green" id="e3-lt-show">Pokaż odpowiedź${E3.touch() ? '' : ' [Spacja]'}</button></div>`;
+      box.querySelector('#e3-lt-show').addEventListener('click', reveal);
+    };
+    const reveal = () => {
+      if (S.shown || S.dead) return;
+      S.shown = true; audio.click();
+      const q = cards[S.i];
+      const kb = n => (E3.touch() ? '' : ` [${n}]`);
+      box.querySelector('#e3-lt-a').innerHTML = `<div class="fz-a"><p>${esc(q.canonicalAnswer)}</p><p class="small muted mt">${esc(q.explanation || '')}</p></div>`;
+      box.querySelector('#e3-lt-btn').innerHTML = `<button class="btn btn-sm" data-g="0">✗ ${esc(gg(this, 'Nie {pamiętałam|pamiętałem|pamiętałom}'))}${kb(1)}</button><button class="btn btn-sm" data-g="1">~ Częściowo${kb(2)}</button><span class="grow"></span><button class="btn btn-sm btn-green" data-g="2">✓ ${esc(gg(this, '{Pamiętałam|Pamiętałem|Pamiętałom}'))}${kb(3)}</button>`;
+      box.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => grade(+b.dataset.g)));
+    };
+    const kd = e => {
+      if (!alive(S)) { window.removeEventListener('keydown', kd); return; }
+      if (!this.modalOpen) return;
+      if (!S.shown && (e.code === 'Space' || e.code === 'Enter') && S.i < cards.length) { e.preventDefault(); reveal(); }
+      else if (S.shown) { const n = parseInt(e.key, 10); if (n >= 1 && n <= 3) { e.preventDefault(); grade(n - 1); } }
+    };
+    window.addEventListener('keydown', kd);
+    show();
+  };
+
+  /* ---------- Krzywa Ebbinghausa (dane z 1885 r., metoda oszczędności) ---------- */
+  const EBB = [[0, 100, 'start'], [20, 58.2, '20 min'], [60, 44.2, '1 h'], [540, 35.8, '9 h'], [1440, 33.7, '1 d'], [2880, 27.8, '2 d'], [8640, 25.4, '6 d'], [44640, 21.1, '31 d']];
+  Game.prototype.e3Krzywa = function () {
+    const X = mins => 34 + 262 * Math.log10(mins + 1) / Math.log10(44641), Y = p => 150 - p * 1.3;
+    const path = EBB.map(([t, p], k) => `${k ? 'L' : 'M'}${X(t).toFixed(1)},${Y(p).toFixed(1)}`).join(' ');
+    const dots = EBB.map(([t, p, lab], k) => `<circle cx="${X(t).toFixed(1)}" cy="${Y(p).toFixed(1)}" r="3" fill="#f2c94c"/>${k ? `<text x="${X(t).toFixed(1)}" y="168" font-size="8" text-anchor="middle" fill="#e8e4d8">${lab}</text><text x="${X(t).toFixed(1)}" y="${(Y(p) - 6).toFixed(1)}" font-size="7" text-anchor="middle" fill="#ffffff">${String(p).replace('.', ',')}%</text>` : ''}`).join('');
+    const svg = `<svg viewBox="0 0 310 176" class="e3-chart" role="img" aria-label="Krzywa zapominania Ebbinghausa">
+      <rect x="0" y="0" width="310" height="176" rx="6" fill="#2f4a3a"/>
+      <line x1="34" y1="20" x2="34" y2="152" stroke="#e8e4d8"/><line x1="34" y1="152" x2="300" y2="152" stroke="#e8e4d8"/>
+      ${[0, 25, 50, 75, 100].map(p => `<text x="29" y="${(Y(p) + 3).toFixed(1)}" font-size="8" text-anchor="end" fill="#e8e4d8">${p}</text><line x1="34" y1="${Y(p).toFixed(1)}" x2="300" y2="${Y(p).toFixed(1)}" stroke="rgba(232,228,216,0.12)"/>`).join('')}
+      <path d="${path}" fill="none" stroke="#f2c94c" stroke-width="2"/>${dots}
+    </svg>`;
+    this.openModal(this.panel('📉 Krzywa Ebbinghausa', `<div class="e3-garden">
+      <p>Hermann Ebbinghaus (1885) uczył się list bezsensownych sylab i sprawdzał, ile <b>czasu oszczędza</b>, ucząc się tej samej listy ponownie (metoda oszczędności). Wykres pokazuje te oszczędności w procentach — po kilku minutach, godzinach i dniach.</p>
+      ${svg}
+      <p class="small muted">Oś czasu jest logarytmiczna, żeby zmieściły się minuty i tygodnie. Dane: Ebbinghaus (1885); współczesna powtórka badania dała podobną krzywą (Murre i Dros, 2015).</p>
+      <div class="fb ai small mt">💡 Najwięcej ubywa w pierwszych godzinach, potem zapominanie zwalnia — ale po miesiącu wciąż zostaje „oszczędność”. Wnioski dla nauki: pierwsza powtórka wcześnie, kolejne coraz rzadziej, i najlepiej w formie przypominania sobie, nie czytania. Dokładnie tak działa Automat Powtórek obok.</div></div>`,
+      '<button class="btn" data-close>Zamknij</button>', 'narrow'));
+    if (this.e3Once('krzywa')) this.addXP(3);
+  };
+
+  /* ---------- Fontanna Lety ---------- */
+  const MNEMO_TIPS = [
+    'Najlepsza wskazówka wydobycia to taka, która była obecna podczas zapamiętywania (specyficzność kodowania).',
+    'Przypominanie sobie utrwala wiedzę mocniej niż ponowne czytanie.',
+    'Sen po nauce pomaga utrwalić to, czego się nauczyłaś.',
+    'Zadawaj sobie pytanie „dlaczego tak jest?” — znaczenie zapamiętuje się lepiej niż brzmienie.',
+    'To, co odniesiesz do siebie, zapamiętasz lepiej (efekt odniesienia do siebie).',
+    'Rozłóż naukę w czasie: trzy krótkie sesje w różne dni zwykle wygrywają z jedną długą.'
+  ];
+  Game.prototype.e3Lete = function () {
+    this.showDialogue({ name: 'Fontanna Lety', emoji: '⛲', pages: ['W mitologii greckiej Leta to rzeka zapomnienia w krainie zmarłych: dusze piły z niej, by zapomnieć poprzednie życie. Obok bije rzadziej odwiedzane źródło Mnemozyny — pamięci. Z którego się napijesz?'],
+      options: [
+        { label: '💧 Z Lety — chcę o czymś zapomnieć', fn: () => this.say('Fontanna Lety', ['Próbujesz zapomnieć o jutrzejszym kolokwium… Nie działa. Wciąż pamiętasz. Może nawet bardziej.', 'Badania nad celowym (ukierunkowanym) zapominaniem pokazują, że trochę wpływu mamy: słowa, które polecono zapomnieć, ludzie przypominają sobie słabiej. Ale wymazać wspomnienia na zawołanie nie umiemy — a próba tłumienia myśli często daje efekt odbicia.'], '⛲') },
+        { label: '✨ Ze źródła Mnemozyny', fn: () => { const tip = pick(Math.random, MNEMO_TIPS); this.say('Źródło Mnemozyny', ['Woda smakuje jak… powtórka. Na dnie leży moneta z wyrytą radą:', '„' + gg(this, tip.replace('nauczyłaś', '{nauczyłaś|nauczyłeś|nauczyłoś}')) + '”'], '✨'); if (this.e3Once('mnemozyna_zrodlo')) this.addXP(3); } },
+        { label: 'Tylko popatrzę', fn: null }
+      ] });
+  };
+
+  /* ---------- Kapsuła Czasu: list do przyszłego Ja ---------- */
+  const KAPS_DNI = 7;
+  Game.prototype.e3Kapsula = function () {
+    const d = this.e3Data(), s = this.state, today = s.day || 1;
+    const K = d.kapsula;
+    if (K && K.text && today < K.open) {
+      return this.say('Kapsuła Czasu', [`Twoja kapsuła jest zakopana od dnia ${K.day}. Otworzysz ją w dniu ${K.open} (za ${K.open - today} ${K.open - today === 1 ? 'dzień' : 'dni'}).`, 'Pamiętanie o zamiarach na przyszłość to pamięć prospektywna. Tę kapsułę zapamięta za Ciebie gra — ale czy Ty będziesz pamiętać, co w niej jest?'], '⏳');
+    }
+    if (K && K.text && today >= K.open) {
+      const first = !K.opened;
+      K.opened = today;
+      if (first) { this.addXP(10); audio.success(); }
+      this.save();
+      const m = this.openModal(this.panel('⏳ Kapsuła Czasu — otwarta!', `<div class="e3-garden">
+        <p class="small muted">List z dnia ${K.day}:</p><div class="card e3-letter">${esc(K.text).replace(/\n/g, '<br>')}</div>
+        <p class="mt">${esc(gg(this, 'Czy przed otwarciem {pamiętałaś|pamiętałeś|pamiętałoś}, co tu {napisałaś|napisałeś|napisałoś}? Często pamiętamy dawne myśli jako bardziej podobne do dzisiejszych, niż były naprawdę — pamięć autobiograficzna lubi spójność.'))}</p>
+        ${first ? '<div class="fb ok mt">Otwarcie kapsuły: +10 XP</div>' : ''}</div>`,
+        '<button class="btn" data-close>Zamknij</button><span class="grow"></span><button class="btn btn-green" id="e3-kp-new">✉️ Napisz nowy list</button>', 'narrow'));
+      m.querySelector('#e3-kp-new').addEventListener('click', () => { audio.click(); d.kapsula = null; this.e3Kapsula(); });
+      return;
+    }
+    const m = this.openModal(this.panel('⏳ Kapsuła Czasu', `<div class="e3-garden">
+      <p>Napisz list do siebie z przyszłości. Kapsuła otworzy się za ${KAPS_DNI} dni gry. Możesz zapisać, czego się teraz uczysz, czym się martwisz albo na co czekasz.</p>
+      <textarea id="e3-kp-txt" class="e3-ta" maxlength="500" placeholder="Drogie Przyszłe Ja…"></textarea>
+      <p class="small muted">List zostaje tylko w zapisie tej gry na Twoim urządzeniu.</p></div>`,
+      '<button class="btn" data-close>Nie teraz</button><span class="grow"></span><button class="btn btn-green" id="e3-kp-go">⏳ Zakop kapsułę</button>', 'narrow'));
+    const ta = m.querySelector('#e3-kp-txt');
+    setTimeout(() => ta && ta.focus(), 60);
+    m.querySelector('#e3-kp-go').addEventListener('click', () => {
+      const text = (ta.value || '').trim().slice(0, 500);
+      if (!text) { ta.focus(); return this.toast('Najpierw napisz kilka słów.'); }
+      d.kapsula = { text, day: today, open: today + KAPS_DNI };
+      audio.pickup(); this.save(); this.closeModal();
+      this.say('Kapsuła Czasu', `Kapsuła zakopana. Otworzysz ją w dniu ${today + KAPS_DNI}. Przyszłe Ja już czeka (w Porcie Przyszłego Ja mówią, że od jutra).`, '⏳');
+      if (this.e3Once('kapsula')) this.addXP(3);
+    });
+  };
+
+  /* ---------- trzy domy-przedmioty Dzielnicy Pamięci ---------- */
+  MG_KIND.e3drm = { name: 'Eksperyment: słowa, których nie było', icon: '🌀', pass: 0.5 };
+  MG_KIND.e3swiadek = { name: 'Eksperyment: świadek stłuczki', icon: '🚗', pass: 0.5 };
+  MG_KIND.e3loci = { name: 'Trening: pałac pamięci', icon: '🏰', pass: 0.5 };
+
+  SUBJECTS.e3_magazyn = {
+    name: 'Magazyn Pamięci Długotrwałej', subject: 'Pamięć długotrwała: kodowanie i wydobywanie', icon: '🗝️', color: '#6a5a8a', zone: DZ, laik: true,
+    src: 'Craik i Lockhart (1972); Craik i Tulving (1975); Rogers, Kuiper i Kirker (1977); Slamecka i Graf (1978); Chase i Simon (1973); Paivio (1971); Godden i Baddeley (1975); Tulving i Thomson (1973); Tulving (1972); Rubin i in. (1986); Talarico i Rubin (2003); LePort i in. (2012); Simons i Chabris (2011); Rasch i Born (2013); Nader i in. (2000); Nickerson i Adams (1979).',
+    intro: 'Magazyn przeprowadził się tu z Portu. Pojemność: praktycznie nieograniczona. Kłopot: trafić we właściwą półkę. Tu dowiesz się, jak informacja trafia do pamięci długotrwałej (kodowanie), jak ją potem znaleźć (wydobywanie) i dlaczego czasem się nie udaje. Dom uzupełnia Dom Pamięci na Kampusie — tam pamięć krótkotrwała i robocza.',
+    rooms: [
+      { id: 'kodowanie', name: 'Hala Kodowania', icon: '🏷️', kind: 'quiz', light: '#ffd06a',
+        intro: 'Od czego zależy, czy coś zostanie zapamiętane na dłużej?',
+        items: [
+          { q: 'Według koncepcji poziomów przetwarzania (Craik i Lockhart, 1972) słowo zapamiętasz najlepiej, gdy…', a: ['zastanowisz się nad jego znaczeniem', 'policzysz w nim litery', 'sprawdzisz, czy jest napisane wielkimi literami', 'powtórzysz je szybko kilka razy'],
+            why: 'Przetwarzanie głębokie (znaczeniowe) daje trwalszy ślad niż płytkie (wygląd, brzmienie). W badaniu Craika i Tulvinga (1975) słowa ocenione pod kątem znaczenia rozpoznawano kilkakrotnie lepiej niż ocenione pod kątem wyglądu liter.' },
+          { q: 'Na czym polega efekt odniesienia do siebie?', a: ['Lepiej pamiętamy informacje, które odnosimy do siebie', 'Pamiętamy tylko własne imię', 'Zapominamy wszystko, co nas nie dotyczy', 'Lepiej pamiętamy cudze sukcesy'],
+            why: 'Pytanie „czy to słowo mnie opisuje?” daje jeszcze lepszą pamięć niż pytanie o samo znaczenie (Rogers, Kuiper i Kirker, 1977). Wiedza o sobie to bogata sieć skojarzeń, do której łatwo coś „przypiąć”.' },
+          { q: 'Efekt generowania (Slamecka i Graf, 1978) oznacza, że…', a: ['lepiej pamiętamy to, co sami wytworzyliśmy, niż to, co tylko przeczytaliśmy', 'każde pokolenie ma lepszą pamięć', 'generatory prądu poprawiają koncentrację', 'pamięć słabnie z wiekiem'],
+            why: 'Słowo, które trzeba samemu uzupełnić (np. „szybki – w_oln_”), zapamiętuje się lepiej niż przeczytane w całości. Dlatego warto robić własne notatki i własne przykłady.' },
+          { q: 'Mistrzowie szachowi świetnie odtwarzają ustawienia figur z prawdziwych partii, ale z losowymi radzą sobie dużo słabiej. Dlaczego?', a: ['Grupują figury w znane wzorce (porcje), a w losowym ustawieniu wzorców nie ma', 'Mają lepszy wzrok', 'Losowe ustawienia są zakazane w szachach', 'Mają dużo większą pamięć krótkotrwałą'],
+            why: 'To klasyczne badania Chase’a i Simona (1973). Wiedza ekspercka pozwala zamienić wiele elementów w kilka sensownych porcji. Gdy sensu brak, przewaga prawie znika.' },
+          { q: 'Co zakłada teoria podwójnego kodowania (Paivio)?', a: ['Słowa, które łatwo sobie wyobrazić, zapisujemy w dwóch kodach: słownym i obrazowym', 'Każdą informację trzeba zapisać dwa razy', 'Pamięć ma dwa magazyny: dzienny i nocny', 'Kodowanie działa tylko w dwóch językach'],
+            why: 'Konkretne słowa („jabłko”) zapamiętuje się lepiej niż abstrakcyjne („prawda”), bo mają też obraz. Dlatego rysunki i schematy pomagają w nauce.' },
+          { q: 'Czym różni się powtarzanie podtrzymujące od opracowującego?', a: ['Podtrzymujące to mechaniczne powtarzanie, opracowujące — łączenie z tym, co już wiesz', 'Podtrzymujące jest głośne, opracowujące ciche', 'To dwie nazwy tego samego', 'Opracowujące to przepisywanie notatek na czysto'],
+            why: 'Powtarzanie numeru telefonu pod nosem utrzymuje go w pamięci krótkotrwałej, ale słabo zapisuje na dłużej. Szukanie znaczenia, przykładów i powiązań działa znacznie lepiej.' }
+        ] },
+      { id: 'klucze', name: 'Pokój Kluczy', icon: '🗝️', kind: 'pairs', light: '#8ad0ff',
+        intro: 'Wszystko jest w magazynie — potrzebny tylko właściwy klucz. Połącz zjawisko z opisem.',
+        pairs: [['Pamięć zależna od kontekstu', 'nurkowie lepiej pamiętali słowa tam, gdzie je poznali'], ['Pamięć zależna od stanu', 'łatwiej przypomnieć sobie coś w podobnym stanie ciała i umysłu'],
+          ['Specyficzność kodowania', 'wskazówka działa, jeśli była obecna podczas zapamiętywania'], ['Zjawisko „na końcu języka”', 'wiem, że wiem, ale słowo nie przychodzi'],
+          ['Pamięć zgodna z nastrojem', 'w smutku łatwiej przypominamy sobie smutne zdarzenia'], ['Interferencja proaktywna', 'stare informacje utrudniają zapamiętanie nowych'], ['Interferencja retroaktywna', 'nowe informacje utrudniają przypomnienie starych']],
+        outro: 'Godden i Baddeley (1975) uczyli nurków list słów pod wodą i na brzegu — słowa wracały lepiej tam, gdzie się ich nauczono. Pomaga nawet wyobrażenie sobie miejsca nauki, zanim zaczniesz sobie przypominać (Smith, 1979).' },
+      { id: 'zapominanie', name: 'Sortownia Zapominania', icon: '🧹', kind: 'sort', light: '#ff9ab8',
+        intro: 'Dlaczego zapominamy? Przypisz każdą sytuację do najbardziej prawdopodobnej przyczyny.',
+        bins: ['Słabe kodowanie', 'Interferencja', 'Brak wskazówki'],
+        items: [['Nie umiesz narysować monety, którą widzisz codziennie', 0], ['Rozdział przeczytany „na autopilocie”, myślami gdzie indziej', 0], ['Klucze odłożone w biegu, bez patrzenia — i nie wiadomo gdzie', 0],
+          ['Po nauce hiszpańskiego mieszają się słówka z włoskiego', 1], ['W nowej pracy podajesz stary numer telefonu', 1], ['Nowe hasło do konta miesza się ze starym', 1],
+          ['Imię znajomej wraca, gdy ktoś poda pierwszą literę', 2], ['Wchodzisz do kuchni i nie wiesz po co; w pokoju sobie przypominasz', 2], ['Zapach dawnych perfum nagle przywołuje wakacje sprzed lat', 2]],
+        outro: 'Słabe kodowanie to „nigdy dobrze niezapisane” (Nickerson i Adams, 1979: mało kto wiernie narysuje monetę). Interferencja to „inne wspomnienia się mieszają”. Brak wskazówki — „jest, ale nie mogę trafić”. Czysty zanik śladu trudno w badaniach odróżnić od interferencji, stąd spór, ile zapominania to po prostu upływ czasu.' },
+      { id: 'autobiografia', name: 'Archiwum Życia', icon: '📸', kind: 'quiz', light: '#9ae07a',
+        intro: 'Pamięć autobiograficzna: wspomnienia z własnego życia.',
+        items: [
+          { q: 'Z jakiego okresu życia dorośli przywołują najwięcej wspomnień?', a: ['Z wieku mniej więcej 10–30 lat (tzw. górka wspomnień)', 'Z pierwszych trzech lat życia', 'Głównie z ostatniego tygodnia', 'Z okresu tuż przed narodzinami'],
+            why: 'Górkę wspomnień opisał m.in. David Rubin. Tłumaczy się ją tym, że w młodości dzieje się wiele „pierwszych razów” i kształtuje się tożsamość.' },
+          { q: 'Do jakiego wieku sięgają zwykle najwcześniejsze wspomnienia dorosłych?', a: ['Do ok. 3–4 roku życia', 'Do narodzin', 'Do 10 roku życia', 'Do pierwszego dnia w szkole średniej'],
+            why: 'To amnezja dziecięca. Małe dzieci pamiętają wiele rzeczy, ale te wspomnienia rzadko przetrwają do dorosłości — m.in. dlatego, że dojrzewają mózg i język.' },
+          { q: 'Co pokazało badanie wspomnień z 11 września 2001 r. (Talarico i Rubin, 2003)?', a: ['Wspomnienia „fleszowe” zmieniały się z czasem jak zwykłe, ale pewność pozostawała wysoka', 'Wspomnienia „fleszowe” są dokładne jak nagranie', 'Po tygodniu ludzie zapomnieli o tym dniu', 'Silne emocje całkowicie blokują zapamiętywanie'],
+            why: 'Studenci opisywali dzień zamachów i zwykły dzień z tego samego okresu. Spójność obu rodzajów wspomnień spadała podobnie — ale we wspomnienia z 11 września wierzyli znacznie mocniej.' },
+          { q: 'Pamięć epizodyczna to według Endela Tulvinga…', a: ['pamięć przeżytych zdarzeń: co, gdzie i kiedy', 'pamięć ogólnych faktów o świecie', 'pamięć ruchów i nawyków', 'pamięć ostatnich kilku sekund'],
+            why: 'Tulving (1972) odróżnił pamięć epizodyczną (moje wakacje nad morzem) od semantycznej (Bałtyk to morze). Później opisywał pamięć epizodyczną jako „podróż w czasie” w myślach.' },
+          { q: 'Osoby z wyjątkową pamięcią autobiograficzną (HSAM) potrafią podać, co robiły niemal każdego dnia od dzieciństwa. Czy w laboratorium zapamiętują też lepiej listy słów?', a: ['Zwykle nie — ich przewaga dotyczy głównie własnego życia', 'Tak, zapamiętują wszystko perfekcyjnie', 'Nie mają pamięci roboczej', 'Pamiętają tylko daty, bez zdarzeń'],
+            why: 'W badaniu LePort i in. (2012) osoby z HSAM nie wypadały wyraźnie lepiej w standardowych testach pamięci. Ich niezwykłość dotyczy pamięci autobiograficznej — i one też potrafią się mylić.' }
+        ] },
+      { id: 'mity', name: 'Pracownia Mitów o Pamięci', icon: '🧚', kind: 'mit', light: '#c79aff',
+        intro: 'O pamięci krąży wiele przekonań. Które są prawdziwe?',
+        items: [
+          ['Pamięć działa jak kamera: nagrywa wszystko i odtwarza bez zmian.', false, 'Tak sądzi wiele osób — w amerykańskim sondażu (Simons i Chabris, 2011) zgodziło się z tym ok. 63% ankietowanych. W rzeczywistości wspomnienia są za każdym razem składane od nowa i mogą się zmieniać.'],
+          ['Złota rybka pamięta tylko 3 sekundy.', false, 'Złote rybki w badaniach uczą się zadań i pamiętają je tygodniami. Zapytaj tę z Kanału Lety — pamięta Cię od pierwszej wizyty.'],
+          ['Sen pomaga utrwalać to, czego się nauczyliśmy.', true, 'W czasie snu wspomnienia są „odtwarzane” i utrwalane, szczególnie w fazie snu wolnofalowego (przegląd: Rasch i Born, 2013). Zarwana noc przed egzaminem uderza też w pamięć.'],
+          ['Pamięć fotograficzna — dokładne „zdjęcie” strony w głowie — jest częsta u dorosłych.', false, 'Wyraziste obrazy ejdetyczne obserwowano u niewielkiej części dzieci, a u dorosłych prawie wcale. Mistrzowie pamięci korzystają z technik (np. metody loci), a nie z „aparatu w głowie”.'],
+          ['Uderzenie w głowę zwykle sprawia, że ktoś zapomina, kim jest — a drugie uderzenie przywraca pamięć.', false, 'To motyw z filmów. Po urazach mózgu najczęstsze są kłopoty z zapamiętywaniem nowych informacji i luka wokół samego wypadku. Utrata tożsamości zdarza się bardzo rzadko, a drugie uderzenie niczego nie naprawia.'],
+          ['Przypominając sobie wspomnienie, możemy je przy okazji zmienić.', true, 'Przypominanie to nie odczyt z dysku. Wspomnienie na chwilę staje się podatne na zmiany i jest zapisywane ponownie — razem z tym, co do niego dodaliśmy (rekonsolidacja; m.in. Nader i in., 2000).'],
+          ['Pojemność pamięci długotrwałej jest mała, więc ucząc się nowego, „wypychamy” stare.', false, 'Pojemność pamięci długotrwałej jest praktycznie nieograniczona. Kłopotem jest raczej interferencja: podobne informacje mieszają się ze sobą i utrudniają wydobycie.']
+        ] }
+    ]
+  };
+
+  SUBJECTS.e3_falszywe = {
+    name: 'Dom Fałszywych Wspomnień', subject: 'Fałszywe wspomnienia i zeznania świadków', icon: '🌀', color: '#8a6ac8', zone: DZ, laik: true,
+    src: 'Bartlett (1932); Deese (1959); Roediger i McDermott (1995); Loftus i Palmer (1974); Loftus i Pickrell (1995); Garry i in. (1996); Brainerd, Reyna i Ceci (2008); Wixted i Wells (2017); Fisher i Geiselman (1992); Memon, Meissner i Fraser (2010); Innocence Project.',
+    intro: 'Ściany tego domu są krzywe, a schody prowadzą donikąd — jak wspomnienia, które za każdym razem składamy od nowa. Już Bartlett (1932) zauważył, że ludzie opowiadający obcą im historię zmieniają ją tak, by pasowała do ich wiedzy. Tu sprawdzisz, jak łatwo „zapamiętać” coś, czego nie było — i jak pytać świadków, żeby ich nie zmylić.',
+    rooms: [
+      { id: 'drm', name: 'Pokój Słów, Których Nie Było', icon: '🌀', kind: 'e3drm', light: '#c79aff',
+        intro: 'Zobaczysz dwie listy słów. Potem sprawdzimy, które słowa na nich były. Brzmi łatwo?',
+        outro: 'To paradygmat DRM (Deese, 1959; Roediger i McDermott, 1995). Słowa z listy budzą skojarzenia, a mózg zapamiętuje ogólny sens listy. Słowo-wabik pasuje do tego sensu tak dobrze, że wydaje się zapamiętane — często z pełnym przekonaniem.' },
+      { id: 'swiadek', name: 'Pokój Świadka', icon: '🚗', kind: 'e3swiadek', light: '#ffb060',
+        intro: 'Obejrzysz krótkie nagranie stłuczki z kamery monitoringu. Potem, jak policjant, zadam Ci dwa pytania.',
+        outro: 'Loftus i Palmer (1974) pokazali, że jedno słowo w pytaniu zmienia odpowiedź — a nawet samo wspomnienie. Dlatego dobre przesłuchanie zaczyna się od pytań otwartych.' },
+      { id: 'mity', name: 'Pracownia Mitów o Świadkach', icon: '🧚', kind: 'mit', light: '#ff9ab8',
+        intro: 'Fakty czy mity o pamięci świadków?',
+        items: [
+          ['Hipnoza pomaga wiernie odtworzyć zapomniane szczegóły zdarzenia.', false, 'W hipnozie ludzie podają więcej szczegółów — ale też więcej błędnych — i są bardziej pewni siebie. Dlatego zeznania „odświeżane” hipnozą traktuje się bardzo ostrożnie.'],
+          ['Można komuś wytworzyć wspomnienie zdarzenia, które nigdy się nie wydarzyło.', true, 'W badaniu „zgubiony w centrum handlowym” (Loftus i Pickrell, 1995) mniej więcej co czwarta osoba „przypomniała sobie” całość lub fragment zmyślonej historii z dzieciństwa, którą opowiadano jej jako prawdziwą.'],
+          ['Świadek, który po miesiącach mówi w sądzie „jestem absolutnie pewien”, prawie na pewno się nie myli.', false, 'Pewność rośnie z czasem i z każdym powtórzeniem relacji. Coś mówi głównie pierwsza, „niezanieczyszczona” pewność — wyrażona od razu przy pierwszym rozpoznaniu w dobrze przeprowadzonej procedurze (Wixted i Wells, 2017).'],
+          ['Błędne rozpoznania przez świadków przyczyniły się do wielu niesłusznych skazań.', true, 'W Stanach Zjednoczonych odegrały rolę w ok. 70% spraw niesłusznych skazań, które potem obalono badaniami DNA (dane Innocence Project).'],
+          ['Dzieci zawsze łatwiej niż dorośli ulegają każdemu rodzajowi fałszywych wspomnień.', false, 'Na sugerujące pytania małe dzieci są rzeczywiście bardziej podatne. Ale w zadaniach typu DRM — gdzie fałszywe wspomnienie bierze się z sensu i skojarzeń — dorośli mylą się częściej niż dzieci (Brainerd, Reyna i Ceci, 2008).'],
+          ['Wyobrażanie sobie zdarzenia może zwiększyć przekonanie, że naprawdę je przeżyliśmy.', true, 'To inflacja wyobraźni (Garry i in., 1996): po wyobrażeniu sobie np. stłuczenia ręką szyby ludzie częściej oceniali, że zdarzyło im się to w dzieciństwie.'],
+          ['Skoro pamięć bywa zawodna, zeznania świadków są bezwartościowe.', false, 'Zawodna nie znaczy bezużyteczna. Pamięć zwykle dobrze oddaje sedno zdarzeń, a myli szczegóły. Dobre procedury — pytania otwarte, brak sugestii, szybkie spisanie relacji — wyraźnie poprawiają jakość zeznań.']
+        ] },
+      { id: 'slownik', name: 'Słownik Zniekształceń', icon: '📖', kind: 'pairs', light: '#9ae07a',
+        intro: 'Połącz zjawisko z jego opisem.',
+        pairs: [['Efekt dezinformacji', 'informacja po zdarzeniu zmienia wspomnienie'], ['Paradygmat DRM', 'lista skojarzeń wywołuje „pamięć” słowa, którego nie było'], ['Wspomnienie fleszowe', 'żywe wspomnienie okoliczności ważnego wydarzenia'],
+          ['Inflacja wyobraźni', 'wyobrażanie sobie zdarzenia zwiększa przekonanie, że się wydarzyło'], ['Błąd źródła', 'pamiętam treść, ale mylę, skąd ją znam'], ['Konfabulacja', 'nieświadome wypełnianie luk w pamięci zmyśleniami'], ['Kryptomnezja', 'cudzy pomysł wraca jako „własny”, bo zapomniano jego źródło']],
+        outro: 'Większość zniekształceń to skutek uboczny dobrze działającej pamięci: zapamiętujemy sens, łączymy fakty i uzupełniamy luki. Zwykle to pomaga — tylko czasem zmyla.' },
+      { id: 'przesluchanie', name: 'Pokój Przesłuchań', icon: '🎙️', kind: 'scena', light: '#8ad0ff',
+        intro: 'Jak pytać świadka, żeby nie zmienić jego wspomnienia? Trzy sytuacje — każdy wybór jest dozwolony, zobaczysz jego skutek.',
+        items: [
+          { s: 'Rozmawiasz ze świadkiem kradzieży roweru spod biblioteki. Jak zaczynasz?', o: [
+            ['„Złodziej miał czerwoną kurtkę, prawda?”', 'Świadek kiwa głową: „Chyba tak…”. Czerwona kurtka może już na stałe wejść do jego wspomnienia — to pytanie sugerujące.', false],
+            ['„Proszę opowiedzieć wszystko, co pani pamięta, nawet drobiazgi, które wydają się nieważne.”', 'Świadek mówi swoimi słowami: rower, plecak, ktoś odjechał w stronę parku. Dostajesz więcej trafnych szczegółów i nic mu nie podsuwasz.', true],
+            ['„Ile lat miał ten wysoki mężczyzna?”', 'Świadek zaczyna zgadywać wiek… a „wysoki mężczyzna” właśnie stał się częścią jego relacji, choć wcale o nim nie mówił.', false]],
+            why: 'Pytania otwarte i prośba o wszystkie szczegóły to podstawy wywiadu poznawczego (Fisher i Geiselman, 1992). W metaanalizie (Memon i in., 2010) taki wywiad dawał wyraźnie więcej trafnych informacji, przy niewielkim wzroście błędów.' },
+          { s: 'Dziecko widziało, jak na przerwie ktoś stłukł szybę w szkole. Jak pytasz?', o: [
+            ['„Opowiedz mi wszystko, co się działo na przerwie.”', 'Dziecko opowiada po swojemu, z przerwami. Ty słuchasz i zadajesz pytania otwarte do tego, co samo powiedziało.', true],
+            ['„To był Kuba, tak?”', 'Dziecko zgadza się — dorosły chyba wie lepiej. Odpowiedź mówi więcej o pytaniu niż o tym, co się stało.', false],
+            ['Zadaję to samo pytanie kilka razy, aż odpowiedź się zmieni.', 'Dziecko uznaje, że pierwsza odpowiedź była zła, i zmienia ją. Powtarzane pytania to dla dzieci sygnał: „spróbuj jeszcze raz”.', false]],
+            why: 'Dzieci potrafią być dobrymi świadkami, ale są szczególnie wrażliwe na sugestię i presję dorosłych. Dlatego pytania otwarte, bez podsuwania imion i bez powtarzania tego samego pytania.' },
+          { s: 'Świadek nie pamięta numeru rejestracyjnego auta, które uciekło z miejsca stłuczki. Co robisz?', o: [
+            ['„Musi pan pamiętać, proszę się postarać!”', 'Pod presją świadek podaje jakiś numer… niestety wymyślony. Nacisk sprzyja konfabulacji.', false],
+            ['„Proszę wrócić myślami do tamtej chwili: gdzie pan stał, jaka była pogoda, co pan słyszał?”', 'Świadek przypomina sobie, że numer zaczynał się od „KR” i była na nim naklejka z psem. Odtworzenie kontekstu przywraca wskazówki wydobycia.', true],
+            ['„Czy to mogło być KR 12345?”', 'Świadek: „W sumie… mogło”. Właśnie podsunięto mu odpowiedź, którą może później „pamiętać”.', false]],
+            why: 'Odtworzenie kontekstu to technika wywiadu poznawczego, która wykorzystuje specyficzność kodowania: wskazówki z chwili zdarzenia pomagają w przypomnieniu. Podsuwanie odpowiedzi i presja — przeciwnie.' }
+        ] }
+    ]
+  };
+
+  SUBJECTS.e3_techniki = {
+    name: 'Pracownia Technik Uczenia', subject: 'Jak się uczyć, żeby pamiętać', icon: '🎓', color: '#3f6a8a', zone: DZ, laik: true,
+    src: 'Dunlosky i in. (2013); Roediger i Karpicke (2006); Cepeda i in. (2006); Rohrer i Taylor (2007); Bjork (1994); Pashler i in. (2008); Pietschnig i in. (2010); Maguire i in. (2003); Dresler i in. (2017); Leitner (1972).',
+    intro: 'Zegar na wieży przypomina: liczy się nie tylko ile, ale i kiedy się uczysz. Tu poznasz techniki, które mają najlepsze poparcie w badaniach, i te, które tylko wydają się skuteczne. W parku przed Pracownią stoi Automat Powtórek z kartami z pytań miasta.',
+    rooms: [
+      { id: 'loci', name: 'Pałac Pamięci', icon: '🏰', kind: 'e3loci', light: '#ffd06a',
+        intro: 'Metoda loci: rozmieścisz w wyobraźni osiem przedmiotów wzdłuż znanej Ci trasy przez miasto, a potem przejdziesz ją jeszcze raz i je pozbierasz.',
+        outro: 'Legenda przypisuje metodę Symonidesowi z Keos. Mistrzowie pamięci nie mają „lepszych mózgów” — korzystają z takich technik (Maguire i in., 2003). Po ok. 6 tygodniach treningu tą metodą także zwykłe osoby wyraźnie poprawiały wyniki (Dresler i in., 2017).' },
+      { id: 'ranking', name: 'Ranking Technik', icon: '📊', kind: 'sort', light: '#9ae07a',
+        intro: 'Dunlosky i współpracownicy (2013) ocenili popularne techniki uczenia się. Zgadnij, które dostały ocenę wysoką, umiarkowaną, a które niską.',
+        bins: ['Wysoka skuteczność', 'Umiarkowana', 'Niska'],
+        items: [['Testowanie się (fiszki, quizy, pytania)', 0], ['Rozkładanie nauki w czasie', 0],
+          ['Przeplatanie różnych typów zadań', 1], ['Zadawanie sobie pytań „dlaczego?”', 1], ['Wyjaśnianie sobie kolejnych kroków', 1],
+          ['Zakreślanie i podkreślanie', 2], ['Wielokrotne czytanie tekstu', 2], ['Streszczanie', 2], ['Słowa-klucze (mnemotechnika obrazowa)', 2]],
+        outro: 'Najwyżej oceniono testowanie się i rozkładanie nauki w czasie — działają w wielu zadaniach i u różnych osób. Zakreślanie i ponowne czytanie dają złudzenie płynności: tekst wydaje się znajomy, więc myślimy, że go umiemy.' },
+      { id: 'mity', name: 'Pracownia Mitów o Nauce', icon: '🧚', kind: 'mit', light: '#ff9ab8',
+        intro: 'Co naprawdę pomaga w nauce, a co tylko tak wygląda?',
+        items: [
+          ['Każdy uczy się najlepiej w swoim stylu: wzrokowcy z obrazków, słuchowcy ze słuchania.', false, 'Ludzie mają preferencje, ale nauczanie „dopasowane do stylu” nie poprawia wyników (przegląd: Pashler i in., 2008). Lepiej dopasować sposób do treści: mapę uczyć obrazem, wymowę — słuchem.'],
+          ['Testowanie się (fiszki, quizy) daje trwalszą wiedzę niż ponowne czytanie.', true, 'To efekt testowania. W badaniu Roedigera i Karpicke’a (2006) osoby, które ćwiczyły przypominanie, po tygodniu pamiętały wyraźnie więcej niż te, które czytały tekst kilka razy — choć same przewidywały odwrotnie.'],
+          ['Zarwana noc z zakuwaniem przed egzaminem to dobra droga do trwałej wiedzy.', false, 'Nauka „na raz” może dać wynik jutro, ale wiedza szybko ulatuje. Te same godziny rozłożone na kilka dni zwykle dają trwalszą pamięć (Cepeda i in., 2006), a sen pomaga ją utrwalić.'],
+          ['Przeplatanie różnych typów zadań wydaje się trudniejsze, ale często lepiej uczy.', true, 'Uczniowie, którzy mieszali typy zadań matematycznych, na teście radzili sobie wyraźnie lepiej niż ci, którzy rozwiązywali je blokami (Rohrer i Taylor, 2007). To jedna z „pożądanych trudności” (Bjork).'],
+          ['Słuchanie Mozarta podczas nauki podnosi inteligencję.', false, '„Efekt Mozarta” okazał się niewielki i krótkotrwały — to raczej skutek lepszego nastroju i pobudzenia niż trwałej zmiany (metaanaliza: Pietschnig i in., 2010).'],
+          ['To, że tekst wydaje się znajomy, nie oznacza jeszcze, że go umiemy.', true, 'To złudzenie płynności: przy drugim czytaniu wszystko wygląda „znajomo”. Prawdziwy sprawdzian to zamknąć książkę i spróbować odtworzyć treść.'],
+          ['Uczenie się kilku rzeczy naraz, z powiadomieniami w tle, jest tak samo skuteczne jak skupienie na jednej.', false, 'Przełączanie się między zadaniami kosztuje czas i dokładność. Nauka przy ciągłych powiadomieniach zwykle trwa dłużej i daje płytszą wiedzę.']
+        ] },
+      { id: 'plan', name: 'Pokój Planu Nauki', icon: '📋', kind: 'order', light: '#8ad0ff',
+        intro: 'Ułóż etapy dobrej sesji nauki — od pierwszego spojrzenia na tekst do powtórek.',
+        items: ['Przejrzyj rozdział i zapisz pytania, na które chcesz znaleźć odpowiedź', 'Czytaj uważnie, szukając odpowiedzi na swoje pytania', 'Zamknij książkę i zapisz albo powiedz, co pamiętasz', 'Sprawdź w tekście, czego brakowało, i uzupełnij', 'Wróć do materiału jutro, potem za kilka dni — znów najpierw przypominając sobie'],
+        outro: 'To połączenie kilku sprawdzonych metod: pytań przed czytaniem (jak w metodzie SQ3R), przypominania sobie i powtórek rozłożonych w czasie.' },
+      { id: 'slownik', name: 'Słownik Ucznia', icon: '🎓', kind: 'pairs', light: '#c79aff',
+        intro: 'Połącz pojęcie z opisem.',
+        pairs: [['Efekt testowania', 'przypominanie utrwala bardziej niż ponowne czytanie'], ['Efekt rozłożenia w czasie', 'kilka krótszych sesji w odstępach daje trwalszą pamięć'], ['Przeplatanie', 'mieszanie różnych typów zadań w jednej sesji'],
+          ['Pożądane trudności', 'utrudnienia, które spowalniają naukę, ale wzmacniają pamięć'], ['Złudzenie płynności', 'znajomy tekst daje fałszywe poczucie, że go umiemy'], ['Metoda loci', 'rozmieszczanie informacji w znanych miejscach w wyobraźni'], ['Pudełka Leitnera', 'system fiszek: dobrze znane karty powtarza się rzadziej']],
+        outro: 'Pudełka Leitnera działają w Automacie Powtórek w parku: karty z pytań, które już znasz, wracają po 1, 2, 4, 8 i 16 dniach.' }
+    ]
+  };
+
+  /* ---------- DRM: słowa, których nie było ---------- */
+  const DRM_LISTS = [
+    { lure: 'sen', words: ['łóżko', 'odpoczynek', 'budzik', 'zmęczenie', 'marzenie', 'drzemka', 'kołdra', 'poduszka', 'ziewanie', 'noc', 'chrapanie', 'spokój'] },
+    { lure: 'igła', words: ['nitka', 'szpilka', 'ostry', 'szycie', 'naparstek', 'ukłucie', 'strzykawka', 'oczko', 'haft', 'materiał', 'ból', 'stóg siana'] },
+    { lure: 'słodki', words: ['cukier', 'miód', 'cukierek', 'ciasto', 'czekolada', 'kwaśny', 'smak', 'deser', 'lizak', 'ząb', 'syrop', 'pyszny'] },
+    { lure: 'zimno', words: ['gorąco', 'śnieg', 'ciepło', 'zima', 'lód', 'mróz', 'chłód', 'dreszcz', 'szron', 'rękawiczki', 'pogoda', 'grzejnik'] }
+  ];
+  const DRM_NEW = ['rower', 'okno', 'lampa', 'marchewka', 'gitara', 'kanapa', 'ołówek', 'parasol', 'kangur', 'telefon', 'drabina', 'mapa'];
+  MINIGAMES.e3drm = function (ctx) {
+    const rnd = Math.random, lists = shuffle(rnd, DRM_LISTS.slice()).slice(0, 2), fresh = shuffle(rnd, DRM_NEW.slice());
+    const R = { round: 0, sOk: 0, sN: 0, nOk: 0, nN: 0, lures: [] }, tmos = [];
+    const m = this.mgPanel(ctx, `<div class="mg-top"><span class="tag" id="e3-drm-r">Lista 1/${lists.length}</span><span class="grow"></span><span class="small muted" id="e3-drm-ph">zapamiętywanie</span></div><div id="e3-drm"></div>`);
+    const box = m.querySelector('#e3-drm'), lab = m.querySelector('#e3-drm-r'), ph = m.querySelector('#e3-drm-ph');
+    ctx.cleanups.push(() => tmos.forEach(clearTimeout));
+    const study = () => {
+      const L = lists[R.round];
+      lab.textContent = `Lista ${R.round + 1}/${lists.length}`; ph.textContent = 'zapamiętywanie';
+      box.innerHTML = `<p class="small">Zapamiętaj jak najwięcej słów. Pojawią się po jednym, mniej więcej co sekundę.</p><div class="e3-word" id="e3-w">…</div>
+        <div class="mg-tf"><button class="btn btn-green" id="e3-go">▶ Start${E3.touch() ? '' : ' [Enter]'}</button></div>`;
+      const w = box.querySelector('#e3-w'), goB = box.querySelector('#e3-go');
+      let started = false;
+      const go = () => {
+        if (started || ctx.dead) return;
+        started = true; goB.remove(); ctx.key = null;
+        L.words.forEach((word, k) => tmos.push(setTimeout(() => { if (!ctx.dead) { w.textContent = word; w.classList.remove('pop'); void w.offsetWidth; w.classList.add('pop'); } }, (300 + k * 1100) / sp())));
+        tmos.push(setTimeout(() => { if (!ctx.dead) test(); }, (300 + L.words.length * 1100 + 500) / sp()));
+      };
+      goB.addEventListener('click', go);
+      ctx.key = e => { if (e.code === 'Enter') go(); };
+    };
+    const test = () => {
+      const L = lists[R.round];
+      ph.textContent = 'rozpoznawanie';
+      const studied = [L.words[1], L.words[5], L.words[9]], nw = fresh.splice(0, 3);
+      const items = shuffle(rnd, studied.map(w => ({ w, k: 's' })).concat(nw.map(w => ({ w, k: 'n' })), [{ w: L.lure, k: 'l' }]));
+      let i = 0;
+      const ask = () => {
+        if (ctx.dead) return;
+        if (i >= items.length) { R.round++; return R.round < lists.length ? study() : end(); }
+        const it = items[i];
+        box.innerHTML = `<p class="small">Czy to słowo było na liście?</p><div class="e3-word">${esc(it.w)}</div>
+          <div class="mg-tf"><button class="btn btn-green" data-a="1">✓ Było${E3.touch() ? '' : ' [1]'}</button><button class="btn" data-a="0">✗ Nie było${E3.touch() ? '' : ' [2]'}</button></div>
+          <p class="small muted center">${i + 1}/${items.length}</p>`;
+        let done = false;
+        const answer = yes => {
+          if (done || ctx.dead) return;
+          done = true; audio.click();
+          if (it.k === 's') { R.sN++; if (yes) R.sOk++; }
+          else if (it.k === 'n') { R.nN++; if (!yes) R.nOk++; }
+          else R.lures.push({ w: it.w, yes });
+          i++; ask();
+        };
+        box.querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', () => answer(b.dataset.a === '1')));
+        ctx.key = e => { if (e.key === '1') answer(true); else if (e.key === '2') answer(false); };
+      };
+      ask();
+    };
+    const end = () => {
+      const fooled = R.lures.filter(x => x.yes).length;
+      const rows = R.lures.map(x => `<li><b>${esc(x.w.toUpperCase())}</b> — ${x.yes ? 'odpowiedź „było”: <b>fałszywe wspomnienie!</b> Tego słowa nie było na liście.' : 'odpowiedź „nie było”: wabik odparty. Tego słowa rzeczywiście nie było.'}</li>`).join('');
+      ctx.finish((R.sOk + R.nOk) / Math.max(1, R.sN + R.nN), `<p class="center">Słowa z listy rozpoznane: <b>${R.sOk}/${R.sN}</b> · nowe słowa odrzucone: <b>${R.nOk}/${R.nN}</b></p>
+        <p><b>Słowa-wabiki</b> (pasowały do listy, ale na niej nie były):</p><ul class="mg-list">${rows}</ul>
+        <p class="small">${fooled ? 'Fałszywe wspomnienie to nie błąd uwagi — to skutek tego, jak dobrze pamięć wyłapuje sens.' : 'Wabiki odparte! W badaniu Roedigera i McDermotta (1995) uczestnicy „przypominali sobie” niepokazane słowo-wabik mniej więcej tak często jak słowa, które naprawdę widzieli.'} Wabiki nie liczą się do wyniku — to demonstracja, nie test.</p>`);
+    };
+    this.mgKeys(ctx);
+    study();
+  };
+
+  /* ---------- świadek stłuczki (Loftus i Palmer, 1974) ---------- */
+  const LP_VERBS = [['się roztrzaskały', 'roztrzaskały się', 66], ['się zderzyły', 'zderzyły się', 63], ['na siebie wpadły', 'wpadły na siebie', 61], ['w siebie uderzyły', 'uderzyły w siebie', 55], ['się dotknęły', 'dotknęły się', 51]];
+  MINIGAMES.e3swiadek = function (ctx) {
+    const verb = pick(Math.random, LP_VERBS), S = { raf: 0, est: 50, phase: 'film' };
+    const m = this.mgPanel(ctx, `<div class="mg-top"><span class="tag">📹 Kamera monitoringu · skrzyżowanie</span><span class="grow"></span><span class="small muted">nagranie odtworzy się raz</span></div>
+      <canvas id="e3-cam" class="e3-cam" width="240" height="140"></canvas>
+      <div id="e3-sw" class="mt"><div class="mg-tf"><button class="btn btn-green" id="e3-play">▶ Odtwórz nagranie${E3.touch() ? '' : ' [Enter]'}</button></div></div>`);
+    const cv = m.querySelector('#e3-cam'), g = cv.getContext('2d'), box = m.querySelector('#e3-sw');
+    g.imageSmoothingEnabled = false;
+    ctx.cleanups.push(() => cancelAnimationFrame(S.raf));
+    const car = (x, y, w, h, col, horiz) => {
+      R(g, x, y, w, h, col); R(g, x, y, w, 1, shade(col, 0.25));
+      if (horiz) { R(g, x + 5, y + 2, w - 10, h - 4, shade(col, -0.25)); R(g, x + w - 7, y + 2, 2, h - 4, '#bfe4f4'); R(g, x + 4, y + 2, 2, h - 4, '#9ac4d8'); R(g, x + 3, y - 1, 4, 1, '#1a1a1a'); R(g, x + w - 7, y - 1, 4, 1, '#1a1a1a'); R(g, x + 3, y + h, 4, 1, '#1a1a1a'); R(g, x + w - 7, y + h, 4, 1, '#1a1a1a'); }
+      else { R(g, x + 2, y + 5, w - 4, h - 10, shade(col, -0.25)); R(g, x + 2, y + h - 7, w - 4, 2, '#bfe4f4'); R(g, x + 2, y + 4, w - 4, 2, '#9ac4d8'); R(g, x - 1, y + 3, 1, 4, '#1a1a1a'); R(g, x + w, y + 3, 1, 4, '#1a1a1a'); R(g, x - 1, y + h - 7, 1, 4, '#1a1a1a'); R(g, x + w, y + h - 7, 1, 4, '#1a1a1a'); }
+    };
+    const scene = (t, shake) => {
+      const sx = shake ? Math.round(Math.sin(t * 90) * 1.5) : 0;
+      g.setTransform(1, 0, 0, 1, sx, 0);
+      R(g, -4, 0, 248, 140, '#7aa868');
+      for (let k = 0; k < 40; k++) P(g, (k * 53) % 240, (k * 37) % 140, '#6a9a58');
+      R(g, -4, 58, 248, 26, '#5c5c62'); R(g, 104, 0, 26, 140, '#5c5c62');
+      for (let x = 0; x < 240; x += 14) if (x < 98 || x > 132) R(g, x, 70, 7, 1, '#e8e4c8');
+      for (let y = 0; y < 140; y += 14) if (y < 52 || y > 88) R(g, 116, y, 1, 7, '#e8e4c8');
+      for (let k = 0; k < 5; k++) { R(g, 96, 60 + k * 5, 5, 3, '#e8e4d8'); R(g, 106 + k * 5, 50, 3, 5, '#e8e4d8'); }
+      R(g, 150, 20, 22, 18, '#b8745a'); R(g, 150, 18, 22, 3, '#8a4a3a'); R(g, 20, 100, 30, 20, '#c8b89a'); R(g, 20, 98, 30, 3, '#5a78b8');
+      disc(g, 70, 30, 9, '#4f8a48'); disc(g, 190, 110, 10, '#4f8a48');
+      // samochody: czerwony jedzie w prawo, niebieski w dół; spotykają się na środku
+      const T = 2.6, f = Math.min(1, t / T), ease = 1 - Math.pow(1 - f, 1.6);
+      let ax = -30 + ease * 116, by = -30 + ease * 82;
+      if (t > T) { const b = Math.min(1, (t - T) / 0.25); ax -= 3 * b; by -= 2 * b; }
+      car(ax, 73, 26, 9, '#c0473a', true);
+      car(108, by, 9, 26, '#3f7fc0', false);
+      if (t > T && t < T + 1.2) {
+        const k = (t - T) / 1.2;
+        for (let j = 0; j < 6; j++) { const a = j * 1.05, r = 3 + k * 14; g.globalAlpha = 0.55 * (1 - k); disc(g, 112 + Math.cos(a) * r, 70 + Math.sin(a) * r * 0.6, 3 + k * 3, '#d8d4c8'); }
+        g.globalAlpha = 1;
+      }
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      R(g, 4, 4, 52, 9, 'rgba(0,0,0,0.5)'); g.fillStyle = '#ff5a5a'; g.font = '8px monospace'; g.fillText('● REC ' + (12 + Math.floor(t)).toString().padStart(2, '0') + ':07', 6, 11);
+    };
+    scene(0, false);
+    const play = () => {
+      if (S.phase !== 'film' || ctx.dead) return;
+      S.phase = 'play'; box.innerHTML = '<p class="small center muted">Patrz uważnie…</p>';
+      const t0 = performance.now();
+      const loop = now => {
+        if (ctx.dead) return;
+        const t = (now - t0) / 1000 * sp();
+        scene(t, t > 2.6 && t < 2.95);
+        if (t < 4.6) S.raf = requestAnimationFrame(loop);
+        else { cv.classList.add('off'); askSpeed(); }
+      };
+      S.raf = requestAnimationFrame(loop);
+    };
+    const askSpeed = () => {
+      S.phase = 'speed';
+      box.innerHTML = `<p><b>Policjant:</b> „Mniej więcej jak szybko jechały samochody, kiedy ${esc(verb[0])}?”</p>
+        <div class="row mt"><input type="range" id="e3-v" min="10" max="120" step="5" value="50" class="grow"><b id="e3-vo" style="min-width:76px;text-align:right">50 km/h</b></div>
+        <div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e3-vok">Dalej ▶${E3.touch() ? '' : ' [Enter]'}</button></div>`;
+      const v = box.querySelector('#e3-v'), vo = box.querySelector('#e3-vo');
+      v.addEventListener('input', () => { S.est = +v.value; vo.textContent = S.est + ' km/h'; });
+      const ok = () => { if (S.phase === 'speed') { audio.click(); askGlass(); } };
+      box.querySelector('#e3-vok').addEventListener('click', ok);
+      ctx.key = e => { if (e.code === 'Enter') ok(); };
+    };
+    const askGlass = () => {
+      S.phase = 'glass';
+      box.innerHTML = `<p><b>Policjant:</b> „I jeszcze jedno: czy na miejscu było widać rozbite szkło?”</p>
+        <div class="mg-tf"><button class="btn" data-g="1">Tak, było szkło${E3.touch() ? '' : ' [1]'}</button><button class="btn" data-g="0">Nie, nie było${E3.touch() ? '' : ' [2]'}</button></div>`;
+      const ans = yes => { if (S.phase !== 'glass' || ctx.dead) return; S.phase = 'done'; audio.click(); result(yes); };
+      box.querySelectorAll('[data-g]').forEach(b => b.addEventListener('click', () => ans(b.dataset.g === '1')));
+      ctx.key = e => { if (e.key === '1') ans(true); else if (e.key === '2') ans(false); };
+    };
+    const result = glass => {
+      const rows = LP_VERBS.map(([q, name, kmh]) => `<tr class="${name === verb[1] ? 'me' : ''}"><td>„${esc(name)}”</td><td>${kmh} km/h</td></tr>`).join('');
+      ctx.finish(glass ? 0.4 : 1, `<p class="center">Twoje pytanie brzmiało: „…kiedy <b>${esc(verb[0])}</b>?” · Twoja ocena: <b>${S.est} km/h</b> · szkło: <b>${glass ? 'było' : 'nie było'}</b></p>
+        ${glass ? '<div class="fb ai">Na nagraniu nie było rozbitego szkła! Samo pytanie mogło je „dorysować”.</div>' : '<div class="fb ok">Zgadza się — na nagraniu nie było rozbitego szkła.</div>'}
+        <p class="mt">W oryginalnym badaniu (Loftus i Palmer, 1974) każda grupa dostała inny czasownik. Średnie oceny prędkości:</p>
+        <table class="e3-tab">${rows}</table>
+        <p class="small mt">Tydzień później rozbite szkło (którego na filmie nie było) „pamiętało” 32% osób pytanych o „roztrzaskanie”, 14% pytanych o „uderzenie” i 12% osób, których o prędkość nie pytano. Jedna osoba to jeszcze nie eksperyment — efekt widać, gdy porównuje się grupy.</p>`);
+    };
+    m.querySelector('#e3-play').addEventListener('click', play);
+    ctx.key = e => { if (e.code === 'Enter') play(); };
+    this.mgKeys(ctx);
+  };
+
+  /* ---------- pałac pamięci: trasa przez miasto ---------- */
+  const LOCI = [['🏠', 'Twój dom na Osiedlu Bezpiecznej Bazy'], ['🍦', 'lodziarnia na Plaży Id'], ['🗼', 'latarnia w Porcie Przyszłego Ja'], ['🌉', 'Most Pamięci'],
+    ['🎹', 'pianino na Bulwarze Empatii'], ['⛲', 'fontanna na Rynku Superego'], ['🌾', 'Młyn Hipotez na Wzgórzu'], ['🌲', 'świecące drzewa w Lesie Synaps']];
+  const LOCI_ITEMS = [['☂️', 'parasol'], ['🍍', 'ananas'], ['🎺', 'trąbka'], ['🐧', 'pingwin'], ['🔦', 'latarka'], ['🌵', 'kaktus'], ['🚲', 'rower'], ['⏰', 'budzik'],
+    ['🎈', 'balon'], ['🎻', 'skrzypce'], ['🎩', 'kapelusz'], ['🐘', 'słoń'], ['🫖', 'czajnik'], ['🚀', 'rakieta'], ['🍉', 'arbuz'], ['🐊', 'krokodyl']];
+  MINIGAMES.e3loci = function (ctx) {
+    const rnd = Math.random, items = shuffle(rnd, LOCI_ITEMS.slice()), pick8 = items.slice(0, 8), spare = items.slice(8);
+    const tmos = [];
+    let k = 0, score = 0;
+    const picks = [];
+    const m = this.mgPanel(ctx, `<div class="mg-top"><span class="tag" id="e3-lc-ph">1. Spacer z przedmiotami</span><span class="grow"></span><span class="small muted" id="e3-lc-n"></span></div><div id="e3-lc"></div>`);
+    const box = m.querySelector('#e3-lc'), ph = m.querySelector('#e3-lc-ph'), cnt = m.querySelector('#e3-lc-n');
+    ctx.cleanups.push(() => tmos.forEach(clearTimeout));
+    const encode = () => {
+      if (ctx.dead) return;
+      if (k >= LOCI.length) return pause();
+      const [li, ln] = LOCI[k], [ii, iname] = pick8[k];
+      cnt.textContent = `${k + 1}/${LOCI.length}`;
+      box.innerHTML = `<div class="e3-locus"><div class="e3-locus-place">${li} ${esc(ln)}</div><div class="e3-locus-item"><span>${ii}</span> ${esc(iname.toUpperCase())}</div></div>
+        <p class="small center">Wyobraź sobie ten przedmiot właśnie w tym miejscu — ogromny, śmieszny albo dziwny. Takie obrazy pamięta się najlepiej.</p>
+        <div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e3-lc-next" disabled>Dalej ▶${E3.touch() ? '' : ' [Enter]'}</button></div>`;
+      const nb = box.querySelector('#e3-lc-next');
+      let ready = false;
+      tmos.push(setTimeout(() => { ready = true; if (!ctx.dead) nb.disabled = false; }, 1500 / sp()));
+      const next = () => { if (!ready || ctx.dead) return; ready = false; audio.click(); k++; encode(); };
+      nb.addEventListener('click', next);
+      ctx.key = e => { if (e.code === 'Enter') next(); };
+    };
+    const pause = () => {
+      ph.textContent = '2. Przerwa'; cnt.textContent = ''; ctx.key = null;
+      let left = 10;
+      box.innerHTML = `<p class="center">Krótka przerwa, żeby przedmioty zeszły z „podręcznej” pamięci.</p><p class="center"><b>Policz w myślach od 100 w dół co 3:</b> 100, 97, 94…</p><div class="e3-word" id="e3-lc-t">${left}</div>`;
+      const tick = () => {
+        if (ctx.dead) return;
+        left--; const el = box.querySelector('#e3-lc-t'); if (el) el.textContent = left;
+        if (left <= 0) { k = 0; return recall(); }
+        tmos.push(setTimeout(tick, 1000 / sp()));
+      };
+      tmos.push(setTimeout(tick, 1000 / sp()));
+    };
+    const recall = () => {
+      if (ctx.dead) return;
+      ph.textContent = '3. Ta sama trasa jeszcze raz';
+      if (k >= LOCI.length) return end();
+      cnt.textContent = `${k + 1}/${LOCI.length}`;
+      const [li, ln] = LOCI[k], right = pick8[k];
+      const others = shuffle(rnd, pick8.filter(x => x !== right)).slice(0, 3).concat(shuffle(rnd, spare.slice()).slice(0, 2));
+      const opts = shuffle(rnd, [right].concat(others));
+      box.innerHTML = `<div class="e3-locus"><div class="e3-locus-place">${li} ${esc(ln)}</div></div>
+        <p class="small center">Co tu leżało? Przypomnij sobie obraz, zanim wybierzesz.</p>
+        <div class="e3-lc-opts">${opts.map(([ic, nm], j) => `<button class="btn" data-j="${j}">${ic} ${esc(nm)}${E3.touch() ? '' : ` <span class="tiny muted">[${j + 1}]</span>`}</button>`).join('')}</div>`;
+      let done = false;
+      const choose = j => {
+        if (done || ctx.dead) return;
+        done = true;
+        const ok = opts[j] === right;
+        if (ok) score++;
+        picks.push({ locus: LOCI[k], right, got: opts[j], ok });
+        audio.tone(ok ? 659.3 : 330, 0.18, { type: 'sine', vol: 0.05 });
+        k++; recall();
+      };
+      box.querySelectorAll('[data-j]').forEach(b => b.addEventListener('click', () => choose(+b.dataset.j)));
+      ctx.key = e => { const n = parseInt(e.key, 10); if (n >= 1 && n <= opts.length) choose(n - 1); };
+    };
+    const end = () => {
+      const rows = picks.map(p => `<li>${p.locus[0]} ${esc(p.locus[1])}: ${p.right[0]} <b>${esc(p.right[1])}</b>${p.ok ? ' ✓' : ` <span class="muted">(wybrano: ${p.got[0]} ${esc(p.got[1])})</span>`}</li>`).join('');
+      ctx.finish(score / LOCI.length, `<p class="center">Przedmioty na właściwych miejscach: <b>${score}/${LOCI.length}</b></p><ul class="mg-list">${rows}</ul>
+        <p class="small">Trasa przez miasto działa jak szafka z ponumerowanymi szufladami: miejsca są znane i ułożone w kolejności, więc wystarczy „przejść się” w myślach i zajrzeć do każdego. Spróbuj tak z listą pojęć przed egzaminem — najlepiej na trasie, którą znasz z prawdziwego życia.</p>`);
+    };
+    this.mgKeys(ctx);
+    encode();
+  };
+
+  /* =================================================================
+     9) PODPIĘCIA: interakcje, drzwi, rozmowy, pulpity, dziennik, style
+     ================================================================= */
+  const SPOTS = {
+    e3_gablota: ['', function (it) { return this.e3OpenSala(it.hall); }],
+    e3_aleja: ['Aleja Gablot — wystawa Archiwum', function () {
+      this.showDialogue({ name: 'Aleja Gablot', emoji: '🕯️', pages: ['Sześć gablot, sześć sal wystawy Archiwum Szarlatanerii: czaszki i kształty, testy, które „widzą wszystko”, wykrywacze kłamstw, cudowne kuracje, „chęci” w pismach i kalendarzach oraz dawne diagnozy, których już nie stawiamy. Wystawa jest dla każdego — to zwiedzanie, nie egzamin.'],
+        options: [{ label: '🕯️ Obejrzyj wystawę', fn: () => this.e3OpenWystawa() }, { label: 'Później', fn: null }] });
+    }],
+    e3_shepard: ['Schody Sheparda — posłuchaj', function () { return this.e3Shepard(); }],
+    pianino: ['Zagraj na pianinie', function () { return this.e3Pianino(); }],
+    e3_oddech: ['Kamień Oddechu — ćwiczenie oddechu', function () { return this.e3Oddech(); }],
+    e3_skan: ['Mata — skanowanie ciała', function () { return this.e3Skan(); }],
+    e3_staw: ['Staw Myśli', function () { return this.e3Staw(); }],
+    e3_dzwon: ['Dzwon Uważności', function () { return this.e3Dzwon(); }],
+    e3_fiszkomat: ['Automat Powtórek', function () { return this.e3Fiszkomat(); }],
+    e3_krzywa: ['Krzywa Ebbinghausa', function () { return this.e3Krzywa(); }],
+    e3_lete: ['Fontanna Lety', function () { return this.e3Lete(); }],
+    e3_kapsula: ['Kapsuła Czasu', function () { return this.e3Kapsula(); }]
+  };
+  const base = {};
+  ['useSpot', 'spotPrompt', 'enterDoor', 'masterDialog', 'showSubjectInfo', 'onEnterZone', 'showJournal', 'e2PlaceItems', 'npInfoBoard'].forEach(k => { base[k] = Game.prototype[k]; });
+  Object.assign(Game.prototype, {
+    useSpot(it) {
+      const S = it && SPOTS[it.kind];
+      if (S) {
+        try { return S[1].call(this, it); } catch (e) { console.warn('ETAP3: interakcja', it.kind, e); }
+      }
+      if (it && it.kind === 'budowa' && this.zone && this.zone.id === 'port') return this.say('Plac budowy', ['TU POWSTANĄ: Dzielnica Psychologii Społecznej · Aleja Psychologii Poznawczej · Park Psychologii Pozytywnej · Osiedle Psychologii Rozwoju.', 'Inwestor: Przyszłe Ja. Termin: od jutra.', 'AKTUALIZACJA: prom „Transfer Wiedzy” przy nabrzeżu kursuje już na Archipelag Wiedzy — stanęły tam pierwsze domy-przedmioty!', 'AKTUALIZACJA 2: za Mostem Pamięci na wschodzie oddano do użytku Dzielnicę Pamięci. Magazyn Pamięci przeprowadził się tam z Portu.'], '🏗️');
+      return base.useSpot.call(this, it);
+    },
+    spotPrompt(it) {
+      const S = it && SPOTS[it.kind];
+      if (S) {
+        if (it.kind === 'e3_gablota') { const h = (E3.WYSTAWA || []).find(x => x.id === it.hall); return h ? `Gablota: ${h.name}` : 'Gablota wystawy'; }
+        return S[0];
+      }
+      return base.spotPrompt.call(this, it);
+    },
+    enterDoor(b) {
+      if (b && b.loc === 'archiwum' && !this.transition && !this.dialog && !this.modalOpen && !(this.dreamSession && this.dreamSession()) && this.e3WystawaWelcome) return this.e3WystawaWelcome();
+      return base.enterDoor.call(this, b);
+    },
+    masterDialog(n, first) {
+      base.masterDialog.call(this, n, first);
+      if (!n || n.id !== 'sceptyk' || !this.dialog || !this.dialog.options) return;
+      const o = this.dialog.options;
+      o.splice(Math.max(0, o.length - 1), 0, { label: '🕯️ Wystawa: zdyskredytowane testy i metody', fn: () => this.e3OpenWystawa() });
+      if (this.dialog.full && this.finishPage) this.finishPage();
+    },
+    showSubjectInfo(sid) {
+      base.showSubjectInfo.call(this, sid);
+      const extra = sid === 'e3_zyrafa' ? ['📖 Księga Rozmów', () => this.e3KsiegaRozmow()]
+        : sid === 'e3_techniki' ? ['🗃️ Automat Powtórek', () => this.e3Fiszkomat()]
+        : sid === 'e3_uwaznosc' ? ['🪷 Krótkie ćwiczenie oddechu', () => this.e3Oddech()] : null;
+      if (!extra) return;
+      const foot = document.querySelector('#modal .panel-foot');
+      if (!foot) return;
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-purple'; btn.textContent = extra[0];
+      btn.addEventListener('click', () => { audio.click(); extra[1](); });
+      foot.insertBefore(btn, foot.firstChild);
+    },
+    onEnterZone(id) {
+      const first = !this.state.visited[id];
+      base.onEnterZone.call(this, id);
+      if (first && id === DZ) setTimeout(() => this.toast(`Nowa dzielnica! ${ZONES[DZ].desc} (Ten opis wisi też na tablicy dzielnicy.)`, 12000), 1600);
+    },
+    showJournal(tab, fromBoard) {
+      base.showJournal.call(this, tab, fromBoard);
+      const all = ZONE_GRID.flat().filter(Boolean), seen = all.filter(z => this.state.visited[z]).length;
+      document.querySelectorAll('#modal .card').forEach(c => { if (c.textContent.includes('Odkryte dzielnice')) c.innerHTML = `🗺️ Odkryte dzielnice: <b>${seen}/${all.length}</b>`; });
+    },
+    npInfoBoard() {
+      const Z = this.zone;
+      if (Z && Z.id === DZ && !Z.dreamOf) {
+        const def = ZONES[DZ];
+        return this.say(`${def.icon} ${def.name}`, [def.desc, 'Motto dzielnicy: ' + def.motto,
+          '🧠 Gdzie to jest w mózgu? Nowe wspomnienia pomaga zapisywać hipokamp i okolice przyśrodkowego płata skroniowego; z czasem — także we śnie — utrwalają się w korze. Przy wydobywaniu i sprawdzaniu, skąd coś wiemy, pracuje też kora przedczołowa. Pacjent H.M. po usunięciu obu hipokampów nie tworzył nowych wspomnień o zdarzeniach, ale wciąż uczył się nowych umiejętności.'], '🪧');
+      }
+      return base.npInfoBoard ? base.npInfoBoard.call(this) : undefined;
+    }
+  });
+  // zadania „znajdź” (Etap 2) zapisane przed Etapem 3: przedmiot nie może utknąć w nowym domu czy żywopłocie
+  if (base.e2PlaceItems) Game.prototype.e2PlaceItems = function () {
+    const Z = this.zone, Q = (window.ETAP2 && window.ETAP2.QUESTS) || {};
+    try {
+      if (Z && Z.solid && !Z.interior && this.e2Quests && this.e2PickSpot && !(this.dreamSession && this.dreamSession())) {
+        Object.entries(this.e2Quests()).forEach(([qid, st]) => {
+          if (!st || st.state !== 'active' || !Q[qid]) return;
+          (st.items || []).forEach((it, i) => {
+            if (it.found || it.zone !== Z.id) return;
+            const bad = it.x < 0 || it.y < 0 || it.x >= Z.w || it.y >= Z.h || Z.solid[it.y * Z.w + it.x];
+            if (!bad) return;
+            const [x, y] = this.e2PickSpot(Z.id, Q[qid].near, RND('e2fix|' + qid + '|' + i + '|' + this.state.day), st.items.filter(t => t !== it && t.zone === Z.id));
+            it.x = x; it.y = y;
+          });
+        });
+      }
+    } catch (e) { console.warn('ETAP3: e2PlaceItems', e); }
+    return base.e2PlaceItems.call(this);
+  };
+
+  /* ---------- style ---------- */
+  const css = document.createElement('style');
+  css.id = 'etap3-css';
+  css.textContent = `
+  .e3-hall, .e3-ex { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; cursor: pointer; margin-bottom: 6px; font: inherit; color: inherit; }
+  .e3-hall:hover, .e3-ex:hover { background: #fff; }
+  .e3-hall-ic { font-size: 26px; width: 34px; text-align: center; flex: none; }
+  .e3-ex-sec { margin-top: 10px; } .e3-ex-sec p { margin: 2px 0 0; }
+  .e3-talk { border-left: 4px solid var(--parch-300); padding: 6px 10px; margin-top: 8px; background: #fffaf0; border-radius: 6px; }
+  .e3-talk.nvc { border-left-color: #d8a23a; }
+  .e3-talk.mine { box-shadow: inset 0 0 0 2px var(--purple); }
+  .e3-beat { font-size: 54px; text-align: center; margin: 10px 0; }
+  .e3-beat.on, .e3-tapbtn.hit { animation: e3pulse .18s ease-out; }
+  @keyframes e3pulse { from { transform: scale(1.3); } to { transform: scale(1); } }
+  .e3-piano { position: relative; height: 150px; margin-top: 10px; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .e3-key { position: absolute; top: 0; border: 2px solid var(--wood-800); border-radius: 0 0 6px 6px; cursor: pointer; padding: 0; font-family: var(--font-pixel); }
+  .e3-key.white { width: calc(100% / 8); height: 150px; background: #fffdf6; color: var(--ink-soft); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 6px; font-size: 12px; z-index: 1; }
+  .e3-key.black { width: 6.4%; height: 92px; background: #2a2a33; color: #ddd; z-index: 2; font-size: 10px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 4px; }
+  .e3-key i { font-style: normal; opacity: .6; } .e3-key b { font-weight: 600; }
+  .e3-key.white.on { animation: e3kw .45s ease-out; } .e3-key.black.on { animation: e3kb .45s ease-out; }
+  @keyframes e3kw { from { background: #ffd86a; } to { background: #fffdf6; } }
+  @keyframes e3kb { from { background: #9a75d8; } to { background: #2a2a33; } }
+  .e3-breath { position: relative; width: 190px; height: 190px; margin: 12px auto 6px; }
+  .e3-br-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px dashed rgba(90,154,106,.55); }
+  .e3-br-c { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #d8f6dc, #5a9a6a 72%); transform: scale(.45); box-shadow: 0 0 24px rgba(90,154,106,.45); }
+  .e3-br-txt { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--font-pixel); font-size: 20px; color: #21402a; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
+  .e3-scan { display: flex; gap: 14px; align-items: center; margin-top: 10px; }
+  .e3-scan-fig { flex: none; width: 110px; }
+  .e3-body { width: 100%; height: auto; display: block; }
+  .e3-bp { fill: #e8dcc4; stroke: #8c5a2f; stroke-width: 1.2; transition: fill .6s; }
+  .e3-bp.on { fill: #ffd06a; }
+  .e3-scan-h { font-family: var(--font-pixel); font-size: 20px; color: var(--wood-600); }
+  .e3-dots { display: flex; gap: 5px; margin-top: 8px; }
+  .e3-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--parch-300); }
+  .e3-dots i.on { background: #ffb020; } .e3-dots i.done { background: #5a9a6a; }
+  .e3-pond { position: relative; height: 190px; border-radius: 14px; overflow: hidden; background: linear-gradient(#5aa8d8, #2f6a98); box-shadow: inset 0 0 0 3px #3f7a4a, inset 0 6px 18px rgba(0,0,0,.25); margin-top: 10px; }
+  .e3-pond-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #eaf6ff; font-style: italic; text-align: center; padding: 0 16px; }
+  .e3-leaf { position: absolute; left: 0; top: 10%; white-space: nowrap; background: #f4e6b0; color: #3a2616; border: 2px solid #8c6a2a; border-radius: 14px 4px 14px 4px; padding: 4px 10px; font: 600 14px var(--font-body); cursor: pointer; box-shadow: 0 2px 0 rgba(0,0,0,.2); will-change: transform; }
+  .e3-leaf.sel { background: #fff3c0; border-color: #e0a020; box-shadow: 0 0 0 3px rgba(255,210,80,.6); }
+  .e3-leaf.ok { background: #d8f4c8; border-color: #3f8f3a; } .e3-leaf.bad { background: #ffe0c8; border-color: #c06a2a; }
+  .e3-leaf-tag { font-family: var(--font-pixel); font-size: 12px; margin-left: 4px; }
+  .e3-lbls { gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .e3-bell { font-size: 64px; text-align: center; margin: 10px 0; transform-origin: 50% 12%; }
+  .e3-bell.ring { animation: e3ring 2.2s ease-out; }
+  @keyframes e3ring { 0% { transform: rotate(0); } 8% { transform: rotate(14deg); } 18% { transform: rotate(-11deg); } 30% { transform: rotate(8deg); } 44% { transform: rotate(-5deg); } 60% { transform: rotate(3deg); } 80% { transform: rotate(-1deg); } 100% { transform: rotate(0); } }
+  .e3-leit { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .e3-box { background: #fffaf0; border: 2px solid var(--parch-300); border-radius: 8px; text-align: center; padding: 6px 2px; display: flex; flex-direction: column; }
+  .e3-box b { font-family: var(--font-pixel); font-size: 20px; color: var(--wood-600); } .e3-box span { font-size: 11px; } .e3-box i { font-size: 10px; color: var(--ink-soft); }
+  .e3-chart { width: 100%; height: auto; display: block; margin: 8px 0; }
+  .e3-ta { width: 100%; min-height: 120px; border: 2px solid var(--wood-400); border-radius: 8px; padding: 8px; font: 500 15px var(--font-body); background: #fffdf6; color: var(--ink); resize: vertical; box-sizing: border-box; }
+  .e3-letter { background: #fffdf6; font-family: var(--font-body); }
+  .e3-word { font-family: var(--font-pixel); font-size: 34px; text-align: center; margin: 18px 0; min-height: 48px; color: var(--wood-700); }
+  .e3-word.pop { animation: e3pop .3s ease-out; }
+  @keyframes e3pop { from { transform: scale(1.25); opacity: .4; } to { transform: scale(1); opacity: 1; } }
+  .e3-cam { width: 100%; max-width: 480px; display: block; margin: 6px auto; image-rendering: pixelated; border: 3px solid #2a2a33; border-radius: 6px; background: #222; transition: filter .6s; }
+  .e3-cam.off { filter: grayscale(1) brightness(.35); }
+  .e3-tab { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+  .e3-tab td { padding: 3px 8px; border-bottom: 1px solid var(--parch-300); } .e3-tab tr.me td { background: #fff1c0; font-weight: 700; }
+  .e3-locus { text-align: center; margin: 14px 0 8px; }
+  .e3-locus-place { font-family: var(--font-pixel); font-size: 18px; color: var(--wood-600); }
+  .e3-locus-item { font-family: var(--font-pixel); font-size: 30px; margin-top: 8px; color: var(--ink); } .e3-locus-item span { font-size: 44px; vertical-align: middle; }
+  .e3-lc-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px; }
+  @media (max-width: 520px) {
+    .e3-scan { flex-direction: column; } .e3-scan-fig { width: 90px; }
+    .e3-leit { gap: 3px; } .e3-box b { font-size: 16px; } .e3-word { font-size: 28px; }
+    .e3-pond { height: 170px; } .e3-leaf { font-size: 13px; } .e3-breath { width: 160px; height: 160px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .e3-bell.ring, .e3-word.pop, .e3-beat.on, .e3-tapbtn.hit { animation: none; } }
+  `;
   document.head.appendChild(css);
 })();
 </script>

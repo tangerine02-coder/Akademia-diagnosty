@@ -51,6 +51,19 @@
 36. **Mieszkańcy we śnie**: wcześniej sen był pusty, teraz stoją w nim mieszkańcy dzielnicy (bez rozmów). Jedna osoba może mieć inne włosy (czapkę wtedy zdejmuje).
 37. **LP za trafienia** to nowe, codzienne źródło LP (do 25 LP dziennie przy 5 zmianach). Może przyspieszyć drogę do latania — do sprawdzenia w grze.
 
+## Etap 3 (5.10)
+38. **Miejsca**: Ogród Uważności na zachodniej łące Wzgórza Hipotez; Dom Żyrafy na wschodnim końcu Bulwaru Empatii (wąski domek obok Gabinetu Wywiadu); Dom Muzyki na Plaży Id („zasada przyjemności”); Dzielnica Pamięci jako 10. dzielnica za mostem na wschód od Portu.
+39. **Dzielnica Pamięci w siatce miasta** zmienia dwie rzeczy: odznaka „Kartograf Jaźni” wymaga teraz 10 dzielnic (zdobyta wcześniej zostaje), a na mapie miasta Kampus przesuwa się o jedną kolumnę w prawo. Stary Magazyn w Porcie jest zamknięty z kartką „Przeprowadzka!”.
+40. **Wystawa Archiwum**: 26 eksponatów w 6 salach. Jako „sporne” (część założeń ma poparcie w badaniach) oznaczyłam: plamy atramentowe (Rorschach), typologię 16 typów (MBTI) i wariograf. Do przeczytania okiem psycholożki — szczególnie Sala Porzuconych Diagnoz (histeria, drapetomania, homoseksualność jako „zaburzenie”: Hooker 1957, APA 1973, WHO 1990) i Sala Dobrych Chęci (m.in. terapie „zmiany orientacji”, obowiązkowy debriefing).
+41. **Pianino na Bulwarze** zamiast krótkiej melodyjki otwiera klawiaturę (raz dziennie +2 ⚡). „Zagraj z pamięci”: od 5 dźwięków +5 XP raz dziennie.
+42. **Ćwiczenia w ogrodzie**: energia raz dziennie (oddech +6 ⚡, skanowanie +6 ⚡, staw +4 ⚡, dzwon +3 ⚡), pierwsze ukończenie +5 XP, wszystkie cztery: +10 XP i +5 🟡. Ćwiczenia podnoszą też potrzeby z modułu PROFIL (spokój, ciało). Przy odpowiedzi „gorzej” po oddechu gra łagodnie podpowiada, żeby porozmawiać z kimś zaufanym albo ze specjalistą.
+43. **Treści Pawilonu Uważności** (do sprawdzenia): definicja Kabata-Zinna, 47% błądzenia umysłu (Killingsworth i Gilbert, 2010), metaanaliza Goyala i in. (2014), MBCT a nawroty depresji (Kuyken i in., 2016), ok. 8% niepożądanych doświadczeń (Farias i in., 2020), brak zmian w budowie mózgu po MBSR (Kral i in., 2022), badanie MYRIAD w szkołach.
+44. **Automat Powtórek** (pudełka Leitnera): karty to pytania już zaliczone w katedrach; 5 kart na sesję; odstępy 1, 2, 4, 8, 16 dni; „nie pamiętam” → jutro; pierwsza sesja dnia +6 XP i +3 🟡.
+45. **Kapsuła Czasu**: list do siebie otwiera się po 7 dniach gry (+10 XP), zostaje tylko w zapisie gry.
+46. **Eksperymenty Domu Fałszywych Wspomnień**: polskie listy DRM (sen, igła, słodki, zimno — adaptacja, nie oryginalne listy), prędkości z badania Loftus i Palmer przeliczone na km/h (66, 63, 61, 55, 51). Wabik nie obniża wyniku — to demonstracja.
+47. **Postaci**: Mnemozyna (opiekunka dzielnicy), Hermann Ebbinghaus (postać historyczna, mówi tylko o własnych badaniach), Pan Pewny (zmyślony świadek), Kapelmistrzyni Fuga, Pani Oddechowska, złota rybka w Kanale Lety.
+48. **Muzyka**: Dzielnica Pamięci ma własny motyw (pozytywka w molu — temat wraca z innym zakończeniem, jak odtwarzane wspomnienie); wnętrza jej domów — spokojniejszą wersję.
+
 ## Relacje, wątki, Momenty (projekt z 1.10, po południu)
 Ten moduł (🫂 Ludzie, 📸 Album, 📈 Mój tydzień, 6 małych wątków) **nie występuje w pliku gry na GitHubie**. Albo nie został jeszcze wbudowany, albo plik w repo jest starszy niż ten na komputerze. Do sprawdzenia przed dalszą pracą.
 19. Progi bliskości w relacjach z mieszkańcami.
