@@ -98,8 +98,9 @@ async def main():
         kart = await pg.evaluate("() => ALL_BADGES.find(b => b.id === 'kartograf').desc")
         check('10' in kart, f'odznaka Kartografa: {kart!r}')
         await goto('port', 27 * 16 + 8, 7 * 16 + 4)
-        mag = await pg.evaluate("""() => { const b = game.zone.buildings.find(x => x.id === 'magazyn'); game.closeDialog(true); game.enterDoor(b); return game.dialog ? game.dialog.pages.join(' ') : ''; }""")
-        check('Przeprowadzka' in mag, 'stary Magazyn w Porcie odsyła do Dzielnicy Pamięci')
+        # Etap 6: w dawnym Magazynie działa Katedra Psychologii Religii i Płci, a drogowskaz przy moście nadal mówi o przeprowadzce
+        mag = await pg.evaluate("""() => { const b = game.zone.buildings.find(x => x.id === 'magazyn'); const s = game.zone.interacts.find(it => it.kind === 'sign' && /MOST PAMIĘCI/.test(it.text || '')); return { loc: b.loc, sign: s ? s.text : '' }; }""")
+        check(mag['loc'] == 'religia' and 'przeprowadził się' in mag['sign'], 'stary Magazyn w Porcie: teraz katedra, a drogowskaz przy moście odsyła do Dzielnicy Pamięci')
         bud = await pg.evaluate(SPOT, 'budowa')
         check(bud['dialog'] and any('Dzielnicę Pamięci' in p_ for p_ in bud['dialog']['pages']), 'plac budowy w Porcie wspomina nową dzielnicę')
 

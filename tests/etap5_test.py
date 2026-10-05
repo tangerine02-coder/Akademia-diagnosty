@@ -72,7 +72,7 @@ async def main():
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: m.type in ('error', 'warning') and 'ETAP5' in m.text and errs.append(m.text))
         await start_game(pg)
-        check(await pg.evaluate('() => !!window.ETAP5 && Object.keys(LOCATIONS).every(l => SUBJECTS["e5_" + l] && SUBJECTS["e5_" + l].rooms.length === 3)'), 'moduł ETAP5: 3 mini gry w każdej z katedr')
+        check(await pg.evaluate('() => !!window.ETAP5 && Object.keys(LOCATIONS).every(l => SUBJECTS["e5_" + l] && SUBJECTS["e5_" + l].rooms.length >= 3)'), 'moduł ETAP5: co najmniej 3 mini gry w każdej z katedr (Etap 6: Katedra Religii i Płci ma 4)')
 
         # ---------- 1. hol katedry ----------
         print('\n[1] Hol katedry')
@@ -231,6 +231,7 @@ async def main():
 
         # ---------- 6b. list z nowościami ----------
         r = await pg.evaluate("""() => { game.closeModal(true); game.closeDialog(true); delete game.e5Data().once['nowosci-2026-10-05'];
+          if (game.e6Data) game.e6Data().once['nowosci-2026-10-05-e6'] = 1;   // list Etapu 6 sprawdza tests/etap6_test.py
           game.openMail(); const a = document.querySelector('#modal .panel-head h2').textContent; game.closeModal(true);
           game.state.mailDay = 0; game.openMail(); const b2 = document.querySelector('#modal .panel-head h2').textContent; game.closeModal(true); return [a, b2]; }""")
         check('nowości' in r[0] and 'nowości' not in r[1], f'list z nowościami raz, potem zwykłe listy ({r})')
