@@ -16,7 +16,12 @@ Postęp zapisuje się w przeglądarce, osobno dla każdego adresu (host + port).
 
 ## Testy
 Przy działającym serwerze (z folderu repo: `python3 -m http.server 8765 --directory "Akademia diagnosty"`):
-`python3 tests/etap1_test.py`, `python3 tests/etap2_test.py`, `python3 tests/etap3_test.py`, `python3 tests/etap4_test.py`, `python3 tests/etap5_test.py` i `python3 tests/czcionki_test.py` (Playwright, czysty profil przeglądarki; zrzuty w `tests/out/`).
+
+- `python3 tests/etap1_test.py` … `python3 tests/etap5_test.py` — każdy etap osobno,
+- `python3 tests/czcionki_test.py` — wybór czcionek,
+- `python3 tests/przeglad_test.py` — przegląd całej gry (każda dzielnica, miejsce, mieszkaniec i drzwi); z argumentem `tel` na ekranie telefonu.
+
+Testy używają Playwright i czystego profilu przeglądarki; zrzuty ekranu trafiają do `tests/out/`.
 
 ## Dokumenty
 - `docs/WIZJA_I_ROADMAP.md` — wizja gry i roadmapa etapów
