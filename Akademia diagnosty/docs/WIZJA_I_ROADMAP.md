@@ -46,10 +46,11 @@ Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: 
 - ⚡ Dzielnica Pamięci — 10. dzielnica, na wschód od Portu (Most Pamięci, Kanał Lety, Most Mnemozyny). Magazyn Pamięci Długotrwałej (kodowanie, wskazówki, zapominanie, autobiografia, mity), Dom Fałszywych Wspomnień (DRM, świadek stłuczki wg Loftus i Palmer, mity, słownik, przesłuchanie), Pracownia Technik Uczenia (pałac pamięci na trasie przez miasto, ranking technik Dunlosky’ego, mity, plan nauki, słownik). W parku: **Automat Powtórek** (pudełka Leitnera z pytań już zaliczonych w katedrach), Krzywa Ebbinghausa, Fontanna Lety, Kapsuła Czasu (list do siebie za 7 dni). Mieszkańcy: Mnemozyna, Hermann Ebbinghaus, Pan Pewny (świadek), złota rybka. Własna muzyka.
 - 💭 Katedra Teologii i Płci — treść do ustalenia z autorką.
 
-### Etap 4 · Długa gra
-- 🔨 Ogródek i poletko; sprzedaż warzyw daje Dopaminki.
-- 🔨 Powiększanie domku: trudna misja odblokowuje nowe pomieszczenie (rzadko), balans razem z zarobkami z poletka.
-- 🔨 Osobowość z wyborów: zakładka 🧠 Osobowość już istnieje — domykamy brakujące źródła danych.
+### Etap 4 · Długa gra — ⚡ zrobione 2026-10-05
+- ⚡ Ogródek przy domu na Osiedlu: 12 grządek, 9 roślin z porami roku (sałata, marchew, cebula, ziemniak, ogórek, truskawka, pomidor, dynia, czosnek). Rosną w dni, w które są podlane i jest ich pora roku; nie usychają. **Straganik** przy furtce: ceny zmieniają się z dnia na dzień, sprzedaż daje Dopaminki.
+- ⚡ Poletko Doświadczalne na Wzgórzu Hipotez (Pani Losowska): eksperyment z grupą kontrolną na 8 poletkach. Zabiegi: kompost, ściółka, muzyka dla roślin, rozmowa z roślinami. Przydział ręczny, losowy albo losowy w rzędach (bloki). Wyniki: słupki, średnie, test permutacyjny, lekcja o zakłóceniu i „prawda gry”. Plony trafiają do koszyka.
+- ⚡ Rozbudowa domu: misja Brygadzisty w Porcie od 4. i od 8. poziomu (materiały, prowiant z ogródka, opanowane zagadnienia, egzamin kierownika budowy raz dziennie). Nagroda: nowy pokój za ścianką z przejściem, z oknem i kinkietem — więcej miejsca na meble.
+- ⚡ Osobowość z wyborów: 6 nowych obserwacji w zakładce 🧠 Osobowość (systematyczność, troska o siebie, pomaganie, czekanie na nagrodę, myślenie badawcze, długie cele). Gracz ich nie zmienia — może się tylko nie zgodzić.
 
 ### Etap 5 · Wersja akademicka
 - 🔨 Podział na BAZĘ i ROZSZERZENIE; testy tylko w wersji dla studentów. Warunek przed publikacją gry.

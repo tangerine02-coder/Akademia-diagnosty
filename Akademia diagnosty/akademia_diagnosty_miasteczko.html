@@ -20167,6 +20167,932 @@ window.addEventListener('load', () => {
 })();
 </script>
 
+<script>
+/* =====================================================================
+   ETAP 4 · 2026-10-05 — osobny skrypt (owija funkcje i Game.prototype).
+   Roadmapa: docs/WIZJA_I_ROADMAP.md → Etap 4 „Długa gra”.
+   Notion: OGÓLNE („sadzenie roślin w ogródku i uprawa poletka, sprzedaż
+   warzyw daje pieniążki”), DOMEK GRACZA („powiększanie domku przez
+   specjalną, trudną misję”), GŁÓWNA POSTAĆ GRACZA („osobowość z wyborów”).
+   1) Ogródek przy domu (12 grządek) i Straganik przy furtce,
+   2) Poletko Doświadczalne na Wzgórzu Hipotez (eksperyment z losowym przydziałem),
+   3) Rozbudowa domu: misja Brygadzisty z Portu,
+   4) Osobowość: nowe źródła obserwacji (moduł PROFIL).
+   Liczby i treści to szkic AI do przejrzenia przez autorkę [do przejrzenia].
+   Stan gry: state.e4 (zapis w pliku zapisu).
+   ===================================================================== */
+(() => {
+  'use strict';
+
+  const E4 = window.ETAP4 = {};
+  const E1 = window.ETAP1 || { objSprites: {} };
+  if (!E1.objSprites) E1.objSprites = {};
+  const RND = s => mulberry(hashStr('e4|' + s));
+  const later = fn => Promise.resolve().then(fn);
+  const gg = (game, s) => (game && game.prG ? game.prG(s) : String(s).replace(/\{([^{}]*)\}/g, (_, a) => a.split('|')[0]));
+  const inDream = g => !!(g.dreamSession && g.dreamSession());
+  E4.RND = RND;
+
+  // pora roku danego dnia (z Etapu 2); przełącznik testerki ma pierwszeństwo
+  const SEASON_NAME = { jesien: '🍂 jesień', zima: '❄️ zima', wiosna: '🌸 wiosna', lato: '☀️ lato' };
+  const seasonFor = (game, day) => {
+    const d2 = game.e2Data ? game.e2Data() : {};
+    if (d2 && d2.seasonOverride) return d2.seasonOverride;
+    return window.ETAP2 && ETAP2.seasonOfDay ? ETAP2.seasonOfDay(day).id : 'lato';
+  };
+  E4.seasonFor = seasonFor;
+  E4.SEASON_NAME = SEASON_NAME;
+
+  // nowa treść w istniejącej dzielnicy: najpierw dotychczasowa budowa (także Etapu 3), potem nasze dodatki
+  function extendZoneE4(id, fn) {
+    const def = ZONES[id];
+    if (!def || typeof def.build !== 'function') return;
+    const b0 = def.build;
+    def.build = function (B) {
+      b0.call(this, B);
+      try { fn(B); } catch (e) { console.warn('ETAP4: dzielnica', id, e); }
+    };
+  }
+  E4.extendZone = extendZoneE4;
+
+  Game.prototype.e4Data = function () {
+    const s = this.state;
+    if (!s.e4 || typeof s.e4 !== 'object') s.e4 = {};
+    const d = s.e4;
+    if (!Array.isArray(d.beds) || d.beds.length !== 12) d.beds = Array.from({ length: 12 }, (_, i) => (Array.isArray(d.beds) && d.beds[i]) || null);
+    if (!d.kosz || typeof d.kosz !== 'object') d.kosz = {};
+    if (!d.stats || typeof d.stats !== 'object') d.stats = {};
+    if (!d.once || typeof d.once !== 'object') d.once = {};
+    if (typeof d.day !== 'number') d.day = s.day || 1;
+    return d;
+  };
+  Game.prototype.e4Once = function (key) {
+    const d = this.e4Data();
+    if (d.once[key]) return false;
+    d.once[key] = this.state.day || 1;
+    return true;
+  };
+  Game.prototype.e4Stat = function (key, n = 1) {
+    const st = this.e4Data().stats;
+    st[key] = (st[key] || 0) + n;
+    return st[key];
+  };
+  // upływ dni: rośliny rosną za każdy dzień, w którym były podlane i była ich pora roku
+  Game.prototype.e4Tick = function () {
+    const d = this.e4Data(), today = this.state.day || 1;
+    if (d.day >= today) { d.day = Math.min(d.day, today); return false; }
+    for (let day = d.day; day < today; day++) {
+      const se = seasonFor(this, day);
+      d.beds.forEach(b => {
+        if (!b || b.ripe) return;
+        const C = CROPS[b.c];
+        if (!C) return;
+        if (b.w === day && C.seasons.includes(se)) { b.g = (b.g || 0) + 1; if (b.g >= C.days) b.ripe = true; }
+      });
+      if (this.e4FieldTick) this.e4FieldTick(day, se);
+    }
+    d.day = today;
+    return true;
+  };
+
+  /* =================================================================
+     1) OGRÓDEK PRZY DOMU + STRAGANIK PRZY FURTCE (Osiedle Bezpiecznej Bazy)
+     12 grządek w miejscu dawnej ozdobnej grządki. Roślina rośnie o 1 dzień
+     za każdy dzień, w którym była podlana i jest jej pora roku. Nie usycha —
+     gra nie karze za przerwy. Plony sprzedajesz na Straganiku.
+     ================================================================= */
+  const CROPS = {
+    salata:    { name: 'Sałata',    icon: '🥬', days: 3, seed: 3, price: 8,  seasons: ['wiosna', 'lato', 'jesien'] },
+    marchewka: { name: 'Marchewka', icon: '🥕', days: 4, seed: 3, price: 10, seasons: ['wiosna', 'lato', 'jesien'] },
+    cebula:    { name: 'Cebula',    icon: '🧅', days: 4, seed: 2, price: 8,  seasons: ['wiosna', 'lato', 'jesien'] },
+    ziemniak:  { name: 'Ziemniak',  icon: '🥔', days: 5, seed: 4, price: 13, seasons: ['wiosna', 'lato'] },
+    ogorek:    { name: 'Ogórek',    icon: '🥒', days: 4, seed: 4, price: 12, seasons: ['lato'] },
+    truskawka: { name: 'Truskawka', icon: '🍓', days: 5, seed: 6, price: 18, seasons: ['wiosna', 'lato'] },
+    pomidor:   { name: 'Pomidor',   icon: '🍅', days: 6, seed: 5, price: 19, seasons: ['lato'] },
+    dynia:     { name: 'Dynia',     icon: '🎃', days: 7, seed: 6, price: 24, seasons: ['lato', 'jesien'] },
+    czosnek:   { name: 'Czosnek',   icon: '🧄', days: 6, seed: 5, price: 17, seasons: ['jesien', 'zima'] }
+  };
+  E4.CROPS = CROPS;
+  const BED_X = 10, BED_Y = 5, BED_W = 3;            // grządki: 3 kolumny × 4 rzędy na Osiedlu
+  const bedXY = i => [BED_X + (i % BED_W), BED_Y + Math.floor(i / BED_W)];
+  const stageOf = b => !b ? -1 : b.ripe ? 3 : !b.g ? 0 : b.g / CROPS[b.c].days < 0.5 ? 1 : 2;
+  E4.stageOf = stageOf;
+  // cena dnia: 80–125% ceny bazowej, inna każdego dnia
+  const priceMult = (c, day) => Math.round((0.8 + RND('cena|' + c + '|' + day)() * 0.45) * 100) / 100;
+  const priceOf = (c, day) => Math.max(1, Math.round(CROPS[c].price * priceMult(c, day)));
+  E4.priceOf = priceOf;
+
+  extendZoneE4('osiedle', B => {
+    if (window.ETAP3 && ETAP3.clearArea) ETAP3.clearArea(B, BED_X, BED_Y, BED_W, 4, 'soil');      // dawne ozdobne grządki
+    B.interact(BED_X, BED_Y, { kind: 'e4_ogrod', w: BED_W, h: 4 });
+    B.obj('e4_beczka', 13, 5, { interact: 'e4_ogrod' });
+    B.obj('e4_stragan', 9, 12, { fw: 2, interact: 'e4_stragan' });
+  });
+
+  // rośliny w świecie: obiekty dopisywane na żywo (jak przedmioty zadań z Etapu 2)
+  Game.prototype.e4PlaceGarden = function () {
+    const Z = this.zone;
+    if (!Z || Z.id !== 'osiedle' || !Z.objects) return;
+    const d = this.e4Data(), today = this.state.day || 1;
+    Z.objects = Z.objects.filter(o => o.type !== 'e4_crop');
+    d.beds.forEach((b, i) => {
+      if (!b || !CROPS[b.c]) return;
+      const [x, y] = bedXY(i);
+      Z.objects.push({ type: 'e4_crop', x, y, fw: 1, fh: 1, solid: false, c: b.c, st: stageOf(b), wet: b.w === today });
+    });
+  };
+
+  /* ---------- okno ogródka ---------- */
+  Game.prototype.e4Ogrodek = function (sel) {
+    this.e4Tick();
+    const d = this.e4Data(), s = this.state, today = s.day || 1, se = seasonFor(this, today);
+    const S = { sel: sel == null ? d.beds.findIndex(b => !b) : sel, crop: d.lastCrop || null };
+    const m = this.openModal(this.panel('🌱 Ogródek przy domu', '<div class="e4-box" id="e4-og"></div>', '<button class="btn" data-close>Zamknij</button>', 'wide'));
+    const root = m.querySelector('#e4-og');
+    const render = () => {
+      const planted = d.beds.filter(Boolean), dry = planted.filter(b => !b.ripe && b.w !== today), ripe = planted.filter(b => b.ripe);
+      const cell = (b, i) => {
+        if (!b) return `<button class="e4-bed empty ${S.sel === i ? 'sel' : ''}" data-i="${i}"><span class="e4-ic">🟫</span><b>pusta</b><span class="tiny">kliknij i posadź</span></button>`;
+        const C = CROPS[b.c], p = Math.min(1, (b.g || 0) / C.days), out = !C.seasons.includes(se);
+        const status = b.ripe ? '🧺 dojrzała!' : out ? '⏸ czeka na swoją porę' : b.w === today ? '💧 podlana' : '🥀 do podlania';
+        return `<button class="e4-bed ${b.ripe ? 'ripe' : ''} ${b.w === today ? 'wet' : ''} ${S.sel === i ? 'sel' : ''}" data-i="${i}"><span class="e4-ic">${C.icon}</span><b>${esc(C.name)}</b>
+          <span class="e4-bar"><i style="width:${Math.round(p * 100)}%"></i></span><span class="tiny">${status}</span></button>`;
+      };
+      const bed = S.sel >= 0 ? d.beds[S.sel] : null;
+      let side = '';
+      if (S.sel >= 0 && !bed) {
+        const rows = Object.entries(CROPS).map(([id, C]) => {
+          const ok = C.seasons.includes(se), afford = s.money >= C.seed;
+          return `<button class="e4-seed ${ok ? '' : 'off'} ${S.crop === id ? 'sel' : ''}" data-c="${id}" ${ok ? '' : 'disabled'}><span class="e4-ic">${C.icon}</span>
+            <span class="grow"><b>${esc(C.name)}</b><span class="tiny"> · ${C.days} ${C.days === 1 ? 'dzień' : 'dni'} · sprzedaż ok. ${C.price} 🟡</span><br><span class="tiny muted">${ok ? 'pora: ' + C.seasons.map(x => SEASON_NAME[x]).join(', ') : 'nie teraz — ' + C.seasons.map(x => SEASON_NAME[x]).join(', ')}</span></span>
+            <span class="tag ${afford ? '' : 'red'}">${C.seed} 🟡</span></button>`;
+        }).join('');
+        const empty = d.beds.filter(b => !b).length, C = S.crop && CROPS[S.crop];
+        side = `<p class="small"><b>Grządka ${S.sel + 1}</b> jest pusta. Wybierz nasiona (pora roku: ${SEASON_NAME[se]}):</p><div class="e4-seeds">${rows}</div>
+          ${C ? `<div class="row mt" style="flex-wrap:wrap;gap:6px"><button class="btn btn-green" id="e4-plant">🌱 Posadź: ${esc(C.name)} (${C.seed} 🟡)</button>${empty > 1 ? `<button class="btn" id="e4-plant-all">Posadź we wszystkich pustych (${empty} × ${C.seed} 🟡)</button>` : ''}</div>` : ''}`;
+      } else if (bed) {
+        const C = CROPS[bed.c], left = Math.max(0, C.days - (bed.g || 0));
+        side = `<p class="small"><b>Grządka ${S.sel + 1}: ${C.icon} ${esc(C.name)}</b> — ${bed.ripe ? 'gotowa do zbioru.' : `jeszcze ${left} ${left === 1 ? 'dzień' : 'dni'} wzrostu (liczą się dni, w które grządka była podlana i jest pora: ${C.seasons.map(x => SEASON_NAME[x]).join(', ')}).`}</p>
+          ${bed.ripe ? '' : `<button class="btn btn-sm" id="e4-dig">🧹 Wykop i zwolnij grządkę</button>`}`;
+      } else side = '<p class="small muted">Wszystkie grządki zajęte. Podlewaj codziennie — rośliny rosną tylko w podlane dni.</p>';
+      const kosz = Object.entries(d.kosz).filter(([, n]) => n > 0);
+      root.innerHTML = `<div class="row" style="flex-wrap:wrap;gap:6px"><span class="tag">${SEASON_NAME[se]}</span><span class="tag">dzień ${today}</span><span class="grow"></span>
+          <button class="btn btn-sm" id="e4-water" ${dry.length ? '' : 'disabled'}>💧 Podlej grządki${dry.length ? ` (${dry.length})` : ''}</button>
+          <button class="btn btn-sm btn-green" id="e4-harvest" ${ripe.length ? '' : 'disabled'}>🧺 Zbierz plony${ripe.length ? ` (${ripe.length})` : ''}</button></div>
+        <div class="e4-garden mt"><div class="e4-beds">${d.beds.map(cell).join('')}</div><div class="e4-side">${side}</div></div>
+        <div class="e4-kosz mt">🧺 Koszyk: ${kosz.length ? kosz.map(([c, n]) => `${CROPS[c].icon}×${n}`).join(' ') : '<span class="muted">pusty</span>'} <span class="tiny muted">· sprzedasz na Straganiku przy furtce</span></div>
+        <p class="tiny muted mt">Rośliny nie usychają, gdy zapomnisz o podlewaniu — po prostu tego dnia nie rosną. Metaanaliza 22 badań (Soga, Gaston i Yamaura, 2017) wiąże ogrodnictwo z mniejszym nasileniem depresji i lęku oraz większym zadowoleniem z życia; to głównie badania porównawcze, więc o przyczynę trzeba pytać ostrożnie.</p>`;
+      root.querySelectorAll('.e4-bed').forEach(b => b.addEventListener('click', () => { audio.click(); S.sel = +b.dataset.i; render(); }));
+      root.querySelectorAll('.e4-seed').forEach(b => b.addEventListener('click', () => { audio.click(); S.crop = b.dataset.c; render(); }));
+      const plant = idxs => {
+        const C = CROPS[S.crop], cost = C.seed * idxs.length;
+        if (!idxs.length) return;
+        if (s.money < cost) { audio.error(); return this.toast(`Za mało Dopaminek: nasiona kosztują ${cost} 🟡.`); }
+        this.addMoney(-cost, true);
+        idxs.forEach(i => { d.beds[i] = { c: S.crop, g: 0, p: today, w: null }; });
+        d.lastCrop = S.crop;
+        this.e4Stat('planted', idxs.length); if (C.days >= 6) this.e4Stat('plantedLong', idxs.length); if (C.days <= 3) this.e4Stat('plantedShort', idxs.length);
+        audio.pickup();
+        const first = this.e4Once('posadzone');
+        if (first) { this.addXP(3); this.toast('Pierwsze nasiona w ziemi! Podlej je — rosną tylko w podlane dni.', 4500); }
+        S.sel = d.beds.findIndex(b => !b);
+        this.e4PlaceGarden(); this.save(); render();
+      };
+      const pb = root.querySelector('#e4-plant'), pa = root.querySelector('#e4-plant-all');
+      if (pb) pb.addEventListener('click', () => plant([S.sel]));
+      if (pa) pa.addEventListener('click', () => plant(d.beds.map((b, i) => (b ? -1 : i)).filter(i => i >= 0)));
+      const dig = root.querySelector('#e4-dig');
+      if (dig) dig.addEventListener('click', () => { audio.click(); d.beds[S.sel] = null; this.e4PlaceGarden(); this.save(); render(); });
+      root.querySelector('#e4-water').addEventListener('click', () => {
+        if (!dry.length) return;
+        dry.forEach(b => { b.w = today; });
+        if (d.lastWater !== today) { d.lastWater = today; this.e4Stat('waterDays'); }
+        [523.3, 659.3, 784].forEach((f, k) => audio.tone(f, 0.18, { type: 'sine', vol: 0.04, at: k * 0.06 }));
+        if (this.prNeed && this.profData) { try { this.prNeed('cialo', 2); } catch (e) {} }
+        this.e4PlaceGarden(); this.save(); render();
+      });
+      root.querySelector('#e4-harvest').addEventListener('click', () => {
+        if (!ripe.length) return;
+        const got = {};
+        d.beds.forEach((b, i) => { if (b && b.ripe) { d.kosz[b.c] = (d.kosz[b.c] || 0) + 1; got[b.c] = (got[b.c] || 0) + 1; d.beds[i] = null; } });
+        const n = ripe.length;
+        this.e4Stat('harvested', n);
+        audio.success();
+        if (this.e4Once('plony')) { this.addXP(5); this.toast('Pierwsze plony! Sprzedasz je na Straganiku przy furtce.', 4500); }
+        this.toast('🧺 Zebrano: ' + Object.entries(got).map(([c, k]) => `${CROPS[c].icon}×${k}`).join(' '), 3200);
+        S.sel = d.beds.findIndex(b => !b);
+        this.e4PlaceGarden(); this.save(); render();
+      });
+    };
+    render();
+  };
+
+  /* ---------- Straganik ---------- */
+  Game.prototype.e4Stragan = function () {
+    this.e4Tick();
+    const d = this.e4Data(), s = this.state, today = s.day || 1;
+    const m = this.openModal(this.panel('🧺 Straganik pod płotem', '<div class="e4-box" id="e4-st"></div>', '<button class="btn" data-close>Zamknij</button>', 'narrow'));
+    const root = m.querySelector('#e4-st');
+    const render = () => {
+      const items = Object.entries(d.kosz).filter(([c, n]) => n > 0 && CROPS[c]);
+      const total = items.reduce((a, [c, n]) => a + priceOf(c, today) * n, 0);
+      const best = Object.keys(CROPS).map(c => [c, priceMult(c, today)]).sort((a, b) => b[1] - a[1])[0];
+      root.innerHTML = `<p class="small">Sąsiedzi kupują warzywa prosto z ogródka. Ceny zmieniają się z dnia na dzień — dziś najlepiej płacą za: <b>${CROPS[best[0]].icon} ${esc(CROPS[best[0]].name)}</b> (×${String(best[1]).replace('.', ',')}).</p>
+        ${items.length ? `<table class="e4-tab">${items.map(([c, n]) => { const C = CROPS[c], p = priceOf(c, today), mu = priceMult(c, today);
+          return `<tr><td>${C.icon} ${esc(C.name)}</td><td>×${n}</td><td>${p} 🟡/szt. <span class="tiny ${mu >= 1 ? 'up' : 'down'}">${mu >= 1 ? '▲' : '▼'}</span></td><td><button class="btn btn-sm" data-sell="${c}">Sprzedaj</button></td></tr>`; }).join('')}</table>
+          <div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e4-sell-all">💰 Sprzedaj wszystko: +${total} 🟡</button></div>`
+          : '<div class="fb ai mt">Koszyk jest pusty. Zbierz plony w ogródku za płotem.</div>'}
+        <p class="tiny muted mt">Wydaje Ci się, że Twoje pomidory są warte więcej niż sklepowe? To efekt posiadania: to, co nasze, wyceniamy wyżej, niż sami byśmy za to zapłacili (Kahneman, Knetsch i Thaler, 1990).</p>
+        <p class="tiny muted">Zarobione na straganie: ${d.stats.earned || 0} 🟡 · sprzedane warzywa: ${d.stats.sold || 0}</p>`;
+      const sell = cs => {
+        let n = 0, sum = 0, hi = 0, lo = 0;
+        cs.forEach(c => {
+          const k = d.kosz[c] || 0; if (!k) return;
+          const mu = priceMult(c, today); if (mu >= 1.1) hi += k; else if (mu <= 0.9) lo += k;
+          sum += priceOf(c, today) * k; n += k; d.kosz[c] = 0;
+        });
+        if (!n) return;
+        this.addMoney(sum); audio.coin();
+        this.e4Stat('sold', n); this.e4Stat('earned', sum);
+        if (hi) this.e4Stat('soldHigh', hi); if (lo) this.e4Stat('soldLow', lo);   // do obserwacji w profilu
+        if (this.e4Once('sprzedaz')) this.addXP(5);
+        this.save(); render();
+      };
+      root.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => sell([b.dataset.sell])));
+      const all = root.querySelector('#e4-sell-all');
+      if (all) all.addEventListener('click', () => sell(items.map(x => x[0])));
+    };
+    render();
+  };
+
+  /* ---------- sprite'y: grządki, beczka, straganik ---------- */
+  const SOIL = ['#6b4a2e', '#4a3220'];
+  function drawCrop(g, c, st) {
+    const G = '#5ea048', Gd = '#3f7a36', Gl = '#8ad06a';
+    if (st === 0) { P(g, 5, 13, '#d8c890'); P(g, 8, 12, '#d8c890'); P(g, 11, 13, '#d8c890'); return; }
+    if (st === 1) { R(g, 7, 9, 1, 4, Gd); P(g, 6, 9, G); P(g, 5, 8, G); P(g, 8, 8, G); P(g, 9, 7, Gl); return; }
+    const big = st === 3;
+    switch (c) {
+      case 'salata': disc(g, 8, 10, big ? 5 : 3.5, big ? '#7ac85a' : G); disc(g, 8, 9, big ? 3 : 2, '#b8f08a'); if (big) { P(g, 6, 8, '#d8ffb0'); P(g, 10, 9, '#d8ffb0'); } break;
+      case 'marchewka': for (let k = 0; k < 5; k++) line(g, 8, 12, 4 + k * 2, big ? 3 : 6, k % 2 ? G : Gl); if (big) { R(g, 6, 11, 4, 3, '#f08a2a'); R(g, 7, 11, 2, 1, '#ffb060'); } break;
+      case 'cebula': for (let k = 0; k < 4; k++) line(g, 8, 12, 6 + k, big ? 2 : 6, k % 2 ? G : Gl); if (big) { disc(g, 8, 12, 3, '#e8d8c8'); P(g, 7, 11, '#ffffff'); P(g, 9, 12, '#c8a8b8'); } break;
+      case 'ziemniak': disc(g, 8, 9, big ? 5 : 3.5, Gd); disc(g, 7, 8, big ? 3.5 : 2.5, G); if (big) { P(g, 5, 6, '#f4f0ff'); P(g, 10, 6, '#c8a8f0'); P(g, 8, 5, '#f4f0ff'); } break;
+      case 'ogorek': line(g, 3, 12, 13, 8, Gd); disc(g, 5, 10, 2.5, G); disc(g, 11, 8, 2.5, G); if (big) { R(g, 6, 11, 4, 2, '#3f8a2a'); P(g, 7, 11, '#8ad06a'); R(g, 9, 6, 3, 2, '#3f8a2a'); P(g, 4, 8, '#f2d040'); } else P(g, 8, 9, '#f2d040'); break;
+      case 'truskawka': disc(g, 8, 10, big ? 4.5 : 3.5, Gd); disc(g, 6, 9, 2, G); disc(g, 10, 9, 2, G); if (big) { R(g, 4, 11, 2, 2, '#e0303a'); R(g, 10, 11, 2, 2, '#e0303a'); R(g, 7, 12, 2, 2, '#f04050'); P(g, 4, 11, '#ffd0d0'); } break;
+      case 'pomidor': R(g, 7, big ? 0 : 3, 1, big ? 13 : 10, '#a07848'); disc(g, 6, 7, 3, Gd); disc(g, 10, 5, 3, G); disc(g, 8, 10, 3, G); if (big) { disc(g, 5, 9, 1.6, '#e0402a'); disc(g, 11, 7, 1.6, '#e0402a'); disc(g, 9, 3, 1.4, '#f0503a'); P(g, 5, 8, '#ffb0a0'); } break;
+      case 'dynia': disc(g, 4, 9, 2.5, Gd); disc(g, 12, 8, 2.5, G); line(g, 2, 11, 14, 9, Gd); if (big) { ell(g, 8, 11, 5, 3.5, '#f0901a'); R(g, 6, 8, 1, 6, '#d0700a'); R(g, 9, 8, 1, 6, '#d0700a'); R(g, 8, 6, 1, 2, '#6a8a2a'); P(g, 5, 9, '#ffc070'); } else disc(g, 8, 11, 2, '#c8b040'); break;
+      case 'czosnek': for (let k = 0; k < 3; k++) line(g, 8, 12, 6 + k * 2, big ? 2 : 6, Gl); if (big) { disc(g, 8, 12, 3, '#f0ece0'); P(g, 7, 11, '#ffffff'); R(g, 8, 10, 1, 2, '#d8d0c0'); } break;
+      default: disc(g, 8, 10, 3, G);
+    }
+  }
+  E1.objSprites.e4_crop = o => cached(`e4c|${o.c}|${o.st}|${o.wet ? 1 : 0}`, () => makeSprite(16, 16, g => {
+    ell(g, 8, 13, 7, 2.6, SOIL[o.wet ? 1 : 0]); R(g, 2, 12, 12, 1, o.wet ? '#5a4230' : '#8a6440');
+    drawCrop(g, o.c, o.st);
+  }, { ol: false }));
+  E1.objSprites.e4_beczka = () => cached('e4_beczka', () => makeSprite(16, 18, g => {
+    R(g, 2, 3, 11, 14, '#8a5530'); R(g, 1, 5, 13, 10, '#9a6538'); R(g, 2, 3, 11, 2, '#3a7ab8'); R(g, 3, 3, 6, 1, '#7ac0f0');
+    R(g, 1, 6, 13, 1, '#4a4a50'); R(g, 1, 13, 13, 1, '#4a4a50'); R(g, 10, 5, 2, 10, '#7a4a28');
+    R(g, 11, 10, 4, 5, '#5a9ac8'); R(g, 11, 10, 4, 1, '#8ac0e8'); line(g, 14, 11, 15, 8, '#5a9ac8'); R(g, 12, 8, 2, 2, '#4a8ab8');
+  }, { shadow: [8, 17, 7, 1.5] }));
+  E1.objSprites.e4_stragan = () => cached('e4_stragan', () => makeSprite(32, 30, g => {
+    R(g, 2, 8, 2, 22, '#7a5034'); R(g, 28, 8, 2, 22, '#7a5034');
+    for (let x = 0; x < 32; x += 4) R(g, x, 4, 4, 6, (x / 4) % 2 ? '#f4f0e6' : '#c0473a');
+    for (let x = 0; x < 32; x += 4) { P(g, x + 1, 10, (x / 4) % 2 ? '#f4f0e6' : '#c0473a'); P(g, x + 2, 10, (x / 4) % 2 ? '#f4f0e6' : '#c0473a'); }
+    R(g, 0, 2, 32, 2, '#8a3a2a');
+    R(g, 1, 18, 30, 3, '#a8763e'); R(g, 1, 18, 30, 1, '#c8965e'); R(g, 3, 21, 26, 8, '#8a5a30');
+    [[4, '#f08a2a'], [11, '#e0402a'], [18, '#7ac85a'], [24, '#f0901a']].forEach(([x, c]) => { R(g, x, 14, 6, 4, '#c8a070'); disc(g, x + 2, 14, 1.6, c); disc(g, x + 4, 14, 1.6, c); P(g, x + 3, 12, c); });
+    R(g, 10, 23, 12, 4, '#f4e6c4'); R(g, 11, 24, 10, 1, '#8a6a40'); R(g, 11, 26, 7, 1, '#8a6a40');
+  }, { shadow: [16, 29, 15, 2] }));
+
+  /* =================================================================
+     2) POLETKO DOŚWIADCZALNE — Wzgórze Hipotez (południowy wschód)
+     8 poletek 2×2: połowa dostaje zabieg, połowa jest grupą kontrolną.
+     Ziemia nie jest wszędzie taka sama (dolny rząd leży niżej na zboczu),
+     więc przydział „na oko” potrafi udawać efekt. Losowanie przed tym chroni.
+     Prawdziwe efekty zabiegów w grze: kompost +25%, ściółka +10%,
+     muzyka 0, rozmowa 0 [do przejrzenia]. Plony trafiają do koszyka.
+     ================================================================= */
+  const POLE_X = 25, POLE_Y = 20;                    // lewy górny róg pierwszego poletka
+  const plotXY = i => [POLE_X + (i % 4) * 2, POLE_Y + (i < 4 ? 0 : 3)];
+  const TREAT = {
+    kompost: { name: 'Kompost', icon: '🍂', cost: 2, eff: 0.25, desc: 'garść kompostu na poletko' },
+    sciolka: { name: 'Ściółka ze słomy', icon: '🌾', cost: 1, eff: 0.10, desc: 'warstwa słomy chroni wilgoć' },
+    muzyka: { name: 'Muzyka dla roślin', icon: '🎵', cost: 1, eff: 0, desc: 'mały głośnik na palu, codziennie Mozart' },
+    rozmowa: { name: 'Rozmowa z roślinami', icon: '🗣️', cost: 0, eff: 0, desc: 'codziennie miłe słowo' }
+  };
+  E4.TREAT = TREAT;
+  const KG_PER_UNIT = 25, BASE_KG = 10;               // ok. 4 skrzynki z eksperymentu [do przejrzenia]
+  // żyzność: dolny rząd wilgotniejszy (+30%), na wschód odrobinę więcej słońca
+  const fertility = i => 1 + (i >= 4 ? 0.30 : 0) + 0.04 * (i % 4);
+  const gauss = rnd => { const u = Math.max(1e-9, rnd()), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const mean = a => a.reduce((s, x) => s + x, 0) / Math.max(1, a.length);
+  // dokładny test permutacyjny: wszystkie 70 podziałów 8 poletek na 4 + 4
+  function permP(y, t) {
+    const obs = Math.abs(mean(y.filter((_, i) => t[i])) - mean(y.filter((_, i) => !t[i])));
+    let n = 0, hit = 0;
+    for (let m = 0; m < 256; m++) {
+      let bits = 0; for (let k = 0; k < 8; k++) if (m >> k & 1) bits++;
+      if (bits !== 4) continue;
+      n++;
+      const tt = [...Array(8)].map((_, k) => (m >> k) & 1);
+      const d = Math.abs(mean(y.filter((_, i) => tt[i])) - mean(y.filter((_, i) => !tt[i])));
+      if (d >= obs - 1e-9) hit++;
+    }
+    return hit / n;
+  }
+  E4.permP = permP;
+
+  extendZoneE4('wzgorze', B => {
+    const clr = window.ETAP3 && ETAP3.clearArea;
+    if (clr) clr(B, 22, 18, 15, 8, 'grass');
+    B.fenceRect(24, 19, 10, 7, 'wood', { left: [21, 23] });
+    for (let i = 0; i < 8; i++) { const [x, y] = plotXY(i); B.rect(x, y, 2, 2, 'soil'); }
+    B.rect(24, 22, 9, 1, 'path'); B.rect(20, 22, 4, 1, 'path');
+    B.interact(25, 20, { kind: 'e4_pole', w: 8, h: 5 });
+    B.obj('sign', 23, 20);
+    B.sign(23, 20, 'POLETKO DOŚWIADCZALNE · Osiem poletek, jedno pytanie: czy zabieg naprawdę zwiększa plon? Połowa poletek dostaje zabieg, połowa jest grupą kontrolną. Tak samo jak w badaniach psychologicznych z losowym przydziałem do grup.');
+    B.npc('losowska', 22, 24);
+  });
+  NPCS.losowska = { name: 'Pani Losowska, agronomka', kind: 'human', wander: 2,
+    look: { skin: SKIN_TONES[3], hair: 'kucyki', hairC: '#2a1a10', top: '#3f8f3a', bottom: '#6b4a33', acc: 'cap' },
+    lines: [
+      'Na tym poletku nic nie jest pewne, dopóki tego nie sprawdzimy. Najpierw pytanie, potem plan, na końcu zbiory.',
+      'Ziemia na zboczu nie jest wszędzie taka sama. To, gdzie leży poletko, może mieć znaczenie… dlatego ja zawsze losuję.',
+      'Jedno poletko to anegdota. Osiem to już mały eksperyment. Osiemset — porządne badanie.',
+      'Ktoś mi mówił, że rośliny lepiej rosną przy Mozarcie. Bardzo możliwe, że tak mu się wydawało. Sprawdźmy!',
+      'Grupa kontrolna to nie strata miejsca. Bez niej nie wiesz, z czym porównujesz.'
+    ] };
+
+  Game.prototype.e4Pole = function () {
+    const d = this.e4Data();
+    if (!d.pole || typeof d.pole !== 'object') d.pole = null;
+    if (!Array.isArray(d.poleLog)) d.poleLog = [];
+    if (!d.poleKnown || typeof d.poleKnown !== 'object') d.poleKnown = {};
+    return d;
+  };
+  // wzrost na poletku: deszcz podlewa sam, liczą się dni pory roku rośliny
+  Game.prototype.e4FieldTick = function (day, se) {
+    const d = this.e4Pole(), P = d.pole;
+    if (!P || P.ripe) return;
+    const C = CROPS[P.c];
+    if (C && C.seasons.includes(se)) { P.g = (P.g || 0) + 1; if (P.g >= C.days) P.ripe = true; }
+  };
+  Game.prototype.e4PlaceField = function () {
+    const Z = this.zone;
+    if (!Z || Z.id !== 'wzgorze' || !Z.objects) return;
+    const d = this.e4Pole(), P = d.pole;
+    Z.objects = Z.objects.filter(o => !(o.type === 'e4_crop' && o.pole));
+    if (!P || !CROPS[P.c]) return;
+    const st = P.ripe ? 3 : !P.g ? 0 : P.g / CROPS[P.c].days < 0.5 ? 1 : 2;
+    for (let i = 0; i < 8; i++) {
+      const [x0, y0] = plotXY(i);
+      for (let k = 0; k < 4; k++) Z.objects.push({ type: 'e4_crop', pole: true, x: x0 + (k % 2), y: y0 + (k >> 1), fw: 1, fh: 1, solid: false, c: P.c, st, wet: false, flag: k === 0 ? (P.a[i] ? 'Z' : 'K') : null });
+    }
+  };
+
+  /* ---------- okno poletka ---------- */
+  Game.prototype.e4Poletko = function () {
+    this.e4Tick();
+    const d = this.e4Pole(), s = this.state, today = s.day || 1, se = seasonFor(this, today);
+    const S = { c: null, t: 'kompost', a: [1, 0, 1, 0, 0, 1, 0, 1], mode: 'reczny' };
+    const m = this.openModal(this.panel('🧪 Poletko Doświadczalne', '<div class="e4-box" id="e4-pl"></div>', '<button class="btn" data-close>Zamknij</button>', 'wide'));
+    const root = m.querySelector('#e4-pl');
+    const grid = (a, clickable, extra) => `<div class="e4-plots">${[0, 1, 2, 3, 4, 5, 6, 7].map(i => `<button class="e4-plot ${a[i] ? 'z' : 'k'}" data-p="${i}" ${clickable ? '' : 'disabled'}>
+        <b>${a[i] ? 'Z' : 'K'}</b><span class="tiny">${a[i] ? 'zabieg' : 'kontrola'}</span>${extra ? extra(i) : ''}</button>`).join('')}</div>
+      <div class="tiny muted center">↑ wyżej na zboczu · niżej na zboczu ↓</div>`;
+    const render = () => {
+      const P = d.pole;
+      if (P && !P.ripe) {
+        const C = CROPS[P.c], T = TREAT[P.t], left = Math.max(0, C.days - (P.g || 0)), inS = C.seasons.includes(se);
+        root.innerHTML = `<p>Trwa eksperyment: <b>${C.icon} ${esc(C.name)}</b>, zabieg: <b>${T.icon} ${esc(T.name)}</b> (${esc(T.desc)}). Przydział: <b>${P.mode === 'los' ? '🎲 losowy' : P.mode === 'bloki' ? '🎲 losowy w rzędach' : '✋ ręczny'}</b>.</p>
+          ${grid(P.a, false)}
+          <div class="fb ai mt">${inS ? `Do zbioru jeszcze ${left} ${left === 1 ? 'dzień' : 'dni'}. Poletko podlewa deszcz — wystarczy wrócić.` : `Teraz nie jest pora tej rośliny (${C.seasons.map(x => SEASON_NAME[x]).join(', ')}). Wzrost czeka.`}</div>
+          ${history()}`;
+        return;
+      }
+      if (P && P.ripe) {
+        root.innerHTML = `<p>Plony są gotowe: <b>${CROPS[P.c].icon} ${esc(CROPS[P.c].name)}</b>, zabieg: <b>${TREAT[P.t].icon} ${esc(TREAT[P.t].name)}</b>.</p>${grid(P.a, false)}
+          <div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e4-pl-har">🧺 Zbierz i policz plony</button></div>`;
+        root.querySelector('#e4-pl-har').addEventListener('click', () => { audio.click(); this.e4PoleHarvest(); });
+        return;
+      }
+      // planowanie nowego eksperymentu
+      const crops = Object.entries(CROPS).map(([id, C]) => {
+        const ok = C.seasons.includes(se);
+        return `<button class="e4-seed ${ok ? '' : 'off'} ${S.c === id ? 'sel' : ''}" data-c="${id}" ${ok ? '' : 'disabled'}><span class="e4-ic">${C.icon}</span><span class="grow"><b>${esc(C.name)}</b><span class="tiny"> · ${C.days} dni</span></span><span class="tag">${C.seed * 4} 🟡</span></button>`;
+      }).join('');
+      const treats = Object.entries(TREAT).map(([id, T]) => `<button class="e4-seed ${S.t === id ? 'sel' : ''}" data-t="${id}"><span class="e4-ic">${T.icon}</span><span class="grow"><b>${esc(T.name)}</b><br><span class="tiny muted">${esc(T.desc)}</span></span><span class="tag">${T.cost ? T.cost + ' 🟡/poletko' : 'za darmo'}</span></button>`).join('');
+      const nZ = S.a.filter(Boolean).length, C = S.c && CROPS[S.c], cost = C ? C.seed * 4 + TREAT[S.t].cost * 4 : 0;
+      root.innerHTML = `<p>Czy zabieg naprawdę zwiększa plon? Na ośmiu poletkach sprawdzisz to jak w badaniu: <b>połowa poletek dostaje zabieg (Z)</b>, a <b>połowa jest grupą kontrolną (K)</b>. Po zbiorach porównasz plony.</p>
+        <div class="e4-plan mt">
+          <div><p class="small"><b>1. Roślina</b> (${SEASON_NAME[se]})</p><div class="e4-seeds" style="max-height:180px">${crops}</div></div>
+          <div><p class="small"><b>2. Zabieg</b></p><div class="e4-seeds" style="max-height:180px">${treats}</div></div>
+          <div><p class="small"><b>3. Przydział poletek</b> — kliknij poletko, żeby zmienić Z/K (${nZ}/8 z zabiegiem)</p>${grid(S.a, true)}
+            <div class="row mt" style="flex-wrap:wrap;gap:6px"><button class="btn btn-sm" id="e4-los">🎲 Losuj (4 + 4)</button><button class="btn btn-sm" id="e4-blok">🎲 Losuj w rzędach</button></div>
+            <p class="tiny muted mt">Przydział: ${S.mode === 'los' ? 'losowy' : S.mode === 'bloki' ? 'losowy w obrębie rzędów (bloki)' : 'ręczny'}.</p></div>
+        </div>
+        <div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e4-pl-go" ${C && nZ === 4 ? '' : 'disabled'}>🌱 Zasiej i zacznij eksperyment${C ? ` (${cost} 🟡)` : ''}</button></div>
+        ${nZ !== 4 ? '<p class="tiny muted">Do porównania potrzeba 4 poletek z zabiegiem i 4 kontrolnych.</p>' : ''}
+        ${history()}`;
+      root.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => { audio.click(); S.c = b.dataset.c; render(); }));
+      root.querySelectorAll('[data-t]').forEach(b => b.addEventListener('click', () => { audio.click(); S.t = b.dataset.t; render(); }));
+      root.querySelectorAll('.e4-plot').forEach(b => b.addEventListener('click', () => { audio.click(); const i = +b.dataset.p; S.a[i] = S.a[i] ? 0 : 1; S.mode = 'reczny'; render(); }));
+      root.querySelector('#e4-los').addEventListener('click', () => {
+        audio.click(); const idx = shuffle(Math.random, [0, 1, 2, 3, 4, 5, 6, 7]).slice(0, 4); S.a = [0, 1, 2, 3, 4, 5, 6, 7].map(i => (idx.includes(i) ? 1 : 0)); S.mode = 'los'; render();
+      });
+      root.querySelector('#e4-blok').addEventListener('click', () => {
+        audio.click(); const top = shuffle(Math.random, [0, 1, 2, 3]).slice(0, 2), bot = shuffle(Math.random, [4, 5, 6, 7]).slice(0, 2);
+        S.a = [0, 1, 2, 3, 4, 5, 6, 7].map(i => (top.includes(i) || bot.includes(i) ? 1 : 0)); S.mode = 'bloki'; render();
+      });
+      const go = root.querySelector('#e4-pl-go');
+      go.addEventListener('click', () => {
+        if (!C || nZ !== 4) return;
+        if (s.money < cost) { audio.error(); return this.toast(`Za mało Dopaminek: eksperyment kosztuje ${cost} 🟡.`); }
+        this.addMoney(-cost, true);
+        d.pole = { c: S.c, t: S.t, a: S.a.slice(), mode: S.mode, p: today, g: 0, seed: Math.floor(Math.random() * 1e9) };
+        this.e4Stat('experiments'); if (S.mode !== 'reczny') this.e4Stat('randomized');
+        audio.pickup(); this.e4PlaceField(); this.save(); render();
+      });
+    };
+    const history = () => d.poleLog.length ? `<details class="mt"><summary class="small" style="cursor:pointer">📒 Dziennik doświadczeń (${d.poleLog.length})</summary><table class="e4-tab">
+        ${d.poleLog.slice(-8).reverse().map(L => `<tr><td>dzień ${L.day}</td><td>${CROPS[L.c] ? CROPS[L.c].icon : ''} ${TREAT[L.t] ? TREAT[L.t].icon + ' ' + esc(TREAT[L.t].name) : ''}</td><td>${L.mode === 'reczny' ? '✋' : '🎲'}</td><td>${L.pct >= 0 ? '+' : ''}${L.pct}%</td><td>p = ${String(L.p).replace('.', ',')}</td></tr>`).join('')}</table></details>` : '';
+    render();
+  };
+
+  // zbiory: plony z szumem, porównanie grup, test permutacyjny, sprawdzenie zakłócenia
+  Game.prototype.e4PoleHarvest = function () {
+    const d = this.e4Pole(), P = d.pole, today = this.state.day || 1;
+    if (!P || !P.ripe) return;
+    const T = TREAT[P.t], C = CROPS[P.c], rnd = mulberry(P.seed || 1);
+    const y = [...Array(8)].map((_, i) => Math.max(1, Math.round(BASE_KG * fertility(i) * (1 + (P.a[i] ? T.eff : 0)) * (1 + 0.08 * gauss(rnd)) * 10) / 10));
+    const yz = y.filter((_, i) => P.a[i]), yk = y.filter((_, i) => !P.a[i]);
+    const mz = mean(yz), mk = mean(yk), diff = mz - mk, pct = Math.round(diff / mk * 100), p = Math.round(permP(y, P.a) * 100) / 100;
+    const units = Math.max(1, Math.round(y.reduce((a, v) => a + v, 0) / KG_PER_UNIT));
+    d.kosz[P.c] = (d.kosz[P.c] || 0) + units;
+    this.e4Stat('harvested', units);
+    const zDown = [4, 5, 6, 7].filter(i => P.a[i]).length;
+    const confounded = zDown === 0 || zDown === 4;
+    const known = !!d.poleKnown[P.t];
+    d.poleKnown[P.t] = true;
+    d.poleLog.push({ day: today, c: P.c, t: P.t, mode: P.mode, a: P.a.slice(), y, pct, p });
+    d.pole = null;
+    let rew = '';
+    if (this.e4Once('pole1')) { this.addXP(10); rew += '<div class="fb ok mt">Pierwszy eksperyment w życiu poletka! +10 XP</div>'; }
+    if (P.mode !== 'reczny' && this.e4Once('pole_los')) { this.addXP(5); rew += '<div class="fb ok mt">Losowy przydział — jak w prawdziwym badaniu. +5 XP</div>'; }
+    if (Object.keys(TREAT).every(k => d.poleKnown[k]) && this.e4Once('pole_all')) { this.addXP(15); this.addMoney(10, true); rew += '<div class="fb ok mt">Wszystkie zabiegi sprawdzone! Pani Losowska wpisuje Cię do dziennika badaczy. +15 XP, +10 🟡</div>'; }
+    audio.success();
+    this.e4PlaceField(); this.save();
+    const maxY = Math.max(...y);
+    const bars = y.map((v, i) => `<div class="e4-barcol"><div class="e4-barw"><div class="e4-barv ${P.a[i] ? 'z' : 'k'}" style="height:${Math.round(v / maxY * 100)}%"></div></div><span class="tiny">${String(v).replace('.', ',')}</span><span class="tiny muted">${i < 4 ? '↑' : '↓'}${P.a[i] ? 'Z' : 'K'}</span></div>`).join('');
+    const verdict = p <= 0.05 ? `Poletka z zabiegiem dały wyraźnie <b>${diff > 0 ? 'więcej' : 'mniej'}</b> niż kontrolne. Różnica jest duża w porównaniu z tym, co potrafi dać sam przypadek (p = ${String(p).replace('.', ',')}): tylko ${Math.round(p * 70)} z 70 możliwych podziałów poletek na dwie grupy daje równie dużą różnicę.`
+      : `Taką różnicę często daje sam przypadek (p = ${String(p).replace('.', ',')}): podobna albo większa wychodzi przy ${Math.round(p * 70)} z 70 możliwych podziałów poletek. Z ośmiu poletek trudno tu coś orzec.`;
+    const conf = confounded
+      ? `<div class="fb bad mt">⚠️ Wszystkie poletka z zabiegiem leżały w jednym rzędzie. Dolny rząd leży niżej na zboczu i ma wilgotniejszą ziemię — więc nie wiadomo, czy różnicę zrobił zabieg, czy miejsce. To <b>zakłócenie</b> (ang. confounding). Losowy przydział chroni przed takimi pułapkami.</div>`
+      : P.mode === 'reczny' ? '<div class="fb ai mt">Przydział był ręczny. Tym razem grupy są rozłożone na oba rzędy, ale przy ręcznym wyborze łatwo — nawet nieświadomie — dać zabieg lepszym poletkom.</div>'
+      : P.mode === 'bloki' ? '<div class="fb ok mt">Losowanie w rzędach (bloki): w każdym rzędzie dwa poletka z zabiegiem i dwa kontrolne, więc różnica między rzędami nie miesza się z efektem zabiegu.</div>'
+      : '<div class="fb ok mt">Przydział był losowy, więc położenie poletek nie może systematycznie faworyzować jednej grupy — choć w tak małej próbie przypadek bywa złośliwy.</div>';
+    this.openModal(this.panel('📊 Wyniki eksperymentu', `<div class="e4-box">
+      <p><b>${C.icon} ${esc(C.name)}</b>, zabieg: <b>${T.icon} ${esc(T.name)}</b>. Plon z każdego poletka (kg):</p>
+      <div class="e4-bars">${bars}</div>
+      <div class="row mt" style="flex-wrap:wrap;gap:6px"><span class="tag z">Z: średnio ${mz.toFixed(1).replace('.', ',')} kg</span><span class="tag k">K: średnio ${mk.toFixed(1).replace('.', ',')} kg</span><span class="tag">różnica: ${diff >= 0 ? '+' : ''}${diff.toFixed(1).replace('.', ',')} kg (${pct >= 0 ? '+' : ''}${pct}%)</span></div>
+      <p class="mt">${verdict}</p>${conf}
+      <div class="fb ai small mt">🔍 Prawda gry: ${T.eff ? `${T.icon} ${esc(T.name)} naprawdę zwiększa tu plon — o ok. ${Math.round(T.eff * 100)}%.` : `${T.icon} ${esc(T.name)} nie ma tu żadnego wpływu na plon.`} ${known ? '' : 'Teraz już to wiesz — ale w prawdziwym świecie nikt nie poda odpowiedzi: zostają dobre eksperymenty i ich powtórzenia.'}</div>
+      <p class="small mt">🧺 Razem ${String(Math.round(y.reduce((a, v) => a + v, 0))).replace('.', ',')} kg, do koszyka: ${C.icon}×${units} (skrzynki po ${KG_PER_UNIT} kg).</p>${rew}
+      <p class="tiny muted mt">W Rothamsted (Anglia) w latach 20. XX wieku Ronald Fisher opracował na poletkach zasady eksperymentu: losowy przydział, powtórzenia i bloki („Statistical Methods for Research Workers”, 1925; „The Design of Experiments”, 1935). Te same zasady stoją za badaniami z losowym przydziałem w psychologii i medycynie.</p></div>`,
+      '<button class="btn" data-close>Zamknij</button>', 'wide'));
+  };
+
+  // znacznik grupy na poletku: chorągiewka Z (czerwona) albo K (niebieska)
+  const baseCrop = E1.objSprites.e4_crop;
+  E1.objSprites.e4_crop = o => {
+    if (!o.flag) return baseCrop(o);
+    return cached(`e4c|${o.c}|${o.st}|0|${o.flag}`, () => {
+      const b = baseCrop(Object.assign({}, o, { flag: null }));
+      const [c, g] = mkCanvas(b.c.width, b.c.height + 6);
+      g.drawImage(b.c, 0, 6);
+      R(g, 2, 1, 1, 14, '#6a4a2a'); R(g, 3, 1, 5, 4, o.flag === 'Z' ? '#d0402a' : '#3f6ab8'); P(g, 4, 2, '#ffffff'); P(g, 5, 3, '#ffffff');
+      return { c, ax: b.ax, ay: b.ay + 6 };
+    });
+  };
+
+  /* =================================================================
+     3) ROZBUDOWA DOMU — misja Brygadzisty z Portu
+     Notion (DOMEK GRACZA): „powiększanie domku wraz z osiąganym poziomem…
+     ważne, żeby nie za często… specjalna misja, dosyć trudna, która odblokuje
+     dodanie pomieszczenia”. Dwie rozbudowy: od 4. i od 8. poziomu. Każda dokłada
+     pokój 6 kratek na wschód, za ścianką z przejściem. Zlecenie: materiały (🟡),
+     prowiant z ogródka, opanowane zagadnienia i egzamin kierownika budowy
+     (raz dziennie). Potem budowa „od jutra” — tym razem naprawdę.
+     Progi, koszty i wymagania [do przejrzenia].
+     ================================================================= */
+  const BASE_W = HOME.w, ROOM_W = 6, DOOR_ROWS = [4, 6];
+  const EXP = [
+    { n: 1, lvl: 4, cost: 250, veg: 10, know: 25, exam: 8, pass: 7, days: 1, name: 'Fundamenty', room: 'pierwszy nowy pokój' },
+    { n: 2, lvl: 8, cost: 600, veg: 25, know: 60, exam: 10, pass: 9, days: 2, name: 'Piętro ambicji', room: 'drugi nowy pokój' }
+  ];
+  E4.EXP = EXP;
+  const partitions = n => [...Array(n)].map((_, k) => BASE_W + ROOM_W * k);   // ścianki: x = 14, 20
+  const windowsAt = n => partitions(n).map(px => px + 2);                      // okno nowego pokoju: 2 kratki
+  E4.partitions = partitions;
+
+  Game.prototype.e4Dom = function () {
+    const d = this.e4Data();
+    if (!d.dom || typeof d.dom !== 'object') d.dom = {};
+    const D = d.dom;
+    if (typeof D.lvl !== 'number' || !(D.lvl >= 0)) D.lvl = 0;
+    D.lvl = Math.min(EXP.length, Math.floor(D.lvl));
+    if (D.job && (typeof D.job !== 'object' || !EXP[D.job.n - 1] || D.job.n !== D.lvl + 1)) D.job = null;
+    return D;
+  };
+  const homeW = g => BASE_W + ROOM_W * g.e4Dom().lvl;
+  const roomsNow = g => (g.zone && g.zone.id === 'dom' ? Math.max(0, Math.round((HOME.w - BASE_W) / ROOM_W)) : 0);
+  const knowCount = g => Object.keys(g.state.stats.answeredQuestions || {}).filter(k => g.state.stats.answeredQuestions[k]).length;
+  const vegCount = d => Object.values(d.kosz).reduce((a, v) => a + (v > 0 ? v : 0), 0);
+  E4.homeW = homeW;
+
+  // ukończona budowa: od dnia gotowości dom ma nowy pokój
+  Game.prototype.e4DomCheck = function () {
+    const D = this.e4Dom(), J = D.job, today = this.state.day || 1;
+    if (!J || !J.done || today < J.readyDay) return false;
+    D.lvl = Math.max(D.lvl, J.n); D.job = null;
+    D.built = Object.assign({}, D.built, { [J.n]: today });
+    this.e4Stat('rooms');
+    this.addXP(J.n === 1 ? 25 : 40);
+    const msg = `🏗️ Brygadzista skończył! W domu czeka ${EXP[J.n - 1].room}.`;
+    setTimeout(() => this.toast(msg, 5000), 700);
+    later(() => this.save());
+    return true;
+  };
+
+  // szerokość izby gracza zależy od rozbudowy; dom Pani Haliny zostaje 14×10
+  E4.beforeSetZone = function (id) {
+    try { this.e4DomCheck(); } catch (e) { console.warn('ETAP4: budowa', e); }
+    HOME.w = id === 'dom' ? homeW(this) : BASE_W;
+  };
+
+  /* ---------- wnętrze: ścianki, okna, kinkiety, kolizje ---------- */
+  const br0 = bakeRoom;
+  bakeRoom = function (home) {
+    const c = br0(home);
+    const n = home === HALINA_ROOM ? 0 : Math.max(0, Math.round((HOME.w - BASE_W) / ROOM_W));
+    if (!n) return c;
+    const g = c.getContext('2d'), Hd = HOME.h * 16, wallH = 32;
+    const wc = home.wall || WALL_COLORS[0], fc = home.floorColor || FLOOR_COLORS[0];
+    const top = DOOR_ROWS[0] * 16, bot = (DOOR_ROWS[1] + 1) * 16;
+    partitions(n).forEach(px => {
+      const x = px * 16;
+      // cień ścianki na podłodze (po prawej) i próg w przejściu
+      R(g, x + 12, wallH, 4, top - wallH, 'rgba(0,0,0,0.13)'); R(g, x + 12, bot, 4, Hd - bot, 'rgba(0,0,0,0.13)');
+      R(g, x + 1, top, 14, bot - top, shade(fc, -0.1)); R(g, x + 1, top, 14, 1, shade(fc, -0.3)); R(g, x + 1, bot - 1, 14, 1, shade(fc, -0.3));
+      // ścianka widziana z góry: grzbiet z jaśniejszą krawędzią
+      const seg = (y0, y1) => { R(g, x + 4, y0, 8, y1 - y0, shade(wc, -0.45)); R(g, x + 4, y0, 2, y1 - y0, shade(wc, -0.15)); R(g, x + 11, y0, 1, y1 - y0, shade(wc, -0.62)); };
+      seg(0, top); seg(bot, Hd);
+      // od strony przejścia widać kawałek ściany z listwą
+      R(g, x + 4, top - 12, 8, 12, wc); R(g, x + 4, top - 3, 8, 3, '#6b4526'); R(g, x + 4, top - 3, 8, 1, '#8a5a30');
+      // kinkiet na tylnej ścianie nowego pokoju
+      const sx = (px + 4) * 16 + 6;
+      R(g, sx, 13, 4, 8, '#8a6a3a'); R(g, sx - 2, 8, 8, 6, '#ffe8a0'); R(g, sx - 1, 9, 6, 2, '#fff8d8'); R(g, sx - 2, 14, 8, 1, '#6b4a2a');
+    });
+    windowsAt(n).forEach(tx => {
+      const wx = tx * 16 + 4;
+      R(g, wx, 5, 22, 18, '#f4f0e6'); R(g, wx + 2, 7, 18, 14, '#8fd0ee'); R(g, wx + 2, 7, 18, 6, '#bfe4f5'); R(g, wx + 10, 7, 2, 14, '#f4f0e6'); R(g, wx + 2, 13, 18, 1, '#f4f0e6');
+      R(g, wx - 2, 23, 26, 2, '#8a5a30');
+    });
+    return c;
+  };
+  const bhz0 = buildHomeZone;
+  buildHomeZone = function (home) {
+    const Z = bhz0(home);
+    const n = Math.max(0, Math.round((HOME.w - BASE_W) / ROOM_W));
+    if (!n) return Z;
+    Z.e4Rooms = n;
+    partitions(n).forEach(px => {
+      for (let y = 2; y < HOME.h; y++) if (y < DOOR_ROWS[0] || y > DOOR_ROWS[1]) Z.solid[y * HOME.w + px] = 1;
+      Z.lights.push({ x: (px + 4) * 16 + 8, y: 14, r: 70, col: '#ffe8b0', s: 0.75 });
+    });
+    return Z;
+  };
+
+  /* ---------- mebli nie stawiamy na ściankach ani na nowych oknach ---------- */
+  const baseDom = {};
+  ['nocFits', 'newDay', 'talkTo'].forEach(k => { baseDom[k] = Game.prototype[k]; });
+  Object.assign(Game.prototype, {
+    nocFits(spec, tx, ty, r, skipFixed) {
+      if (!baseDom.nocFits.call(this, spec, tx, ty, r, skipFixed)) return false;
+      const n = roomsNow(this);
+      if (!n || !spec) return true;
+      const ND = window.NOC_DOM;
+      const w = ND && ND.dims ? ND.dims(spec, r || 0, spec.id)[0] : spec.w;
+      if (partitions(n).some(px => tx <= px && tx + w > px)) return false;
+      if (spec.layer === 'wall' && windowsAt(n).some(wx => tx < wx + 2 && tx + w > wx)) return false;
+      return true;
+    },
+    newDay(passedOut) {
+      const r = baseDom.newDay.call(this, passedOut);
+      try {
+        if (this.e4DomCheck() && this.zone && this.zone.id === 'dom') { HOME.w = homeW(this); this.refreshHome(); }
+      } catch (e) { console.warn('ETAP4: nowy dzień (budowa)', e); }
+      return r;
+    },
+    talkTo(n) {
+      if (!n || n.id !== 'brygadzista' || !n.def || inDream(this)) return baseDom.talkTo.call(this, n);
+      const s = this.state, def = n.def;
+      n.talkT = 5;
+      n.dir = { up: 'down', down: 'up', left: 'right', right: 'left' }[this.player.dir] || n.dir;
+      s.talked[n.id] = (s.talked[n.id] || 0) + 1;
+      this.questEvent('talk', n.id);
+      this.e4DomCheck();
+      const D = this.e4Dom(), E = EXP[D.lvl], J = D.job, lv = s.stats.level || 1, today = s.day || 1;
+      const line = def.lines[(s.talked[n.id] - 1) % def.lines.length];
+      let p2;
+      if (!E) p2 = 'Twój dom ma już wszystkie pokoje z planu. Następny plan? Zacznę go… no wiesz kiedy. Od jutra.';
+      else if (J && J.done) p2 = today < J.readyDay ? `Budowa trwa! Gotowe będzie w dniu ${J.readyDay}. Tym razem naprawdę — mam plan „jeśli jest siódma, to biorę łopatę”.` : 'Gotowe!';
+      else if (J) p2 = `Jak idzie zlecenie „${E.name}”? Ja czekam. Czekanie wychodzi mi najlepiej.`;
+      else if (lv < E.lvl) p2 = D.lvl ? `Drugi pokój? Ambitnie! Wróć na ${E.lvl}. poziomie — wtedy pogadamy o kolejnej ścianie.` : `Rozbudowa domu? Chętnie. Wróć, jak osiągniesz ${E.lvl}. poziom — wtedy pogadamy o fundamentach.`;
+      else p2 = D.lvl ? 'Znowu ciasno? Dobudujemy drugi pokój. Ale ekipa znów potrzebuje motywacji… i prowiantu.' : 'Słyszałem, że ciasno Ci w domu. Mogę dobudować pokój… od jutra. Chyba że mi pomożesz — wtedy od jutra naprawdę.';
+      later(() => this.showDialogue({ name: def.name, npc: def, pitch: 1, pages: [line, p2], options: [
+        { label: E ? `🏗️ Rozbudowa domu${J ? ' — zlecenie' : lv < E.lvl ? ` (od poziomu ${E.lvl})` : ''}` : '🏠 Plan domu', fn: () => this.e4Budowa() },
+        { label: '👋 Na razie!', fn: null }
+      ] }));
+    }
+  });
+
+  /* ---------- okno zlecenia ---------- */
+  const houseMini = (lvl, J, lv) => {
+    const box = (k, label, cls) => `<div class="e4-hroom ${cls}" style="flex:${k === 0 ? 14 : 6}"><b>${label}</b></div>`;
+    return `<div class="e4-house">${box(0, '🏠 Pokój', 'built')}${EXP.map((E, k) => box(k + 1, lvl > k ? '✨ Nowy pokój' : J && J.n === k + 1 ? (J.done ? '🚧 Budowa' : '📝 Zlecenie') : k === lvl && lv >= E.lvl ? '📐 do zlecenia' : `🔒 poz. ${E.lvl}`, lvl > k ? 'built' : J && J.n === k + 1 ? 'job' : 'locked')).join('')}</div>`;
+  };
+  Game.prototype.e4Budowa = function () {
+    this.e4DomCheck();
+    const s = this.state, d = this.e4Data(), D = this.e4Dom();
+    const m = this.openModal(this.panel('🏗️ Rozbudowa domu', '<div id="e4-bud"></div>', '<button class="btn" data-close>Zamknij</button>', 'wide'));
+    const root = m.querySelector('#e4-bud');
+    const render = () => {
+      if (!root.isConnected) return;
+      const E = EXP[D.lvl], J = D.job, lv = s.stats.level || 1, today = s.day || 1;
+      const head = houseMini(D.lvl, J, lv);
+      if (!E) {
+        root.innerHTML = `${head}<p class="mt">Dom ma już wszystkie pokoje z planu: główną izbę i dwa nowe pokoje. Brygadzista obiecuje kolejny plan „od jutra”. [do przejrzenia: czy chcemy dalsze rozbudowy]</p>`;
+        return;
+      }
+      const know = knowCount(this), have = vegCount(d);
+      const row = (ok, icon, title, info, btn) => `<div class="e4-req ${ok ? 'ok' : ''}"><span class="e4-ic">${ok ? '✅' : icon}</span><div class="grow"><b>${title}</b><div class="tiny muted">${info}</div></div>${ok ? '' : btn || ''}</div>`;
+      const reqs = J ? [
+        row(J.paid, '🧱', `Materiały budowlane: ${E.cost} 🟡`, J.paid ? 'zapłacone' : `masz ${s.money} 🟡`, `<button class="btn btn-sm" id="e4-b-pay" ${s.money >= E.cost ? '' : 'disabled'}>Zapłać</button>`),
+        row(J.veg >= E.veg, '🥕', `Prowiant dla ekipy: ${Math.min(J.veg, E.veg)}/${E.veg} warzyw`, `z ogródka albo poletka · w koszyku: ${have}`, `<button class="btn btn-sm" id="e4-b-veg" ${have ? '' : 'disabled'}>Oddaj z koszyka</button>`),
+        row(know >= E.know, '📚', `Opanowane zagadnienia: ${Math.min(know, E.know)}/${E.know}`, 'różne pytania zaliczone na zajęciach w katedrach', ''),
+        row(J.exam, '📝', `Egzamin kierownika budowy: ${E.exam} pytań, zalicza ${E.pass}`, J.exam ? 'zdany' : J.examDay === today ? 'dziś już było podejście — kolejne jutro' : 'jedno podejście dziennie', J.examDay === today ? '' : '<button class="btn btn-sm" id="e4-b-exam">Podejdź</button>')
+      ].join('') : [
+        row(false, '🧱', `Materiały budowlane: ${E.cost} 🟡`, 'zapłata z góry', ''),
+        row(false, '🥕', `Prowiant dla ekipy: ${E.veg} warzyw`, 'z ogródka albo poletka', ''),
+        row(false, '📚', `Opanowane zagadnienia: ${E.know}`, `teraz: ${know}`, ''),
+        row(false, '📝', `Egzamin kierownika budowy: ${E.exam} pytań, zalicza ${E.pass}`, 'jedno podejście dziennie', '')
+      ].join('');
+      let foot = '';
+      if (!J && lv < E.lvl) foot = `<div class="fb ai mt">🔒 Zlecenie „${esc(E.name)}” będzie dostępne od <b>${E.lvl}. poziomu</b> (masz ${lv}). Rozbudowa jest rzadka i trudna — tak miało być.</div>`;
+      else if (!J) foot = `<div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e4-b-take">📝 Przyjmij zlecenie „${esc(E.name)}”</button></div>`;
+      else if (J.done) {
+        const left = J.readyDay - today;
+        foot = `<div class="fb ok mt">🚧 Budowa trwa — ${E.room} będzie gotowy w dniu ${J.readyDay} (${left === 1 ? 'jutro' : `za ${left} dni`}).${J.n === 2 ? ' Brygadzista szacował jeden dzień. Wyjdą dwa — to <b>błąd planowania</b> (Buehler, Griffin i Ross, 1994): przewidując czas własnej pracy, zwykle go zaniżamy. I tak to jego rekord.' : ''}</div>`;
+      } else {
+        const all = J.paid && J.veg >= E.veg && know >= E.know && J.exam;
+        foot = all ? `<div class="row mt"><span class="grow"></span><button class="btn btn-green" id="e4-b-go">🤝 Zlecam budowę!</button></div>`
+          : '<p class="tiny muted mt">Kolejność dowolna. Postęp zostaje zapisany.</p>';
+      }
+      root.innerHTML = `${head}<p class="mt">${J ? `Zlecenie <b>„${esc(E.name)}”</b>: ${E.room}.` : `Następna rozbudowa: <b>${E.room}</b> (6 kratek na wschód, za ścianką z przejściem).`} Brygadzista zbuduje go, gdy pomożesz ekipie przestać odkładać pracę na jutro.</p>
+        <div class="e4-reqs mt">${reqs}</div>${foot}
+        <p class="tiny muted mt">Z zewnątrz domu nie widać różnicy. Brygadzista: „W środku zawsze jest więcej, niż się wydaje. Jak w ludziach.”</p>`;
+      const on = (id, fn) => { const b = root.querySelector(id); if (b) b.addEventListener('click', () => { audio.click(); fn(); this.save(); render(); }); };
+      on('#e4-b-take', () => { D.job = { n: E.n, start: today, paid: false, veg: 0, exam: false, examDay: 0, done: false, readyDay: 0 }; this.e4Stat('jobs'); });
+      on('#e4-b-pay', () => { if (s.money < E.cost) return; this.addMoney(-E.cost, true); J.paid = true; audio.coin(); });
+      on('#e4-b-veg', () => {
+        let need = E.veg - J.veg;
+        Object.keys(d.kosz).sort((a, b) => (CROPS[a] ? CROPS[a].price : 99) - (CROPS[b] ? CROPS[b].price : 99)).forEach(c => {
+          const k = Math.min(need, d.kosz[c] || 0);
+          if (k <= 0) return;
+          d.kosz[c] -= k; if (!d.kosz[c]) delete d.kosz[c]; J.veg += k; need -= k;
+        });
+        audio.pickup();
+      });
+      on('#e4-b-exam', () => this.e4Egzamin());
+      on('#e4-b-go', () => {
+        J.done = true; J.readyDay = today + E.days;
+        this.toast('Brygadzista: „Zaczynamy od jutra. Tym razem naprawdę — mam plan: jeśli jest siódma, to biorę łopatę.”', 5000);
+      });
+    };
+    render();
+  };
+
+  /* ---------- egzamin kierownika budowy (raz dziennie) ---------- */
+  Game.prototype.e4Egzamin = function () {
+    const s = this.state, D = this.e4Dom(), J = D.job, E = J && EXP[J.n - 1];
+    if (!J || !E || J.exam || J.examDay === s.day) return;
+    J.examDay = s.day; this.save();
+    // najpierw zagadnienia już opanowane, potem pozostałe; bez powtórek tematu
+    const ans = s.stats.answeredQuestions || {};
+    const pool = shuffle(Math.random, QUESTIONS_DB.filter(q => ans[q.id])).concat(shuffle(Math.random, QUESTIONS_DB.filter(q => !ans[q.id])));
+    const items = [];
+    pool.forEach(q => { if (items.length < E.exam && q.topic && q.canonicalAnswer && !items.some(x => x.topic === q.topic)) items.push(q); });
+    const X = { i: 0, score: 0, items };
+    E4.exam = X;                                   // podgląd dla testów
+    const trunc = t => (t.length > 210 ? t.slice(0, 207) + '…' : t);
+    const ask = () => {
+      const q = X.items[X.i];
+      const same = QUESTIONS_DB.filter(x => x.locId === q.locId && x.topic !== q.topic);
+      const others = shuffle(Math.random, same.length >= 3 ? same : QUESTIONS_DB.filter(x => x.topic !== q.topic)).filter((x, k, a) => a.findIndex(y => y.topic === x.topic) === k).slice(0, 3);
+      const modeDef = Math.random() < 0.5;
+      const opts = shuffle(Math.random, [q].concat(others));
+      const qText = modeDef ? `Który opis pasuje do zagadnienia <b>„${esc(q.topic)}”</b>?` : `Do którego zagadnienia pasuje opis:<br><i>„${esc(trunc(q.canonicalAnswer))}”</i>`;
+      const body = `<div class="row small mb" style="flex-wrap:wrap;gap:4px"><span class="tag gold">Pytanie ${X.i + 1}/${X.items.length}</span><span class="tag green">Dobrze: ${X.score}</span><span class="tag">Zalicza: ${E.pass}/${X.items.length}</span></div>
+        <div class="q-text" style="font-size:15px">${qText}</div>
+        ${opts.map((o, k) => `<button class="quiz-opt" data-id="${o.id}"><b>${'ABCD'[k]}.</b> ${esc(modeDef ? trunc(o.canonicalAnswer) : o.topic)}</button>`).join('')}
+        <div id="e4-ex-fb"></div>`;
+      const m = this.openModal(this.panel('📝 Egzamin kierownika budowy', body, '<button class="btn" id="e4-ex-next" disabled>Dalej →</button>', 'narrow', false), { locked: true });
+      m.querySelectorAll('.quiz-opt').forEach(b => b.addEventListener('click', () => {
+        const right = b.dataset.id === q.id;
+        m.querySelectorAll('.quiz-opt').forEach(x => { x.disabled = true; if (x.dataset.id === q.id) x.classList.add('right'); });
+        if (right) { X.score++; audio.success(); } else { b.classList.add('wrong'); audio.error(); }
+        m.querySelector('#e4-ex-fb').innerHTML = `<div class="fb ${right ? 'ok' : 'bad'} small">${right ? '✓ Tak!' : '✕ Nie tym razem.'} <b>${esc(q.topic)}</b>${q.hint ? ': ' + esc(q.hint) : ''}</div>`;
+        m.querySelector('#e4-ex-next').disabled = false;
+      }));
+      m.querySelector('#e4-ex-next').addEventListener('click', () => { audio.click(); X.i++; if (X.i < X.items.length) ask(); else finish(); });
+    };
+    const finish = () => {
+      const pass = X.score >= E.pass;
+      if (pass) { J.exam = true; this.addXP(15); this.e4Stat('exams'); } else this.e4Stat('examFails');
+      this.save();
+      this.openModal(this.panel('📝 Wynik egzaminu', `<div class="center"><div class="big-emoji">${pass ? '🏅' : '📚'}</div>
+        <p class="pix" style="font-size:22px"><b>${X.score}/${X.items.length}</b></p>
+        <p class="small">${pass ? 'Zdane! +15 XP. Brygadzista ociera łzę wzruszenia kaskiem.' : `Do zaliczenia brakuje ${E.pass - X.score}. Kolejne podejście jutro — a do tego czasu Archipelag i katedry czekają.`}</p>
+        <p class="tiny muted mt">Pytania z bazy zajęć: najpierw zagadnienia, które już masz zaliczone.</p></div>`,
+        '<button class="btn btn-green" id="e4-ex-back">Wróć do zlecenia</button>', 'narrow'));
+      const bk = document.getElementById('e4-ex-back');
+      if (bk) bk.addEventListener('click', () => { audio.click(); this.e4Budowa(); });
+    };
+    if (!X.items.length) { this.toast('Brak pytań do egzaminu.'); return; }
+    ask();
+  };
+
+  /* =================================================================
+     4) OSOBOWOŚĆ Z WYBORÓW — nowe źródła obserwacji w zakładce PROFIL → 🧠 Osobowość
+     Notion (GŁÓWNA POSTAĆ GRACZA): „kreowanie osobowości postaci w skutek
+     postępowań gracza, jego wyborów… gracz nie może tego zmieniać” oraz
+     „profil osobowości w trakcie wyborów w grze i jej osiągnięć”.
+     Jak dotąd: gra niczego nie ustawia na sztywno, tylko „zauważa” — a gracz może
+     się nie zgodzić (🙅 To nie o mnie), ale nie może przepisać obserwacji.
+     Nowe źródła: podlewanie i powtórki, Ogród Uważności, prośby mieszkańców,
+     ogródek i straganik, poletko, zlecenie Brygadzisty.
+     Progi i słowa [do przejrzenia].
+     ================================================================= */
+  const plural = (n, one, few, many) => (n === 1 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? few : many);
+  E4.plural = plural;
+  function e4Observations(g) {
+    const s = g.state, d = g.e4Data(), st = d.stats, e3 = s.e3 || {};
+    const out = [];
+    const add = (k, name, text) => out.push({ k, name, text });
+    // systematyczność: małe rzeczy codziennie
+    const water = st.waterDays || 0, leit = (e3.leit && e3.leit.sessions) || 0, sys = water + leit;
+    add('e4_systematycznosc', 'Systematyczność', sys < 4 ? null
+      : sys >= 15 ? `Wracasz do małych codziennych rzeczy: ${water} ${plural(water, 'dzień', 'dni', 'dni')} podlewania, ${leit} ${plural(leit, 'sesja', 'sesje', 'sesji')} w Pudełku Leitnera. Po trochu, a regularnie — tak działa i pamięć, i ogród.`
+      : `Zdarza Ci się wracać do codziennych drobiazgów (${water} ${plural(water, 'dzień', 'dni', 'dni')} podlewania, ${leit} ${plural(leit, 'sesja', 'sesje', 'sesji')} powtórek). Może rytm służy Ci bardziej niż zryw?`);
+    // troska o siebie: ćwiczenia w Ogrodzie Uważności
+    const og = e3.ogrod || {}, care = ['oddech', 'skan', 'staw', 'dzwon'].reduce((a, k) => a + (og[k] || 0), 0);
+    add('e4_troska', 'Troska o siebie', care < 3 ? null
+      : care >= 12 ? `Ogród Uważności odwiedzasz często (${care} ${plural(care, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}). Wygląda na to, że dbasz o siebie, zanim zabraknie sił.`
+      : `Czasem zaglądasz do Ogrodu Uważności (${care} ${plural(care, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}). Chwila oddechu też jest częścią nauki.`);
+    // pomaganie: spełnione prośby mieszkańców (zadania „znajdź” z Etapu 2)
+    const q = g.e2Quests ? g.e2Quests() : {}, help = Object.values(q || {}).reduce((a, x) => a + ((x && x.n) || 0), 0);
+    add('e4_pomaganie', 'Pomaganie', help < 2 ? null
+      : help >= 8 ? `Mieszkańcy często mogą na Ciebie liczyć: ${help} ${plural(help, 'spełniona prośba', 'spełnione prośby', 'spełnionych próśb')}. Pomaganie wygląda na coś, co lubisz.`
+      : `Pomagasz mieszkańcom, gdy proszą (${help} ${plural(help, 'raz', 'razy', 'razy')}). Może lubisz, gdy coś się dzięki Tobie udaje?`);
+    // cierpliwość: na co sadzisz i kiedy sprzedajesz
+    const long = st.plantedLong || 0, short = st.plantedShort || 0, hi = st.soldHigh || 0, lo = st.soldLow || 0;
+    add('e4_cierpliwosc', 'Czekanie na nagrodę', long + short + hi + lo < 6 ? null
+      : long > short && hi >= lo ? 'Sadzisz rośliny, na które trzeba poczekać, i sprzedajesz, kiedy cena jest dobra. Może umiesz odroczyć nagrodę? (Ciekawostka: dzieci w „teście pianki” czekały dłużej, gdy dorosły wcześniej dotrzymał słowa — Kidd, Palmeri i Aslin, 2013. Czekanie to też kwestia zaufania.)'
+      : short >= long && lo > hi ? 'Wybierasz szybkie plony i sprzedajesz od razu. Pewne „teraz” bywa rozsądniejsze niż niepewne „potem” — zwłaszcza gdy nie wiadomo, co przyniesie jutro.'
+      : 'Raz czekasz na dynię, raz bierzesz szybką sałatę. Może to zależy od dnia i od tego, ile masz w kieszeni?');
+    // myślenie badawcze: poletko doświadczalne
+    const ex = st.experiments || 0, rnd = st.randomized || 0;
+    add('e4_badawcze', 'Myślenie badawcze', ex < 1 ? null
+      : rnd >= 2 ? `Na poletku losujesz przydział do grup (${rnd} z ${ex} ${plural(ex, 'eksperymentu', 'eksperymentów', 'eksperymentów')}). Tak myśli badacz: najpierw plan, potem wynik.`
+      : rnd === 0 ? `Na poletku ${ex === 1 ? 'był już jeden eksperyment' : `${plural(ex, 'był', 'były', 'było')} już ${ex} ${plural(ex, 'eksperyment', 'eksperymenty', 'eksperymentów')}`}, z poletkami wybieranymi samodzielnie. Ciekawe, co pokaże losowanie?`
+      : `Sprawdzasz, zamiast zgadywać: ${ex} ${plural(ex, 'eksperyment', 'eksperymenty', 'eksperymentów')} na poletku. Pani Losowska to zauważa.`);
+    // długie cele: zlecenie Brygadzisty
+    const D = g.e4Dom ? g.e4Dom() : { lvl: 0 }, jobs = st.jobs || 0, fails = st.examFails || 0;
+    add('e4_cele', 'Długie cele', !jobs && !D.lvl ? null
+      : D.lvl ? (fails ? 'Zlecenie Brygadzisty doprowadzone do końca — mimo egzaminu niezdanego za pierwszym razem. Długie cele chyba Cię nie zrażają.' : 'Zlecenie Brygadzisty doprowadzone do końca. Długie, wieloetapowe cele chyba Ci służą.')
+      : fails ? 'Egzamin u Brygadzisty nie wyszedł za pierwszym razem, a zlecenie trwa dalej. Wracasz — to więcej niż upór.'
+      : 'Trwa zlecenie Brygadzisty. Duży cel rozbity na małe kroki — dobry sposób na „od jutra”.');
+    return out;
+  }
+  E4.observations = e4Observations;
+  // PROFIL jest w osobnym skrypcie za Etapem 4 — podpinamy się, gdy wszystkie skrypty już się wykonały
+  const hookProfile = () => {
+    const b = Game.prototype.prObservations;
+    if (typeof b !== 'function' || b.e4) return;
+    const f = function () {
+      const out = b.apply(this, arguments) || [];
+      try { out.push(...e4Observations(this)); } catch (e) { console.warn('ETAP4: osobowość', e); }
+      // najpierw to, co gra już zauważyła; „??? — jeszcze nie wiem” na końcu [do przejrzenia]
+      return out.map((x, i) => [x, i]).sort((a, b) => (!a[0].text - !b[0].text) || a[1] - b[1]).map(x => x[0]);
+    };
+    f.e4 = true;
+    Game.prototype.prObservations = f;
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hookProfile);
+  window.addEventListener('load', hookProfile);
+
+  /* =================================================================
+     9) PODPIĘCIA: interakcje, wejście do dzielnicy, style
+     ================================================================= */
+  const SPOTS4 = {
+    e4_ogrod: ['Ogródek: grządki', function () { return this.e4Ogrodek(); }],
+    e4_stragan: ['Straganik: sprzedaj plony', function () { return this.e4Stragan(); }],
+    e4_pole: ['Poletko Doświadczalne', function () { return this.e4Poletko(); }]
+  };
+  E4.SPOTS = SPOTS4;
+  Game.prototype.e4AfterSetZone = function (id) {
+    if (id === 'wzgorze') this.e4PlaceField();
+    if (E4.afterSetZone) E4.afterSetZone.call(this, id);
+  };
+  const base = {};
+  ['useSpot', 'spotPrompt', 'setZone'].forEach(k => { base[k] = Game.prototype[k]; });
+  Object.assign(Game.prototype, {
+    useSpot(it) {
+      const S = it && SPOTS4[it.kind];
+      if (S) { try { return S[1].call(this, it); } catch (e) { console.warn('ETAP4: interakcja', it.kind, e); } }
+      return base.useSpot.call(this, it);
+    },
+    spotPrompt(it) {
+      const S = it && SPOTS4[it.kind];
+      if (S) return typeof S[0] === 'function' ? S[0].call(this, it) : S[0];
+      return base.spotPrompt.call(this, it);
+    },
+    setZone(id) {
+      if (E4.beforeSetZone) { try { E4.beforeSetZone.call(this, id); } catch (e) { console.warn('ETAP4: przed setZone', e); } }
+      const r = base.setZone.call(this, id);
+      try {
+        this.e4Tick();
+        if (id === 'osiedle') this.e4PlaceGarden();
+        if (this.e4AfterSetZone) this.e4AfterSetZone(id);
+      } catch (e) { console.warn('ETAP4: setZone', e); }
+      return r;
+    }
+  });
+
+  /* ---------- style ---------- */
+  const css = document.createElement('style');
+  css.id = 'etap4-css';
+  css.textContent = `
+  .e4-garden { display: flex; gap: 14px; align-items: flex-start; }
+  .e4-beds { display: grid; grid-template-columns: repeat(3, minmax(84px, 1fr)); gap: 6px; flex: none; width: 300px; }
+  .e4-bed { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; border: 2px solid #8c5a2f; border-radius: 8px; background: #a87a4e; color: #fff8ea; cursor: pointer; font: inherit; font-size: 12px; min-height: 76px; }
+  .e4-bed b { font-size: 12px; } .e4-bed .tiny { font-size: 10px; line-height: 1.2; text-align: center; }
+  .e4-bed.empty { background: #8a6440; opacity: .85; }
+  .e4-bed.wet { background: #6a4a32; }
+  .e4-bed.ripe { background: #5a8a3a; border-color: #3f6a2a; box-shadow: 0 0 0 2px #ffd86a inset; }
+  .e4-bed.sel { outline: 3px solid #ffd06a; outline-offset: 1px; }
+  .e4-ic { font-size: 22px; line-height: 1; }
+  .e4-bar { width: 80%; height: 5px; background: rgba(0,0,0,.25); border-radius: 3px; overflow: hidden; }
+  .e4-bar i { display: block; height: 100%; background: #9ae07a; }
+  .e4-side { flex: 1; min-width: 0; }
+  .e4-seeds { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+  .e4-seed { display: flex; align-items: center; gap: 8px; text-align: left; padding: 4px 8px; border: 2px solid var(--parch-300); border-radius: 8px; background: #fffaf0; cursor: pointer; font: inherit; color: inherit; }
+  .e4-seed.sel { border-color: #3f8f3a; background: #eaf8e0; }
+  .e4-seed.off { opacity: .5; cursor: not-allowed; }
+  .e4-kosz { background: #fff6e0; border: 2px dashed var(--wood-400); border-radius: 8px; padding: 6px 10px; }
+  .e4-tab { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+  .e4-tab td { padding: 4px 6px; border-bottom: 1px solid var(--parch-300); }
+  .e4-tab .up { color: #2f8a3a; } .e4-tab .down { color: #b8475f; }
+  .tag.red { background: #f6d4d4; color: #8a2a2a; }
+  .e4-plan { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 12px; align-items: start; }
+  .e4-plots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 6px; max-width: 320px; margin: 4px auto; }
+  .e4-plots .e4-plot:nth-child(n+5) { margin-top: 10px; }
+  .e4-plot { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; border: 2px solid #8c5a2f; border-radius: 8px; color: #fff; cursor: pointer; font: inherit; font-size: 12px; min-height: 52px; }
+  .e4-plot b { font-size: 16px; } .e4-plot .tiny { font-size: 10px; }
+  .e4-plot.z { background: #c0563a; border-color: #8a2f1a; }
+  .e4-plot.k { background: #4a72b0; border-color: #2a4a80; }
+  .e4-plot:disabled { cursor: default; opacity: 1; }
+  .e4-bars { display: flex; gap: 6px; align-items: flex-end; padding: 6px 4px 2px; border-bottom: 2px solid var(--parch-300); }
+  .e4-barcol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+  .e4-barw { height: 110px; width: 100%; display: flex; align-items: flex-end; border-bottom: 2px solid #8c5a2f; }
+  .e4-barv { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; }
+  .e4-barv.z, .tag.z { background: #e08a6e; } .e4-barv.k, .tag.k { background: #84a6dc; }
+  .tag.z { color: #5a1a0a; } .tag.k { color: #10284f; }
+  .e4-house { display: flex; gap: 4px; height: 54px; margin: 2px 0 4px; }
+  .e4-hroom { display: flex; align-items: center; justify-content: center; text-align: center; border: 3px solid #6b4526; border-radius: 6px; font-size: 12px; padding: 2px; min-width: 0; }
+  .e4-hroom.built { background: #f2e2c4; } .e4-hroom.job { background: repeating-linear-gradient(45deg, #ffe7a0 0 8px, #f6d470 8px 16px); }
+  .e4-hroom.locked { background: #e6e0d6; border-style: dashed; color: #7a6a5a; }
+  .e4-reqs { display: flex; flex-direction: column; gap: 6px; }
+  .e4-req { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 2px solid var(--parch-300); border-radius: 8px; background: #fffaf0; }
+  .e4-req.ok { background: #eaf8e0; border-color: #8cc26a; }
+  @media (max-width: 760px) { .e4-plan { grid-template-columns: 1fr; } }
+  @media (max-width: 620px) { .e4-garden { flex-direction: column; } .e4-beds { width: 100%; } }
+  `;
+  document.head.appendChild(css);
+})();
+</script>
+
 <!-- PROFIL:START -->
 <script>
 /* =====================================================================
