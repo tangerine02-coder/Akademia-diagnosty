@@ -21916,6 +21916,46 @@ window.addEventListener('load', () => {
   `;
   document.head.appendChild(css);
 })();
+
+/* ---------------------------------------------------------------------
+   ETAP 5 · LIST Z NOWOŚCIAMI — raz na gracza: w skrzynce czeka list od
+   Burmistrza z listą nowych miejsc (Etapy 4–5). Zwykły list dnia zostaje.
+   --------------------------------------------------------------------- */
+(() => {
+  'use strict';
+  const KEY = 'nowosci-2026-10-05';
+  const TEXT = 'Szanowni Mieszkańcy! W Freudowicach sporo nowego:\n'
+    + '🌱 Przy Waszych domach powstały ogródki (12 grządek), a przy furtce — Straganik.\n'
+    + '🧪 Na Wzgórzu Hipotez Pani Losowska prowadzi Poletko Doświadczalne.\n'
+    + '🏗️ Brygadzista z Portu przyjmuje zlecenia na rozbudowę domów (od 4. poziomu). Od jutra. Tym razem naprawdę.\n'
+    + '🏛️ Każda katedra ma hol: Kompendium, Mini gry i Zajęcia.\n'
+    + '🧭 Na Rynku, przy ławce, czeka mentorka — Dr Róża Busola.\n'
+    + '🌙 Na Wyspie Snu stanęła Tablica Higieny Snu, a po wyspie krąży Pan Sennik. Proszę nie płacić mu za dużo.\n'
+    + '🔤 A jeśli litery w mieście wydają się Wam zbyt zwyczajne — przycisk „Aa” na dolnym pasku.\n'
+    + 'Z wyrazami szacunku, Burmistrz Zygmunt';
+  const base = {};
+  ['openMail', 'startWorld'].forEach(k => { base[k] = Game.prototype[k]; });
+  Object.assign(Game.prototype, {
+    openMail(...a) {
+      const d = this.e5Data();
+      if (!d.once[KEY]) {
+        d.once[KEY] = this.state.day || 1;
+        audio.pickup();
+        this.save();
+        return this.showLetter('Burmistrz Zygmunt — nowości w mieście', esc(TEXT), () => this.toast('📬 Zwykły list dnia też czeka w skrzynce.', 3500));
+      }
+      return base.openMail.apply(this, a);
+    },
+    startWorld(...a) {
+      const r = base.startWorld.apply(this, a);
+      try {
+        const d = this.e5Data();
+        if (!d.once[KEY] && this.state.created) setTimeout(() => { if (!d.once[KEY]) this.toast('📬 W skrzynce przy domu czeka list z nowościami w mieście.', 6000); }, 4000);
+      } catch (e) {}
+      return r;
+    }
+  });
+})();
 </script>
 
 <!-- PROFIL:START -->

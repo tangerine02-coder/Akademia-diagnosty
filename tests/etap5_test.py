@@ -229,6 +229,12 @@ async def main():
         check(len(r['opts']) == 5 and r['dm'] == -2 and 'efekt Barnuma' in r['txt'] and 'Co mówią badania' in r['txt'], 'Pan Sennik: „wróżba” za 2 🟡, potem badania i efekt Barnuma')
         await pg.screenshot(path=f'{OUT}/e5_sennik.png')
 
+        # ---------- 6b. list z nowościami ----------
+        r = await pg.evaluate("""() => { game.closeModal(true); game.closeDialog(true); delete game.e5Data().once['nowosci-2026-10-05'];
+          game.openMail(); const a = document.querySelector('#modal .panel-head h2').textContent; game.closeModal(true);
+          game.state.mailDay = 0; game.openMail(); const b2 = document.querySelector('#modal .panel-head h2').textContent; game.closeModal(true); return [a, b2]; }""")
+        check('nowości' in r[0] and 'nowości' not in r[1], f'list z nowościami raz, potem zwykłe listy ({r})')
+
         # ---------- 7. telefon ----------
         print('\n[7] Telefon')
         mob = await b.new_page(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)

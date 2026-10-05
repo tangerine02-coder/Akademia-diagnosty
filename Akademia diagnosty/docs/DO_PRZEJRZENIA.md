@@ -92,6 +92,9 @@
 ## Podział BAZA / ROZSZERZENIE (5.10)
 64. **Propozycja podziału 176 zagadnień katedr** w `docs/PODZIAL_BAZA_ROZSZERZENIE.md`: 🌍 32 dla każdego, 🎓 96 akademickich, 🔒 48 o konkretnych narzędziach. W grze nic się jeszcze nie zmieniło — czeka na Twoją decyzję i poprawki w tabelach.
 
+## List z nowościami (5.10)
+65. Raz na gracza w skrzynce przy domu czeka **list od Burmistrza z nowościami** (ogródek i straganik, poletko, Brygadzista, hol katedr, mentorka, Tablica Higieny Snu i Pan Sennik, przycisk „Aa”). Po wczytaniu gry przypomina o nim dymek. Zwykły list dnia nadal czeka w skrzynce.
+
 ## Relacje, wątki, Momenty (projekt z 1.10, po południu)
 Ten moduł (🫂 Ludzie, 📸 Album, 📈 Mój tydzień, 6 małych wątków) **nie występuje w pliku gry na GitHubie**. Albo nie został jeszcze wbudowany, albo plik w repo jest starszy niż ten na komputerze. Do sprawdzenia przed dalszą pracą.
 19. Progi bliskości w relacjach z mieszkańcami.
