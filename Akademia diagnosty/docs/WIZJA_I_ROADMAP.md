@@ -1,6 +1,6 @@
 # 🎯 Akademia Diagnosty — Wizja i Roadmapa
 
-*Dokument żywy. Ostatnia aktualizacja: 2026-10-05 (Etap 6).*
+*Dokument żywy. Ostatnia aktualizacja: 2026-10-19 (udostępnianie wersji, nazwy testów w publicznej).*
 *Sesja brainstorm z AI — decyzje autorki gry.*
 
 > **Jak czytać ten dokument:**
@@ -68,7 +68,8 @@ Kod: trzy bloki „ETAP 6” (przed blokiem PROFIL); blok promotora jest między
 - ⚡ Wersja akademicka: znaczki 🌍 / 🎓 / 🔒 w kompendium.
 - ⚡ Katedra Psychologii Religii i Płci w dawnym Magazynie Pamięci w Porcie: Prof. Teodora Rolska, Pan Zasłyszany, 18 zagadnień (14 🌍, 4 🎓), mini gra „Mit czy fakt?”.
 - ⚡ Promotor (tylko wersja akademicka): etapy magisterki (9) i pracy rocznej (6), konsultacje fragmentów z pytaniami jak na seminarium, harmonogram z prawdziwymi datami, przypomnieniami i plikiem .ics.
-- 💭 Jak udostępniać wersję akademicką — do decyzji później (repozytorium jest dziś publiczne).
+- ✅ Udostępnianie (decyzja 2026-10-19): repozytorium z grą jest prywatne. Wersja publiczna jest grywalna na GitHub Pages z osobnego publicznego repo `akademia-diagnosty-gra` (tylko plik gry). Wersja akademicka na razie tylko u autorki.
+- ⚡ Nazwy konkretnych testów poza bazą pytań (kwestie mieszkańców, Wieża Zegarowa, neuro_n1, rodz_n10) są tylko w wersji akademickiej; w publicznej — zamienniki. Skrypt nie zbuduje wersji publicznej, jeśli trafi do niej nazwa testu z listy (2026-10-19).
 
 ### Później
 - 💭 Rodzina postaci.
@@ -76,7 +77,7 @@ Kod: trzy bloki „ETAP 6” (przed blokiem PROFIL); blok promotora jest między
 ### Otwarte pytania
 - ✅ Mentor i promotor: dwie postacie (decyzja 5.10) — mentorka dla każdego, promotor w wersji akademickiej.
 - ✅ Katedra Teologii i Płci: psychologia religii i płci — badania i mity (decyzja 5.10).
-- 💭 Wersja akademicka: jak ją udostępniać (link od prowadzących, kod, inaczej)?
+- ✅ Wersja akademicka: na razie nikomu (decyzja 2026-10-19). Gdy będzie gotowa dla studentów — do wyboru link z kodem dostępu albo plik od prowadzących.
 
 ---
 
@@ -87,13 +88,13 @@ Kod: trzy bloki „ETAP 6” (przed blokiem PROFIL); blok promotora jest między
 - **Treść:** Pełna, samodzielna gra z własnym łukiem — autorefleksja, emocje, relacje, mity psychologiczne, prawa pacjenta, rozpoznawanie szarlatanerii
 - **Dystrybucja:** Otwarta, do pobrania
 - **Wymóg:** Musi być PEŁNYM doświadczeniem, nie demo ani okrojoną wersją
-- **Status:** ⚡ zbudowana skryptem z wersji akademickiej (Etap 6): 67 zagadnień 🌍, sprawdzian zamiast zajęć
+- **Status:** ⚡ zbudowana skryptem z wersji akademickiej (Etap 6): 67 zagadnień 🌍, sprawdzian zamiast zajęć; do grania na GitHub Pages (repo `akademia-diagnosty-gra`)
 
 ### 📁 Wersja akademicka (BAZA + MODUŁY STUDENCKIE)
 - **Dla kogo:** Studenci psychologii (po min. roku studiów)
 - **Treść:** Wszystko co w bazie PLUS: wiedza o testach, modele procesu, psychometria, ścieżka akademicka (stażysta → diagnosta)
 - **Dystrybucja:** Zamknięty obieg z weryfikacją (uczelnia, promotor, kod dostępu)
-- **Status:** ⚡ 215 zagadnień (🌍 67 · 🎓 100 · 🔒 48), promotor; sposób udostępniania — do decyzji
+- **Status:** ⚡ 215 zagadnień (🌍 67 · 🎓 100 · 🔒 48), promotor; na razie tylko u autorki (repozytorium prywatne)
 - **Fabularnie:** Student = mieszkaniec Freudowic, który zapisał się do Akademii
 
 ### Dlaczego dwa pliki, a nie wybór w grze?

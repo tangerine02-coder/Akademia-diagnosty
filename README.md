@@ -9,6 +9,12 @@ Pikselowa gra o psychologii w miasteczku Freudowice. Gra ma dwie wersje, każda 
 python3 narzedzia/zbuduj_publiczna.py
 ```
 
+To repo jest **prywatne** — wersja akademicka zawiera wiedzę o testach chronioną zawodowo. Wersja publiczna jest do grania w przeglądarce na GitHub Pages, z osobnego publicznego repo `akademia-diagnosty-gra`, do którego trafia tylko plik gry:
+
+```
+sh narzedzia/opublikuj_publiczna.sh ../akademia-diagnosty-gra
+```
+
 ## Jak uruchomić
 Otwórz plik przez lokalny serwer, np. w folderze `Akademia diagnosty`:
 

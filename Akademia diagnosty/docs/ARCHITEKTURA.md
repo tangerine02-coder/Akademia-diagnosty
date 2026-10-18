@@ -1,6 +1,6 @@
 # Architektura pliku gry — ściąga dla kolejnych zmian
 
-*2026-10-05. Gra to jeden plik `akademia_diagnosty_miasteczko.html` (ok. 25,7 tys. wierszy) — wersja akademicka.*
+*2026-10-05, uzupełnione 2026-10-19. Gra to jeden plik `akademia_diagnosty_miasteczko.html` (ok. 25,7 tys. wierszy) — wersja akademicka.*
 *Wersja publiczna `akademia_diagnosty_publiczna.html` powstaje z niej skryptem (patrz „Dwie wersje”). Zmiany wprowadzamy tylko w pliku akademickim.*
 
 ## Kolejność bloków `<script>`
@@ -48,7 +48,10 @@ Gra startuje na zdarzenie `load`, czyli po wykonaniu wszystkich bloków. Dzięki
 
 ## Dwie wersje: akademicka i publiczna
 - Plik akademicki to źródło. Wersję publiczną buduje `python3 narzedzia/zbuduj_publiczna.py` (uruchamia go też `tests/wszystkie.sh`).
-- Skrypt: `const WERSJA = 'akademicka'` → `'publiczna'`; wycina z `QUESTIONS_DB` i z list oznaczonych `/* PYTANIA */ [` każde zagadnienie, które w `TIERS` ma `A` albo `R`; wycina bloki `TYLKO-AKADEMIA`; zmienia `SAVE_KEY` i tytuł; na koniec sprawdza, że w pliku nie został żaden wzorzec odpowiedzi z wyciętych zagadnień.
+- Skrypt: `const WERSJA = 'akademicka'` → `'publiczna'`; wycina z `QUESTIONS_DB` i z list oznaczonych `/* PYTANIA */ [` każde zagadnienie, które w `TIERS` ma `A` albo `R`; wycina bloki `TYLKO-AKADEMIA`; podmienia fragmenty `W-AKADEMICKIEJ` / `W-PUBLICZNEJ`; zmienia `SAVE_KEY` i tytuł; na koniec sprawdza, że w pliku nie został żaden wzorzec odpowiedzi z wyciętych zagadnień ani nazwa testu z listy `ZAKAZANE_W_PUBLICZNEJ`.
+- **Inny tekst w każdej wersji** (np. kwestia mieszkańca z nazwą testu), w jednym wierszu: `/*W-AKADEMICKIEJ*/ 'tekst akademicki' /*W-PUBLICZNEJ: 'tekst publiczny' */`. Gra akademicka widzi tylko pierwszy tekst (drugi jest komentarzem), a skrypt zostawia w publicznej tylko drugi. Działa dla każdej wartości: napisu, tablicy, obiektu. Liczba elementów listy musi się zgadzać, więc zamiennik zawsze musi być.
+- **Nazwy testów**: gdy nazwa z listy `ZAKAZANE_W_PUBLICZNEJ` (MMPI, WCST, MMSE, EPQ, Leiter, TMS, KRR/KKM/TSR…) trafi do wersji publicznej, skrypt kończy się błędem. Trzeba wtedy oznaczyć miejsce jak wyżej albo zmienić kategorię zagadnienia w `TIERS`. Celowo dozwolone: narzędzia zdyskredytowane z Archiwum Szarlatanerii, efekt Stroopa, Wechsler jako przykład skali IQ.
+- **Publikacja**: repo z grą jest prywatne. Wersję publiczną do grania w przeglądarce trzyma osobne publiczne repo `tangerine02-coder/akademia-diagnosty-gra` (tylko `index.html` i `.nojekyll`, GitHub Pages z gałęzi `main`). `sh narzedzia/opublikuj_publiczna.sh ../akademia-diagnosty-gra` buduje wersję publiczną, kopiuje ją jako `index.html`, commituje i wysyła. Nic poza tym plikiem nie trafia do repo publicznego.
 - Nowe zagadnienie: obiekt na liście `/* PYTANIA */ [ … ]` (albo w `QUESTIONS_DB`) i wpis w `TIERS`. Brak wpisu = 🌍 (zostaje w obu wersjach).
 - Kod tylko dla studentów: osobny `<script>` między komentarzami `<!-- TYLKO-AKADEMIA:START … -->` i `<!-- TYLKO-AKADEMIA:END -->`. Kod wspólny sprawdza `ETAP6.PUB` (albo `WERSJA === 'publiczna'`).
 - W wersji publicznej katedry nie mają zajęć z pytaniami otwartymi; `enterBuilding` prowadzi na ✅ Sprawdzian (`e6Sprawdzian`), który zalicza zagadnienia przez zwykłe `markCorrect`.
