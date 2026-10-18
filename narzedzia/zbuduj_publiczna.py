@@ -12,8 +12,13 @@ Co robi skrypt:
  2. wycina z pliku wszystkie zagadnienia 🎓 (A) i 🔒 (R) według mapy TIERS
     (z bazy QUESTIONS_DB i z list oznaczonych /* PYTANIA */),
  3. wycina bloki między <!-- TYLKO-AKADEMIA:START … --> a <!-- TYLKO-AKADEMIA:END -->,
- 4. zmienia klucz zapisu (wersje mają osobne zapisy w przeglądarce) i tytuł strony,
- 5. sprawdza, że w wyniku nie został ani jeden wzorzec odpowiedzi z usuniętych zagadnień.
+ 4. podmienia fragmenty z osobną wersją dla publicznej (w jednym wierszu):
+        /*W-AKADEMICKIEJ*/ 'tekst akademicki' /*W-PUBLICZNEJ: 'tekst publiczny' */
+    W pliku akademickim drugi tekst jest tylko komentarzem, więc gra go nie widzi.
+    W publicznym zostaje sam tekst publiczny,
+ 5. zmienia klucz zapisu (wersje mają osobne zapisy w przeglądarce) i tytuł strony,
+ 6. sprawdza, że w wyniku nie został ani jeden wzorzec odpowiedzi z usuniętych zagadnień
+    ani żadna nazwa konkretnego testu z listy ZAKAZANE_W_PUBLICZNEJ.
 Gdy coś się nie zgadza, kończy się błędem i niczego nie zapisuje.
 """
 import json, os, re, sys
@@ -21,6 +26,17 @@ import json, os, re, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'Akademia diagnosty', 'akademia_diagnosty_miasteczko.html')
 DST = os.path.join(ROOT, 'Akademia diagnosty', 'akademia_diagnosty_publiczna.html')
+
+
+# Nazwy konkretnych testów, których nie może być w wersji publicznej (DO_PRZEJRZENIA, punkt 73).
+# Celowo zostają: Archiwum Szarlatanerii (Lüscher, Szondi, Rorschach, Bender, Wechsler do diagnozy osobowości),
+# efekt Stroopa, Wechsler jako przykład skali IQ na Błoniach i bateria badawcza MBEA w Domu Muzyki.
+ZAKAZANE_W_PUBLICZNEJ = [
+    r'MMPI', r'WCST', r'Wisconsin', r'MMSE', r'\bEPQ', r'Leiter', r'\bTMS\b', r'Test Matryc', r'Raven',
+    r'Stanford-Binet', r'\bAPIS\b', r'\bDSR\b', r'Łączenia Punktów', r'\bKRR\b', r'\bKKM\b', r'\bTSR\b',
+    r'\bWAIS', r'\bWISC', r'\bNEO-(?:FFI|PI)', r'\bSTAI\b', r'\bBDI\b',
+]
+ALT = re.compile(r'/\*W-AKADEMICKIEJ\*/\s*(.+?)\s*/\*W-PUBLICZNEJ:\s*(.+?)\s*\*/')
 
 
 def fail(msg):
@@ -100,7 +116,7 @@ def main():
                     end += 1
                 cuts.append((beg, end))
                 removed.append(qid)
-                ca = re.search(r'canonicalAnswer:\s*"((?:[^"\\]|\\.)*)"', body)
+                ca = re.search(r'canonicalAnswer:\s*(?:/\*W-AKADEMICKIEJ\*/\s*)?"((?:[^"\\]|\\.)*)"', body)
                 if ca:
                     texts.append((qid, ca.group(1)))
             else:
@@ -116,7 +132,13 @@ def main():
     if nblk < 1:
         fail('nie znaleziono bloków TYLKO-AKADEMIA')
 
-    # 4) zapis i tytuł
+    # 4) fragmenty z osobną wersją dla publicznej
+    nstart = html.count('/*W-AKADEMICKIEJ*/')
+    html, nalt = ALT.subn(lambda mm: mm.group(2), html)
+    if nalt != nstart or '/*W-AKADEMICKIEJ*/' in html or '/*W-PUBLICZNEJ:' in html:
+        fail('znaczniki /*W-AKADEMICKIEJ*/ i /*W-PUBLICZNEJ: … */ muszą być w parach, w jednym wierszu')
+
+    # 5) zapis i tytuł
     old_key = "const SAVE_KEY = 'akademia_freudowice_v1';"
     if html.count(old_key) != 1:
         fail('nie znaleziono klucza zapisu')
@@ -124,7 +146,7 @@ def main():
     html = html.replace('<title>Akademia Diagnosty — Freudowice Zdrój</title>', '<title>Akademia Diagnosty — Freudowice Zdrój (wersja publiczna)</title>', 1)
     html = html.replace('<!DOCTYPE html>', '<!DOCTYPE html>\n<!-- WERSJA PUBLICZNA — plik zbudowany przez narzedzia/zbuduj_publiczna.py z akademia_diagnosty_miasteczko.html. Nie edytuj go ręcznie. -->', 1)
 
-    # 5) kontrola: żaden wzorzec odpowiedzi z usuniętych zagadnień nie może zostać w pliku
+    # 6) kontrola: żaden wzorzec odpowiedzi z usuniętych zagadnień nie może zostać w pliku
     left = [qid for qid, t in texts if t[:60] in html]
     if left:
         fail('w wersji publicznej zostały treści zagadnień: ' + ', '.join(left))
@@ -133,6 +155,10 @@ def main():
             fail('zostało zagadnienie ' + qid)
     if 'TYLKO-AKADEMIA:START' in html or "Prof. Konstanty Przypis" in html and 'NPCS.przypis' in html:
         fail('został blok tylko dla studentów')
+    names = [p for p in ZAKAZANE_W_PUBLICZNEJ if re.search(p, html)]
+    if names:
+        fail('w wersji publicznej są nazwy testów (' + ', '.join(names) + ') — oznacz te miejsca '
+             '/*W-AKADEMICKIEJ*/ … /*W-PUBLICZNEJ: … */ albo zmień kategorię zagadnienia w TIERS')
 
     open(DST, 'w', encoding='utf-8').write(html)
     by = {}
@@ -141,6 +167,7 @@ def main():
     print(f'OK: {os.path.relpath(DST, ROOT)}')
     print(f'   usunięte zagadnienia: {len(removed)} (🎓 {sum(1 for q in removed if tiers[q] == "A")}, 🔒 {sum(1 for q in removed if tiers[q] == "R")}), zostało: {kept}')
     print(f'   usunięte bloki tylko dla studentów: {nblk}')
+    print(f'   fragmenty podmienione na wersję publiczną: {nalt}')
 
 
 if __name__ == '__main__':

@@ -1218,7 +1218,7 @@ const QUESTIONS_DB = [
       ["calosciow", "konstelacj", "ogolne", "nie pojedyncz", "nie oznakow"],
       ["nie standaryzowan", "kontrowersyjn", "nie nalezy do", "ostroznie", "nie wiodac", "krytyk"]
     ],
-    canonicalAnswer: "Wolno go interpretować wyłącznie całościowo — jako konstelację cech całego rysunku. Odrzuca się interpretację oznakową, przypisującą znaczenie diagnostyczne pojedynczym elementom czy kreskom. Nie należy do standaryzowanych metod badania relacji rodzinnych (KRR, KKM, TSR) i pozostaje metodą kontrowersyjną.",
+    canonicalAnswer: "Wolno go interpretować wyłącznie całościowo — jako konstelację cech całego rysunku. Odrzuca się interpretację oznakową, przypisującą znaczenie diagnostyczne pojedynczym elementom czy kreskom. Nie należy do standaryzowanych metod badania relacji rodzinnych i pozostaje metodą kontrowersyjną.",
     explanation: "Wśród trzech podejść do rysunku projekcyjnego — impresyjnego, skupionego na znakach i całościowego — współcześnie dopuszczalne jest tylko to ostatnie.",
     points: 25,
     hint: "Cały rysunek, nigdy pojedyncza kreska."
@@ -1248,16 +1248,16 @@ const QUESTIONS_DB = [
     locId: "neuro",
     location: "Pawilon Neuropsychologii",
     topic: "Inteligencja płynna a skrystalizowana",
-    question: "Czym różni się inteligencja płynna od skrystalizowanej i który typ testów mierzy wyłącznie tę pierwszą?",
+    question: "Czym różni się inteligencja płynna od skrystalizowanej i jakimi zadaniami najlepiej bada się tę pierwszą?",
     expectedGroups: [
       ["plynn", "niezalezn od wyksztalcen", "rozumowani", "nowe", "wrodzona"],
       ["skrystalizowan", "wiedza nabyta", "doswiadczeni", "wyksztalceni", "nauczon"],
-      ["tms", "matryc", "raven", "leiter", "bezslown"]
+      ["bezslown", "bez slow", "niewerbaln", "figur", "regul"]
     ],
-    canonicalAnswer: "Inteligencja płynna to zdolność rozumowania niezależna od wykształcenia i wiedzy nabytej. Skrystalizowana opiera się na wiedzy nabytej w toku doświadczenia i edukacji. Wyłącznie płynną mierzą TMS (Test Matryc) oraz Leiter-3.",
-    explanation: "Większość baterii (Stanford-Binet, Wechsler, APIS, DSR) mierzy oba typy naraz. Tylko TMS i Leiter-3 mierzą samą płynną — i tylko one są w zestawieniu wolne od obciążeń kulturowych.",
+    canonicalAnswer: "Inteligencja płynna to zdolność rozumowania niezależna od wykształcenia i wiedzy nabytej. Skrystalizowana opiera się na wiedzy nabytej w toku doświadczenia i edukacji. Płynną najlepiej bada się zadaniami bez słów i bez wiedzy szkolnej, np. szukaniem reguły w układzie figur.",
+    explanation: "Większość testów inteligencji mierzy oba rodzaje naraz. Zadania bez słów mniej zależą od języka i kultury, więc lepiej oddają samą inteligencję płynną — choć żaden test nie jest całkiem wolny od wpływu kultury.",
     points: 25,
-    hint: "Jedna jest niezależna od szkoły, druga to jej efekt. Dwa testy mierzą tylko tę pierwszą."
+    hint: "Jedna jest niezależna od szkoły, druga to jej efekt. Tę pierwszą widać w zadaniach bez słów."
   },
   {
     id: "neuro_n9",
@@ -1503,7 +1503,7 @@ const BADGES_LIST = [
   { id: "straznik_etyki", name: "Strażnik Etyki", desc: "Rozwiąż dylematy świadomej zgody, tajemnicy i granic.", icon: "⚖️" },
   { id: "metodolog", name: "Architekt EBA", desc: "Opanuj 3 filary EBA i kryteria Dauberta.", icon: "🏛️" },
   { id: "klinicysta", name: "Mistrz Przymierza", desc: "Rozwiąż zagadnienia wywiadu, kontaktu, oporu i recypatii.", icon: "🤝" },
-  { id: "psychometra", name: "Snajper Psychometrii", desc: "Rozróżnij MMPI-2, Leitera-3, TMS i testy rozwojowe.", icon: "🎯" }
+  { id: "psychometra", name: "Snajper Psychometrii", desc: "Rozpoznaj dobry test: zalicz zagadnienia na Poligonie (3) i w Pracowni Dziecka (2).", icon: "🎯" }
 ];
 
 /* =====================================================================
@@ -1882,7 +1882,7 @@ const NPCS = {
   etyk: { name: 'Przewodniczący Etyk', kind: 'human', master: 'etyka',
     look: { skin: SKIN_TONES[3], hair: 'krotkie', hairC: '#1a1a1a', top: '#2c2448', bottom: '#2c2448', acc: 'none', beard: null },
     greet: 'Witam w Ratuszu. Zanim porozmawiamy — czy wyrażasz świadomą zgodę na tę rozmowę? Żartuję. Trochę.',
-    lines: ['Tajemnica zawodowa ma granice. Znasz je?', 'Relacje podwójne to jak randka z własnym pacjentem. Po prostu nie.', 'Wynik surowy dla laika to jak rentgen dla pięciolatka. Nieczytelne i straszne.', 'Pacjent pyta: „Co panu mówiła moja żona?". Moja reakcja: wymowne, etyczne milczenie oraz podziwianie paprotki.', 'Prezent od klienta? Jeśli to czekoladki — dylemat moralny. Jeśli to kluczyki do auta — brak dylematu, prokurator.', 'Świadoma zgoda oznacza, że pacjent wie, na co się pisze. Choć diagnosta czasem wolałby nie wiedzieć, co wyjdzie w MMPI-2.', 'Poufność to nie sugestia, to żelbetowy mur. Chyba że zagrożone jest czyjeś życie — wtedy ten mur ma wyjście ewakuacyjne.'] },
+    lines: ['Tajemnica zawodowa ma granice. Znasz je?', 'Relacje podwójne to jak randka z własnym pacjentem. Po prostu nie.', 'Wynik surowy dla laika to jak rentgen dla pięciolatka. Nieczytelne i straszne.', 'Pacjent pyta: „Co panu mówiła moja żona?". Moja reakcja: wymowne, etyczne milczenie oraz podziwianie paprotki.', 'Prezent od klienta? Jeśli to czekoladki — dylemat moralny. Jeśli to kluczyki do auta — brak dylematu, prokurator.', 'Świadoma zgoda oznacza, że pacjent wie, na co się pisze. Choć diagnosta czasem wolałby nie wiedzieć, co wyjdzie w wynikach.', 'Poufność to nie sugestia, to żelbetowy mur. Chyba że zagrożone jest czyjeś życie — wtedy ten mur ma wyjście ewakuacyjne.'] },
   burmistrz: { name: 'Burmistrz Zygmunt', kind: 'human',
     look: { skin: SKIN_TONES[1], hair: 'krotkie', hairC: '#9a9aa2', top: '#6b2f3a', bottom: '#2a2a33', acc: 'none', beard: '#9a9aa2' },
     lines: ['Witamy w Freudowicach Zdroju! Nazwa pochodzi od niemieckiego „Freude" — radość. Z NIKIM innym się nie kojarzy. Z nikim!', 'Pomnik na fontannie? To założyciel miasta. Nie, cygaro to tylko cygaro.', 'Codziennie rano na Tablicy Ogłoszeń wiszą nowe zadania. Superego tego miasta pilnuje, żeby nikt się nie nudził.', 'Mówią, że każda dzielnica pamięta, czego się w niej uczyłeś. To prawda — to się nazywa metoda loci!', 'Kiedyś próbowałem rządzić bez Superego. Trwało to 20 minut. Potem ktoś zjadł wszystkie lody z budżetu miasta.', 'Co roku organizujemy Festiwal Zdrowej Diagnozy. Ubiegłoroczny slogan: „Testuj testy, zanim przetestujesz testowanego". Nikt nie rozumiał, ale brzmało mądrze.', 'Mamy plan budowy obwodnicy. Id chce autostrady, Superego — ścieżek rowerowych. Ego buduje rondo.'] },
@@ -2000,7 +2000,7 @@ const NPCS = {
   synapsa: { name: 'Prof. Synapsa', kind: 'human', master: 'neuro',
     look: { skin: SKIN_TONES[4], hair: 'krecone', hairC: '#2a1a10', top: '#2f9c8a', bottom: '#2a3a3a', coat: true, acc: 'none' },
     greet: 'Witaj w Lesie Synaps. Tu każde drzewo to neuron, a każda ścieżka to połączenie. Chodź, pogadamy o funkcjach wykonawczych.',
-    lines: ['WCST: sortujesz karty, a reguła zmienia się bez ostrzeżenia. Jak życie.', 'MMSE to przesiew, nie wyrok. Zapamiętaj!', 'Zmęczony mózg daje zmęczone wyniki. Śpij przed badaniem. I przed egzaminem.', 'Test Łączenia Punktów: część A to spacerek, ale część B (1-A-2-B-3-C) potrafi zawiesić nawet najlepszy procesor czołowy.', 'Gdyby neurony miały profile na portalach, potencjał czynnościowy byłby viralem lecącym z prędkością 120 m/s.', 'Pojemność pamięci roboczej: 7 ± 2 elementy. U studenta w czasie sesji: 3 ± 4, w tym mem z kapibarą i zamówienie na pizzę.', 'Afazja Broki: wiesz co powiedzieć, ale aparat mowy odmawia posłuszeństwa. Afazja Wernickego: mówisz gładko, płynnie i zupełnie od rzeczy — jak niektórzy politycy.'] },
+    lines: ['Reguła gry zmienia się bez ostrzeżenia, a Ty masz to zauważyć i się przestawić. Płaty czołowe w akcji. Jak życie.', 'Test przesiewowy to sygnał, nie wyrok. Zapamiętaj!', 'Zmęczony mózg daje zmęczone wyniki. Śpij przed badaniem. I przed egzaminem.', 'Przeskakiwanie między dwoma zadaniami naraz potrafi zawiesić nawet najlepszy procesor czołowy. Wielozadaniowość ma po prostu dobry PR.', 'Gdyby neurony miały profile na portalach, potencjał czynnościowy byłby viralem lecącym z prędkością 120 m/s.', 'Pojemność pamięci roboczej: 7 ± 2 elementy. U studenta w czasie sesji: 3 ± 4, w tym mem z kapibarą i zamówienie na pizzę.', 'Afazja Broki: wiesz co powiedzieć, ale aparat mowy odmawia posłuszeństwa. Afazja Wernickego: mówisz gładko, płynnie i zupełnie od rzeczy — jak niektórzy politycy.'] },
   glej: { name: 'Glej', kind: 'glia', wander: 3,
     lines: ['Jestem komórką glejową. Odżywiam neurony, sprzątam po nich, izoluję… i nikt nie pamięta mojego imienia.', 'Neurony to celebryci. My, glej, to ekipa techniczna. Bez nas nie byłoby koncertu.', 'Astrocyt, oligodendrocyt, mikroglej... Takie ładne imiona, a w mediach tylko: „cudowne neurony!”. Niewdzięcznicy.', 'Bez naszej osłonki mielinowej impulsy wlókłby się jak ślimak pod górę. Kto dał mielinę? My. Kto zgarnia brawa? Akson.', 'Sprzątam neuroprzekaźniki ze szczeliny synaptycznej 24/7. Jak zrobię przerwę na kawę, zaraz jest ekscytotoksyczność i afera na całe półkole.', 'Chciałem założyć związek zawodowy komórek glejowych. Neurony natychmiast zagroziły zablokowaniem transportu glukozy.'] },
   phineas: { name: 'Pan Phineas', kind: 'human',
@@ -2012,7 +2012,7 @@ const NPCS = {
   psychometrzyk: { name: 'Doc. Psychometrzyk', kind: 'human', master: 'testy',
     look: { skin: SKIN_TONES[3], hair: 'grzywka', hairC: '#2a1a10', top: '#3f8f3a', bottom: '#e8e4d8', acc: 'headphones' },
     greet: 'Wszystko da się zmierzyć! Pytanie tylko: rzetelnie i trafnie? Zapraszam na Poligon.',
-    lines: ['Rzetelność bez trafności to jak zegarek, który zawsze spóźnia się o 5 minut. Bardzo powtarzalnie.', 'Skala to nie inwentarz! Homogeniczność, proszę Państwa.', 'MMPI-2 skonstruowano empirycznie. Pytania dobrano po tym, co różnicuje grupy, a nie po tym, co brzmi mądrze.', 'Trafność fasadowa to ładny papierek na tanim cukierku. Wygląda mądrze, dopóki nie policzysz macierzy korelacji wielocecha-wielometoda.', 'Błąd standardowy pomiaru (SEM) przypomina, że wynik to przedział ufności, a nie punkt wyryty w granicie. Pokory, diagności!', 'Normalizacja na próbie 30 znajomych z roku to nie norma ogólnopolska. To co najwyżej towarzyski plebiscyt.', 'Jeśli autor twierdzi, że jego test ma rzetelność r = 1,00, to albo kłamie, albo zadał jedno i to samo pytanie dziesięć razy.'] },
+    lines: ['Rzetelność bez trafności to jak zegarek, który zawsze spóźnia się o 5 minut. Bardzo powtarzalnie.', 'Skala to nie inwentarz! Homogeniczność, proszę Państwa.', 'Quiz z gazety pyta o to, co brzmi mądrze. Porządny test pyta o to, co naprawdę różni ludzi — i sprawdza to w badaniach, nie na oko.', 'Trafność fasadowa to ładny papierek na tanim cukierku. Wygląda mądrze, dopóki nie policzysz macierzy korelacji wielocecha-wielometoda.', 'Błąd standardowy pomiaru (SEM) przypomina, że wynik to przedział ufności, a nie punkt wyryty w granicie. Pokory, diagności!', 'Normalizacja na próbie 30 znajomych z roku to nie norma ogólnopolska. To co najwyżej towarzyski plebiscyt.', 'Jeśli autor twierdzi, że jego test ma rzetelność r = 1,00, to albo kłamie, albo zadał jedno i to samo pytanie dziesięć razy.'] },
   cronbach: { name: 'Trener Cronbach', kind: 'human', runner: true,
     look: { skin: SKIN_TONES[2], hair: 'jez', hairC: '#d6a257', top: '#d9534f', bottom: '#1f2533', acc: 'headphones' },
     lines: ['Jeszcze jedno okrążenie! Ma wyjść TAK SAMO jak poprzednie! Alfa! Rzetelność! Spójność wewnętrzna!', 'Wynik jednego biegu to nie wynik. Potrzebuję wielu pomiarów, żeby oszacować błąd!', 'Alfa poniżej 0,70?! PADNIJ! Dwadzieścia pompek za każdą niespójną pozycję testową!', 'Dzielę drużynę metodą parzyste-nieparzyste! Split-half! Sprawdzamy równoważność połówek!', 'Ktoś dodał 40 identycznych pytań, żeby sztucznie napompować Alfę ze wzoru Spearmana-Browna?! Widzę to! Mnie nie oszukacie!', 'Tempo biegu musi mieć stabilną wariancję! Kowariancja między zawodnikami to fundament teamu!'] },
@@ -4009,7 +4009,7 @@ const SUBJECTS = {
           { q: 'Jakie są trzy klasyczne metody badania szacowania czasu?', a: ['Szacowanie werbalne, produkcja, reprodukcja', 'Skalowanie, rangowanie, dopasowanie', 'Obserwacja, wywiad, kwestionariusz', 'Detekcja, dyskryminacja, identyfikacja'], why: 'Rammsayer użył reprodukcji, bo wyniki werbalnego szacowania i produkcji są bardziej zmienne.' },
           { q: 'Dlaczego szacowanie werbalne sprawia kłopot (Block)?', a: ['Trzeba przełożyć przeżyty czas na jednostki metryczne', 'Badani nie słyszą bodźca', 'Wymaga zegarka z sekundnikiem', 'Nie da się go stosować dla interwałów poniżej minuty'], why: 'Badany mówi „minęło 12 sekund” — a to już tłumaczenie doświadczenia na liczby.' },
           { q: 'Jakie interwały docelowe zastosowano w badaniu Rammsayera (1997)?', a: ['5, 15 i 40 s', '1, 2 i 4 s', '10, 60 i 90 s', '30, 60 i 120 s'], why: 'Każdy dźwięk docelowy powtarzano 10 razy, a reprodukcje rejestrowano z dokładnością do 1 ms.' },
-          { q: 'Jakie skale ma kwestionariusz EPQ-RK?', a: ['Ekstrawersja, neurotyzm, psychotyzm i skala kłamstwa', 'Pięć czynników Wielkiej Piątki', 'Lęk-stan i lęk-cecha', 'Impulsywność, empatia i ryzykanctwo'], why: 'To skrócona (50 itemów) niemiecka wersja EPQ; z pełną koreluje na poziomie ok. 0,8–0,9.' },
+          { q: 'Które cechy osobowości z teorii Eysencka Rammsayer zestawiał z odmierzaniem czasu?', a: ['Ekstrawersję, neurotyzm i psychotyzm', 'Pięć czynników Wielkiej Piątki', 'Lęk jako stan i lęk jako cechę', 'Impulsywność, empatię i ryzykanctwo'], why: 'To trzy wymiary osobowości z teorii Eysencka. Wcześniejsze badania dotyczyły głównie ekstrawersji.' },
           { q: 'Jak teoria hamowania Eysencka wyjaśnia błędy czasowe ekstrawertyków?', a: ['Ekstrawertycy szybciej generują hamowanie reaktywne i wolniej je rozpraszają', 'Ekstrawertycy mają wolniejszy zegar biologiczny z powodu niskiego kortyzolu', 'Ekstrawertycy częściej kłamią w skali kłamstwa', 'Ekstrawertycy liczą w myślach szybciej'], why: 'Tak tłumaczono wyraźniejsze błędy ujemne u ekstrawertyków niż introwertyków.' },
           { q: 'Z czego składa się „zegar wewnętrzny” w modelu skalarnym (SET) opisywanym przez Weardena?', a: ['Z generatora impulsów, przełącznika i akumulatora', 'Z jądra nadskrzyżowaniowego i szyszynki', 'Z pamięci ikonicznej i echoicznej', 'Z pętli fonologicznej i szkicownika'], why: 'Generator tyka, przełącznik „wpuszcza” impulsy na czas trwania bodźca, akumulator je zlicza, a wynik porównujemy z pamięcią.' }
         ] },
@@ -4020,7 +4020,7 @@ const SUBJECTS = {
       { id: 'blyskawica', name: 'Taras Sekundnika', icon: '⚡', kind: 'tf', light: '#ff8ac0', time: 60,
         intro: 'Szybkie decyzje o czasie — na czas. Prawda czy fałsz?',
         items: [
-          ['Skala kłamstwa w EPQ mierzy aprobatę społeczną — przedstawianie się w dobrym świetle.', true, ''],
+          ['W kwestionariuszach ludzie często przedstawiają się w lepszym świetle, niż jest naprawdę.', true, 'To aprobata społeczna — dlatego samoopisu nie bierze się bezkrytycznie.'],
           ['Claridge stwierdził, że ekstrawertycy przeszacowują interwały 10–60 s.', true, ''],
           ['Dla interwałów 90 s różnica intro- i ekstrawertyków była jeszcze wyraźniejsza.', false, 'Dla 90 s zależność się nie pojawiała.'],
           ['Związek psychotyzmu z szacowaniem czasu jest dobrze zbadany.', false, 'Właśnie dlatego Rammsayer go badał — danych prawie nie było.'],

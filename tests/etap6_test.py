@@ -31,6 +31,14 @@ HALL = """async (loc) => {
   await new Promise(r => setTimeout(r, 80));
   return game.dialog ? { name: game.dialog.name, pages: game.dialog.pages, opts: game.dialog.options.map(o => o.label + (o.disabled ? ' [x]' : '')) } : null;
 }"""
+# punkt 73: nazwy testów — w akademickiej zostają, w publicznej są zamienniki (znaczniki /*W-AKADEMICKIEJ*/ … /*W-PUBLICZNEJ: … */)
+T73 = """() => { const S = SUBJECTS.chronos.rooms, q = QUESTIONS_DB.find(x => x.id === 'neuro_n1'), rz = QUESTIONS_DB.find(x => x.id === 'rodz_n10');
+  return { etyk: NPCS.etyk.lines, psy: NPCS.psychometrzyk.lines, syn: NPCS.synapsa.lines,
+    metody: S.find(x => x.id === 'metody').items.map(i => i.q), tf: S.find(x => x.id === 'blyskawica').items.map(i => i[0]),
+    n1: [q.question, q.canonicalAnswer, q.explanation, q.hint].join(' '), n1ok: verifyAnswer(q.canonicalAnswer, q.expectedGroups, q.question).isCorrect,
+    rodz: rz.canonicalAnswer, badge: BADGES_LIST.find(b => b.id === 'psychometra').desc,
+    html: /MMPI|WCST|MMSE|EPQ|Leiter|\\bTMS\\b|Łączenia Punktów|KRR, KKM/.test(document.documentElement.outerHTML) }; }"""
+LENS = {}
 PICK = """(prefix) => { const o = game.dialog.options.find(x => x.label.startsWith(prefix)); game.closeDialog(true); if (o && o.fn) o.fn(); return !!o; }"""
 TALK = """async (id) => { game.closeModal(true); game.closeDialog(true); const n = game.npcs.find(x => x.id === id); if (!n) return null;
   game.talkTo(n); await new Promise(r => setTimeout(r, 60)); return game.dialog ? { name: game.dialog.name, pages: game.dialog.pages, opts: game.dialog.options ? game.dialog.options.map(o => o.label + (o.disabled ? ' [x]' : '')) : [] } : null; }"""
@@ -186,6 +194,14 @@ async def academic(b):
     print('\n[A5] List z nowościami')
     r = await pg.evaluate("() => { game.closeModal(true); game.closeDialog(true); game.e6Data().once = {}; game.openMail(); return document.getElementById('modal').innerText; }")
     check('Katedrę Psychologii Religii i Płci' in r and 'Przypis' in r, 'list od Burmistrza: katedra i promotor')
+
+    print('\n[A6] Nazwy testów (punkt 73): w wersji akademickiej zostają')
+    r = await pg.evaluate(T73)
+    LENS.update({k: len(r[k]) for k in ('etyk', 'psy', 'syn', 'metody', 'tf')})
+    check(any('MMPI-2' in l for l in r['etyk']) and any('MMPI-2' in l for l in r['psy']), 'Etyk i Psychometrzyk mówią o MMPI-2')
+    check(all(any(t in l for l in r['syn']) for t in ('WCST', 'MMSE', 'Łączenia Punktów')), 'Prof. Synapsa: WCST, MMSE, Test Łączenia Punktów')
+    check(any('EPQ-RK' in q for q in r['metody']) and any('EPQ' in s for s in r['tf']), 'Wieża Zegarowa: pytania o EPQ')
+    check('Leiter-3' in r['n1'] and 'KKM' in r['rodz'] and 'MMPI-2' in r['badge'], 'neuro_n1, rodz_n10 i odznaka Psychometry z nazwami testów')
     check(not errs, f'bez błędów JavaScript ({errs[:3]})')
     await pg.close()
 
@@ -243,6 +259,13 @@ async def public(b):
     await pg.evaluate("() => { game.closeModal(true); game.save(true); }")
     r = await pg.evaluate("() => [!!localStorage.getItem('akademia_freudowice_publiczna_v1'), !!localStorage.getItem('akademia_freudowice_v1')]")
     check(r == [True, False], f'zapis wersji publicznej pod osobnym kluczem ({r})')
+
+    print('\n[P5] Nazwy testów (punkt 73): w wersji publicznej zamienniki')
+    r = await pg.evaluate(T73)
+    check(not r['html'], 'w pliku nie ma nazw testów (MMPI, WCST, MMSE, EPQ, Leiter, TMS, KRR/KKM/TSR)')
+    check({k: len(r[k]) for k in LENS} == LENS, f'tyle samo kwestii i pytań co w akademickiej ({LENS})')
+    check(any('co wyjdzie w wynikach' in l for l in r['etyk']) and any('dobry PR' in l for l in r['syn']), 'mieszkańcy mają zamienniki')
+    check(r['n1ok'] and 'bez słów' in r['n1'] and 'KKM' not in r['rodz'] and 'Poligonie' in r['badge'], 'neuro_n1 bez nazw testów, wzorzec zaliczany; rodz_n10 i odznaka bez nazw')
     check(not errs, f'bez błędów JavaScript ({errs[:3]})')
     await pg.close()
 
