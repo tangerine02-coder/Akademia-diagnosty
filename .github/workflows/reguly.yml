@@ -1,0 +1,32 @@
+# Testy reguł bazy Akademii (firebase/firestore.rules) w emulatorze Firebase — Etap 7.
+# Uruchamia się po każdej zmianie w folderze firebase/ i ręcznie (Actions → „Reguły bazy” → Run workflow).
+# Nie potrzebuje projektu Firebase: emulator działa na projekcie testowym demo-akademia.
+name: Reguły bazy (emulator)
+
+on:
+  push:
+    paths:
+      - 'firebase/**'
+      - '.github/workflows/reguly.yml'
+  workflow_dispatch:
+
+jobs:
+  reguly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: firebase
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm test
