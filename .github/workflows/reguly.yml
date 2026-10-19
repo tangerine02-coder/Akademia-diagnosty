@@ -29,4 +29,14 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
-      - run: npm test
+      - name: Testy reguł
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee wynik.txt
+      # skrót wyniku jako adnotacja — widać go w zakładce Actions i przez API (bez pobierania logów)
+      - name: Skrót wyniku
+        if: always()
+        run: |
+          { grep -E "^# (tests|pass|fail)|^not ok|✖" wynik.txt | head -40; echo '--- błędy ---'; grep -n -E -i "error|expected|actual|denied|firestore.rules|L[0-9]+:|java" wynik.txt | head -60; echo '--- koniec ---'; tail -25 wynik.txt; } > skrot.txt || true
+          msg=$(sed -e 's/%/%25/g' -e 's/\r//g' skrot.txt | sed -e ':a;N;$!ba;s/\n/%0A/g')
+          echo "::notice title=Testy reguł — wynik::$msg"
