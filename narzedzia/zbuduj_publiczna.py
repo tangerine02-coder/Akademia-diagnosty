@@ -17,8 +17,8 @@ Co robi skrypt:
     W pliku akademickim drugi tekst jest tylko komentarzem, więc gra go nie widzi.
     W publicznym zostaje sam tekst publiczny,
  5. zmienia klucz zapisu (wersje mają osobne zapisy w przeglądarce) i tytuł strony,
- 6. sprawdza, że w wyniku nie został ani jeden wzorzec odpowiedzi z usuniętych zagadnień
-    ani żadna nazwa konkretnego testu z listy ZAKAZANE_W_PUBLICZNEJ.
+ 6. sprawdza, że w wyniku nie został ani jeden wzorzec odpowiedzi z usuniętych zagadnień,
+    żadna nazwa konkretnego testu z listy ZAKAZANE_W_PUBLICZNEJ ani źródło z zajęć (ZAJECIA_W_PUBLICZNEJ).
 Gdy coś się nie zgadza, kończy się błędem i niczego nie zapisuje.
 """
 import json, os, re, sys
@@ -29,12 +29,20 @@ DST = os.path.join(ROOT, 'Akademia diagnosty', 'akademia_diagnosty_publiczna.htm
 
 
 # Nazwy konkretnych testów, których nie może być w wersji publicznej (DO_PRZEJRZENIA, punkt 73).
-# Celowo zostają: Archiwum Szarlatanerii (Lüscher, Szondi, Rorschach, Bender, Wechsler do diagnozy osobowości),
-# efekt Stroopa, Wechsler jako przykład skali IQ na Błoniach i bateria badawcza MBEA w Domu Muzyki.
+# Celowo zostają (decyzja 19.10): Archiwum Szarlatanerii (Lüscher, Szondi, Rorschach, Bender, Wechsler do diagnozy
+# osobowości), efekt Stroopa, Wechsler jako przykład skali IQ na Błoniach oraz skale z badań i ocena klinicysty:
+# GAF, SDO, RWA, MBEA.
 ZAKAZANE_W_PUBLICZNEJ = [
     r'MMPI', r'WCST', r'Wisconsin', r'MMSE', r'\bEPQ', r'Leiter', r'\bTMS\b', r'Test Matryc', r'Raven',
     r'Stanford-Binet', r'\bAPIS\b', r'\bDSR\b', r'Łączenia Punktów', r'\bKRR\b', r'\bKKM\b', r'\bTSR\b',
     r'\bWAIS', r'\bWISC', r'\bNEO-(?:FFI|PI)', r'\bSTAI\b', r'\bBDI\b',
+]
+# Źródła z zajęć (rok, semestr, notatki, egzaminy) — w wersji publicznej przy domach jest sam temat (decyzja 19.10):
+#   src: /*W-AKADEMICKIEJ*/ '4 ROK › 7 semestr › …' /*W-PUBLICZNEJ: 'Sam temat' */
+ZAJECIA_W_PUBLICZNEJ = [
+    r'\d ROK ›', r'\bSEM ›', r'semestr ›', r'Notatki dysk', r'Notatki ›', r'kolokwium (?:z )?20\d\d',
+    r'pytania do egzaminu', r'zagadnień na egzamin', r'przygotowań do egzaminu', r'Z Twoich materiałów',
+    r'Twoich notatek z \d', r'z Twoich studiów', r'Według slajdów',
 ]
 ALT = re.compile(r'/\*W-AKADEMICKIEJ\*/\s*(.+?)\s*/\*W-PUBLICZNEJ:\s*(.+?)\s*\*/')
 
@@ -159,6 +167,10 @@ def main():
     if names:
         fail('w wersji publicznej są nazwy testów (' + ', '.join(names) + ') — oznacz te miejsca '
              '/*W-AKADEMICKIEJ*/ … /*W-PUBLICZNEJ: … */ albo zmień kategorię zagadnienia w TIERS')
+    course = [p for p in ZAJECIA_W_PUBLICZNEJ if re.search(p, html)]
+    if course:
+        fail('w wersji publicznej są źródła z zajęć (' + ', '.join(course) + ') — przy src: dopisz '
+             "/*W-AKADEMICKIEJ*/ '…' /*W-PUBLICZNEJ: 'sam temat' */")
 
     open(DST, 'w', encoding='utf-8').write(html)
     by = {}

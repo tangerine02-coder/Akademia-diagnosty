@@ -39,8 +39,13 @@ T73 = """() => { const S = SUBJECTS.chronos.rooms, q = QUESTIONS_DB.find(x => x.
     rodz: rz.canonicalAnswer, badge: BADGES_LIST.find(b => b.id === 'psychometra').desc,
     html: /MMPI|WCST|MMSE|EPQ|Leiter|\\bTMS\\b|Łączenia Punktów|KRR, KKM/.test(document.documentElement.outerHTML) }; }"""
 LENS = {}
+# źródła przy domach: w akademickiej pełne („📁 Z Twoich materiałów”), w publicznej sam temat („📚 Na podstawie”)
+ZRODLA = """async () => { const out = {}; for (const sid of ['sp_stosowana', 'laik_mity']) { game.closeModal(true); game.showSubjectInfo(sid);
+  await new Promise(r => setTimeout(r, 30)); out[sid] = document.getElementById('modal').innerText; } game.closeModal(true); return out; }"""
 PICK = """(prefix) => { const o = game.dialog.options.find(x => x.label.startsWith(prefix)); game.closeDialog(true); if (o && o.fn) o.fn(); return !!o; }"""
+# dilemmaDay = dziś: moduł PROFIL nie podsunie losowego dylematu (18% przy rozmowie z mieszkańcem, który nie jest mistrzem)
 TALK = """async (id) => { game.closeModal(true); game.closeDialog(true); const n = game.npcs.find(x => x.id === id); if (!n) return null;
+  try { game.profData().dilemmaDay = game.state.day; } catch (e) {}
   game.talkTo(n); await new Promise(r => setTimeout(r, 60)); return game.dialog ? { name: game.dialog.name, pages: game.dialog.pages, opts: game.dialog.options ? game.dialog.options.map(o => o.label + (o.disabled ? ' [x]' : '')) : [] } : null; }"""
 
 async def start_game(pg, url):
@@ -202,6 +207,9 @@ async def academic(b):
     check(all(any(t in l for l in r['syn']) for t in ('WCST', 'MMSE', 'Łączenia Punktów')), 'Prof. Synapsa: WCST, MMSE, Test Łączenia Punktów')
     check(any('EPQ-RK' in q for q in r['metody']) and any('EPQ' in s for s in r['tf']), 'Wieża Zegarowa: pytania o EPQ')
     check('Leiter-3' in r['n1'] and 'KKM' in r['rodz'] and 'MMPI-2' in r['badge'], 'neuro_n1, rodz_n10 i odznaka Psychometry z nazwami testów')
+    r = await pg.evaluate(ZRODLA)
+    check('Z Twoich materiałów' in r['sp_stosowana'] and 'Tarnowski' in r['sp_stosowana'], 'dom na Wyspie Lewina: pełne źródło z zajęć')
+    check('Dla każdej osoby' in r['laik_mity'], 'dom dla każdej osoby: źródła szkicu')
     check(not errs, f'bez błędów JavaScript ({errs[:3]})')
     await pg.close()
 
@@ -266,6 +274,10 @@ async def public(b):
     check({k: len(r[k]) for k in LENS} == LENS, f'tyle samo kwestii i pytań co w akademickiej ({LENS})')
     check(any('co wyjdzie w wynikach' in l for l in r['etyk']) and any('dobry PR' in l for l in r['syn']), 'mieszkańcy mają zamienniki')
     check(r['n1ok'] and 'bez słów' in r['n1'] and 'KKM' not in r['rodz'] and 'Poligonie' in r['badge'], 'neuro_n1 bez nazw testów, wzorzec zaliczany; rodz_n10 i odznaka bez nazw')
+    r = await pg.evaluate(ZRODLA)
+    check('Na podstawie: Stosowana psychologia społeczna' in r['sp_stosowana'] and 'Tarnowski' not in r['sp_stosowana'] and 'materiałów' not in r['sp_stosowana'],
+          f'dom na Wyspie Lewina: sam temat, bez prowadzących ({r["sp_stosowana"][:160]!r})')
+    check('Dla każdej osoby' in r['laik_mity'], 'dom dla każdej osoby: źródła szkicu')
     check(not errs, f'bez błędów JavaScript ({errs[:3]})')
     await pg.close()
 

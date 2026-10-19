@@ -6162,7 +6162,7 @@ const MG_KIND = {
 const SUBJECTS = {
   psycholing: {
     name: 'Wieża Babel', subject: 'Psycholingwistyka', icon: '🗣️', color: '#d0683f', zone: 'wyspa_poznania',
-    src: '2 ROK › 3 SEM › psycholingwistyka (wykłady + pytania i odpowiedzi)',
+    src: /*W-AKADEMICKIEJ*/ '2 ROK › 3 SEM › psycholingwistyka (wykłady + pytania i odpowiedzi)' /*W-PUBLICZNEJ: 'Psycholingwistyka' */,
     intro: 'Wieża rośnie piętrami jak poziomy reprezentacji języka: fonetyka, fonologia, morfologia, składnia, semantyka, pragmatyka. Na każdym piętrze inny kawałek układanki — od fonemu do dyskursu.',
     rooms: [
       { id: 'fonemy', name: 'Sala Fonemów', icon: '🔤', kind: 'quiz', light: '#ff9a6a',
@@ -6207,7 +6207,7 @@ const SUBJECTS = {
 
   chronos: {
     name: 'Wieża Zegarowa', subject: 'Percepcja czasu', icon: '⏳', color: '#d9a52b', zone: 'wyspa_poznania',
-    src: '2 ROK › 4 SEM › Percepcja czasu fakultet (Rammsayer 1997, Wearden 2016)',
+    src: /*W-AKADEMICKIEJ*/ '2 ROK › 4 SEM › Percepcja czasu fakultet (Rammsayer 1997, Wearden 2016)' /*W-PUBLICZNEJ: 'Percepcja czasu' */,
     intro: 'Zegar na wieży chodzi dokładnie. Zegar w Twojej głowie — już nie. Tu sprawdzisz, jak ludzie szacują czas i od czego to zależy (także od osobowości!).',
     rooms: [
       { id: 'reprodukcja', name: 'Pokój Reprodukcji', icon: '💡', kind: 'timeest', light: '#ffd46a', durations: [1.5, 3, 4.5, 6],
@@ -6243,7 +6243,7 @@ const SUBJECTS = {
 
   predykcja: {
     name: 'Obserwatorium Predykcji', subject: 'Umysł jako maszyna predykcyjna', icon: '🔮', color: '#4a7fd0', zone: 'wyspa_poznania',
-    src: 'Notatki dysk specjalność › Umysł jako maszyna predykcyjna',
+    src: /*W-AKADEMICKIEJ*/ 'Notatki dysk specjalność › Umysł jako maszyna predykcyjna' /*W-PUBLICZNEJ: 'Umysł jako maszyna predykcyjna' */,
     intro: 'Mózg nie czeka biernie na świat — cały czas go przewiduje i minimalizuje błąd predykcyjny. Nocą z kopuły świeci Reflektor Uwagi: tam, gdzie sygnał jest najprecyzyjniejszy.',
     rooms: [
       { id: 'dennett', name: 'Wieża Istot Dennetta', icon: '🦎', kind: 'sort', light: '#8aff9a',
@@ -6282,7 +6282,7 @@ const SUBJECTS = {
 
   wyobraznia: {
     name: 'Pracownia Wyobraźni', subject: 'Wyobraźnia', icon: '🎈', color: '#b05ad0', zone: 'wyspa_poznania',
-    src: '3 ROK › 5 semestr › Wyobraźnia (wykłady: wstęp, operacje, wyobraźnia a percepcja)',
+    src: /*W-AKADEMICKIEJ*/ '3 ROK › 5 semestr › Wyobraźnia (wykłady: wstęp, operacje, wyobraźnia a percepcja)' /*W-PUBLICZNEJ: 'Wyobraźnia' */,
     intro: 'Dom, który unosi się na balonie — bo wyobraźnia potrafi wszystko. No, prawie: obraca obrazy w stałym tempie, a małe obiekty musi „przybliżyć”, żeby zobaczyć szczegóły.',
     rooms: [
       { id: 'rotacja', name: 'Laboratorium Rotacji', icon: '🧊', kind: 'rotate', light: '#7af0ff',
@@ -6829,11 +6829,11 @@ Object.assign(SUBJECTS, {
   /* ---------- WYSPA DARWINA: ewolucja i zachowania zwierząt (4 rok, specjalność) ---------- */
   ewolucja_z: {
     name: 'Arka Ewolucji', subject: 'Ewolucja zachowania', icon: '🐒', color: '#8a5a30', zone: 'wyspa_darwina',
-    src: '4 ROK › 8 semestr › Ewolucja Zachowania + Notatki dysk specjalność (zagadnienia, kolokwium 2024)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 8 semestr › Ewolucja Zachowania + Notatki dysk specjalność (zagadnienia, kolokwium 2024)' /*W-PUBLICZNEJ: 'Ewolucja zachowania' */,
     intro: 'Zaloty, strategie, tańce i stada. Dlaczego szympansy żyją inaczej niż gibony i co wspólnego mają jastrzębie z teorią gier.',
     rooms: [
       { id: 'kolokwium', name: 'Sala Kolokwium', icon: '📝', kind: 'quiz', light: '#ffd06a',
-        intro: 'Pytania w stylu Twojego kolokwium z 2024 roku.',
+        intro: /*W-AKADEMICKIEJ*/ 'Pytania w stylu Twojego kolokwium z 2024 roku.' /*W-PUBLICZNEJ: 'Pytania jak na prawdziwym kolokwium.' */,
         items: [
           { q: 'Jaki system kojarzeniowy jest właściwy szympansom?', a: ['Promiskuityzm', 'Monogamia', 'Poliandria', 'Poligamia'], why: 'Najbliżsi krewni człowieka są rozwiąźli; gibony — najdalsi z człekokształtnych — to długoterminowa monogamia.' },
           { q: 'Kto organizuje „rajdy” liczące nawet milion robotnic?', a: ['Mrówki', 'Termity', 'Pszczoły', 'Szarańcze'], why: 'Wędrowne mrówki (np. Eciton) polują całymi kolumnami.' },
@@ -6862,7 +6862,7 @@ Object.assign(SUBJECTS, {
   },
   tinbergen: {
     name: 'Gniazdo Tinbergena', subject: 'Etologia i uczenie się zwierząt', icon: '🦆', color: '#3f8f3a', zone: 'wyspa_darwina',
-    src: 'BUSS rozdz. 1 + Notatki dysk specjalność › Procesy uczenia się u zwierząt, Plastyczność zachowań zwierząt',
+    src: /*W-AKADEMICKIEJ*/ 'BUSS rozdz. 1 + Notatki dysk specjalność › Procesy uczenia się u zwierząt, Plastyczność zachowań zwierząt' /*W-PUBLICZNEJ: 'Uczenie się i plastyczność zachowań zwierząt' */,
     intro: 'Domek na drzewie, jak przystało na etologów. Cztery pytania Tinbergena, wpajanie, bodźce kluczowe i to, jak zwierzęta uczą się i przystosowują — także do miasta.',
     rooms: [
       { id: 'cztery', name: 'Sortownia Czterech Pytań', icon: '❓', kind: 'sort', light: '#a0ffb0',
@@ -6896,7 +6896,7 @@ Object.assign(SUBJECTS, {
   },
   psych_ewol: {
     name: 'Laboratorium Bussa', subject: 'Psychologia ewolucyjna', icon: '🧬', color: '#6a4bb0', zone: 'wyspa_darwina',
-    src: '4 ROK › 7 semestr › Psychologia ewolucyjna (BUSS – Psychologia ewolucyjna, wykład II)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 7 semestr › Psychologia ewolucyjna (BUSS – Psychologia ewolucyjna, wykład II)' /*W-PUBLICZNEJ: 'Psychologia ewolucyjna' */,
     intro: 'Od Lamarcka do Triversa: jak powstała teoria ewolucji i jak psychologia ewolucyjna tłumaczy ludzki umysł — bez popadania w determinizm genetyczny.',
     rooms: [
       { id: 'ewolucjonisci', name: 'Galeria Ewolucjonistów', icon: '🧑‍🔬', kind: 'pairs', light: '#c79aff',
@@ -6928,7 +6928,7 @@ Object.assign(SUBJECTS, {
   },
   etol_pozn: {
     name: 'Szklarnia Umysłów', subject: 'Etologia poznawcza', icon: '🐦‍⬛', color: '#2aa3b8', zone: 'wyspa_darwina',
-    src: '4 ROK › 7 semestr › Etologia poznawcza (notatki z wykładów)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 7 semestr › Etologia poznawcza (notatki z wykładów)' /*W-PUBLICZNEJ: 'Etologia poznawcza' */,
     intro: 'Czy zwierzęta rozpoznają się w lustrze, planują przyszłość i liczą? Szklarnia pełna umysłów — każdy działa trochę inaczej.',
     rooms: [
       { id: 'lustro', name: 'Sala Luster', icon: '🪞', kind: 'quiz', light: '#7af0ff',
@@ -6951,7 +6951,7 @@ Object.assign(SUBJECTS, {
           ['Teoria umysłu to szczególny przypadek stopni intencjonalności.', true, ''],
           ['Liczenie jest szybsze niż subitizing.', false, 'Liczenie idzie krok po kroku, więc jest wolniejsze.'],
           ['Homo ergaster/erectus jako pierwszy miał powiększony mózg, używał narzędzi i migrował na duże odległości.', true, ''],
-          ['Niektórzy badacze zaliczają do zwierząt używających narzędzi ryby strzelczyki, strącające owady strumieniem wody.', true, 'Pytanie z kolokwium 2024.']
+          ['Niektórzy badacze zaliczają do zwierząt używających narzędzi ryby strzelczyki, strącające owady strumieniem wody.', true, /*W-AKADEMICKIEJ*/ 'Pytanie z kolokwium 2024.' /*W-PUBLICZNEJ: '' */]
         ] },
       { id: 'poznanie_z', name: 'Strych Poznania', icon: '🔭', kind: 'pairs', light: '#ffd06a',
         intro: 'Memory z etologii poznawczej.',
@@ -7127,7 +7127,7 @@ Object.assign(ZONES, {
   wyspa_darwina: {
     name: 'Wyspa Darwina', icon: '🐢', grid: 'wyspy', gx: 1, gy: 0, mapColor: ['#c8b070', '#3a7a58'], song: 'wyspa', particles: 'butterflies',
     motto: 'Każde zachowanie ma dwie historie: jak działa i dlaczego przetrwało.',
-    desc: 'Druga wyspa Archipelagu: ewolucja zachowania, etologia, psychologia ewolucyjna i etologia poznawcza — z Twoich notatek z 4. roku. Most z Wyspy Poznania albo prom z Portu.',
+    desc: /*W-AKADEMICKIEJ*/ 'Druga wyspa Archipelagu: ewolucja zachowania, etologia, psychologia ewolucyjna i etologia poznawcza — z Twoich notatek z 4. roku. Most z Wyspy Poznania albo prom z Portu.' /*W-PUBLICZNEJ: 'Druga wyspa Archipelagu: ewolucja zachowania, etologia, psychologia ewolucyjna i etologia poznawcza. Most z Wyspy Poznania albo prom z Portu.' */,
     topics: [], isle: true, arrive: [20, 23],
     pal: { grass: '#8ab25a', grass2: '#7aa24a', sand: '#e8d0a0', wetsand: '#cfb480', water: '#2f96c4', path: '#c8a878', planks: '#a8774a', moss: '#6a9a50' },
     build(B) {
@@ -10598,7 +10598,7 @@ Object.assign(Game.prototype, {
     opts.push({ label: 'Zostaję na lądzie', fn: null });
     this.showDialogue({
       name: 'Prom „Transfer Wiedzy”', emoji: '⛴️',
-      pages: ['Kapitan: „Archipelag Wiedzy otwarty! Każda wyspa to blok przedmiotów z Twoich studiów, każdy dom to jeden przedmiot, a w pokojach czekają mini-gry."', 'Kapitan: „Transfer wiedzy działa najlepiej, gdy rozumiesz zasadę, a nie tylko pamiętasz przykład. Dokąd płyniemy?"'],
+      pages: [/*W-AKADEMICKIEJ*/ 'Kapitan: „Archipelag Wiedzy otwarty! Każda wyspa to blok przedmiotów z Twoich studiów, każdy dom to jeden przedmiot, a w pokojach czekają mini-gry."' /*W-PUBLICZNEJ: 'Kapitan: „Archipelag Wiedzy otwarty! Każda wyspa to jedna dziedzina psychologii, każdy dom to jeden przedmiot, a w pokojach czekają mini-gry."' */, 'Kapitan: „Transfer wiedzy działa najlepiej, gdy rozumiesz zasadę, a nie tylko pamiętasz przykład. Dokąd płyniemy?"'],
       options: opts
     });
   },
@@ -10619,7 +10619,7 @@ Object.assign(Game.prototype, {
     const S = SUBJECTS[sid];
     const rows = S.rooms.map((r, i) => `<div class="card row mg-roomrow" style="border-left:6px solid ${r.light}"><span class="mg-ri">${r.icon}</span><div class="grow"><b>${esc(r.name)}</b><div class="tiny muted">${MG_KIND[r.kind].icon} ${MG_KIND[r.kind].name}</div></div>${starsHtml(this.roomStars(sid, i))}</div>`).join('');
     this.openModal(this.panel(`${S.icon} ${esc(S.name)} · ${esc(S.subject)}`,
-      `<p>${esc(S.intro)}</p><p class="small muted">📁 Z Twoich materiałów: <i>${esc(S.src)}</i></p>${rows}
+      `<p>${esc(S.intro)}</p><p class="small muted">${/*W-AKADEMICKIEJ*/ '📁 Z Twoich materiałów:' /*W-PUBLICZNEJ: '📚 Na podstawie:' */} <i>${esc(S.src)}</i></p>${rows}
        <p class="small muted mt">💡 Ukończony pokój (min. 1 ★) zapala w sobie światło. Gdy rozświetlisz wszystkie — dom dostaje premię.</p>`,
       '<button class="btn" data-close>Zamknij [Esc]</button>', 'narrow'));
   },
@@ -10849,8 +10849,8 @@ MINIGAMES.span = function (ctx) {
 
 /* =====================================================================
    CZĘŚĆ 3 — Archipelag: Wyspa Pinela (psychologia kliniczna)
-   Źródła: 3 ROK › Psychopatologia, Psychiatria, Neuropsychologia, Neurorehabilitacja,
-   neuro przypadki (amuzja); 4 ROK › Psychosomatyka kliniczna, Spektrum Autyzmu.
+   Źródła: Psychopatologia, Psychiatria, Neuropsychologia, Neurorehabilitacja,
+   neuro przypadki (amuzja), Psychosomatyka kliniczna, Spektrum Autyzmu (szczegóły: pola src).
    Wyspa leży w ISLE_GRID na wschód od Wyspy Snu (most) i ma prom do Portu.
    ===================================================================== */
 ISLE_GRID[0].push('wyspa_pinela');
@@ -10902,7 +10902,7 @@ MG_KIND.pitch = { name: 'Eksperyment: wysokość dźwięku', icon: '🎵', pass:
 Object.assign(SUBJECTS, {
   kl_psychopat: {
     name: 'Sanatorium Objawów', subject: 'Psychopatologia', icon: '🔎', color: '#3f8fa8', zone: 'wyspa_pinela',
-    src: '3 ROK › 5 semestr › Psychopatologia (notatki z wykładów; Cierpiałkowska i Zalewska, 2015)',
+    src: /*W-AKADEMICKIEJ*/ '3 ROK › 5 semestr › Psychopatologia (notatki z wykładów; Cierpiałkowska i Zalewska, 2015)' /*W-PUBLICZNEJ: 'Psychopatologia' */,
     intro: 'Objaw to nie wyrok, tylko wiadomość: coś w spostrzeganiu, myśleniu, pamięci albo nastroju odbiega od normy na tyle, że utrudnia życie. Tu uczysz się te wiadomości czytać i odróżniać zjawiska, które łatwo pomylić.',
     rooms: [
       { id: 'zmysly', name: 'Galeria Zmysłów', icon: '👁️', kind: 'sort', light: '#8ad0ff',
@@ -10943,11 +10943,11 @@ Object.assign(SUBJECTS, {
 
   kl_psychiatria: {
     name: 'Pawilon Zespołów', subject: 'Psychiatria', icon: '🏥', color: '#5a8ab8', zone: 'wyspa_pinela',
-    src: '3 ROK › 5 semestr › Psychiatria (pytania do egzaminu) · 6 semestr › neuropsychologia w psychiatrii',
+    src: /*W-AKADEMICKIEJ*/ '3 ROK › 5 semestr › Psychiatria (pytania do egzaminu) · 6 semestr › neuropsychologia w psychiatrii' /*W-PUBLICZNEJ: 'Psychiatria i neuropsychologia w psychiatrii' */,
     intro: 'Psychiatria myśli zespołami: objawami, które lubią występować razem. Rozpoznanie zespołu to pierwszy krok, zanim padnie nazwa choroby. I pamiętaj: mówimy „osoba ze schizofrenią”, nie „schizofrenik”.',
     rooms: [
       { id: 'egzamin', name: 'Sala Egzaminacyjna', icon: '📝', kind: 'quiz', light: '#ffb070',
-        intro: 'Pytania z listy przygotowań do egzaminu z psychiatrii. Za każdym razem losuje się 6 z 10.',
+        intro: /*W-AKADEMICKIEJ*/ 'Pytania z listy przygotowań do egzaminu z psychiatrii. Za każdym razem losuje się 6 z 10.' /*W-PUBLICZNEJ: 'Pytania z psychiatrii. Za każdym razem losuje się 6 z 10.' */,
         items: [
           { q: 'Jakie objawy są charakterystyczne dla zespołu katatonicznego?', a: ['Osłupienie, mutyzm, automatyczna uległość', 'Zwiększone łaknienie i wesołkowatość', 'Omamy wzrokowe i zaburzenia orientacji', 'Lęk wolnopłynący i obsesje'], why: 'Katatonia to zaburzenia psychoruchowe: zastyganie albo pobudzenie, giętkość woskowa, mutyzm.' },
           { q: 'Który objaw najlepiej wskazuje na zespół asteniczny?', a: ['Poczucie wyczerpania, napięcia i drażliwość', 'Osłupienie, automatyzmy, mutyzm', 'Silne napady lęku panicznego', 'Zaburzenia pamięci z konfabulacjami'], why: 'Astenia to nieswoisty zespół słabszego funkcjonowania. Bywa samodzielna albo zwiastuje głębsze zaburzenia.' },
@@ -10985,7 +10985,7 @@ Object.assign(SUBJECTS, {
 
   kl_neuro: {
     name: 'Mózgownica', subject: 'Neuropsychologia', icon: '🧠', color: '#e07a9a', zone: 'wyspa_pinela',
-    src: '3 ROK › 5 semestr › Neuropsychologia, Neurorehabilitacja · 6 semestr › neuro przypadki (amuzja)',
+    src: /*W-AKADEMICKIEJ*/ '3 ROK › 5 semestr › Neuropsychologia, Neurorehabilitacja · 6 semestr › neuro przypadki (amuzja)' /*W-PUBLICZNEJ: 'Neuropsychologia i neurorehabilitacja' */,
     intro: 'Budynek w kształcie mózgu, a w środku pytanie: co się dzieje, gdy konkretne miejsce mózgu przestaje działać? Neuropsychologia łączy objaw z lokalizacją uszkodzenia. W dwóch pokojach czekają prawdziwe eksperymenty: test Stroopa i sprawdzian słuchu muzycznego.',
     rooms: [
       { id: 'stroop', name: 'Pokój Stroopa', icon: '🎨', kind: 'stroop', light: '#ff6b6b',
@@ -11018,7 +11018,7 @@ Object.assign(SUBJECTS, {
 
   kl_psychosom: {
     name: 'Uzdrowisko Ciała i Ducha', subject: 'Psychosomatyka kliniczna', icon: '🌿', color: '#4ab0a0', zone: 'wyspa_pinela',
-    src: '4 ROK › 8 semestr › Psychosomatyka kliniczna (dr hab. med. S. Czachowski, slajdy)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 8 semestr › Psychosomatyka kliniczna (dr hab. med. S. Czachowski, slajdy)' /*W-PUBLICZNEJ: 'Psychosomatyka kliniczna' */,
     intro: 'Freudowice Zdrój to w końcu uzdrowisko! Tu ciało i psychika rozmawiają ze sobą: stres potrafi boleć, a nadzieja leczyć. Ok. 35–40% wizyt u lekarzy dotyczy objawów, które nie mają pełnego medycznego wyjaśnienia.',
     rooms: [
       { id: 'placebo', name: 'Apteka Placebo i Nocebo', icon: '💊', kind: 'sort', light: '#8ad0ff',
@@ -11031,7 +11031,7 @@ Object.assign(SUBJECTS, {
         items: [
           { q: 'Kiedy ból uznaje się za przewlekły (wg IASP)?', a: ['Gdy trwa dłużej niż przewidywany czas gojenia — średnio ponad 3 miesiące', 'Gdy trwa dłużej niż tydzień', 'Gdy boli w nocy', 'Tylko gdy wymaga operacji'], why: 'Najczęściej dotyczy odcinka krzyżowo-lędźwiowego kręgosłupa, potem kolan i głowy.' },
           { q: 'Czym jest sensytyzacja ośrodkowa?', a: ['„Nauczeniem się” bólu przez mózg: szlaki bólowe reagują coraz silniej, nawet na codzienne bodźce', 'Uszkodzeniem nerwu w dłoni', 'Chwilową utratą czucia po znieczuleniu', 'Wrodzonym brakiem odczuwania bólu'], why: 'To dziś główny mechanizm wyjaśniający tzw. objawy czynnościowe. Neuroplastyczność może działać także na niekorzyść.' },
-          { q: 'Żołnierz w ogniu walki przez kilkadziesiąt minut nie czuje rany. Jak to nazwać?', a: ['Analgezja stresowa', 'Konwersja', 'Aleksytymia', 'Efekt nocebo'], why: 'Silne emocje uruchamiają wewnętrzne układy przeciwbólowe. Według slajdów dotyczy to ok. 30% osób po urazie.' },
+          { q: 'Żołnierz w ogniu walki przez kilkadziesiąt minut nie czuje rany. Jak to nazwać?', a: ['Analgezja stresowa', 'Konwersja', 'Aleksytymia', 'Efekt nocebo'], why: /*W-AKADEMICKIEJ*/ 'Silne emocje uruchamiają wewnętrzne układy przeciwbólowe. Według slajdów dotyczy to ok. 30% osób po urazie.' /*W-PUBLICZNEJ: 'Silne emocje uruchamiają wewnętrzne układy przeciwbólowe. Szacuje się, że dotyczy to ok. 30% osób po urazie.' */ },
           { q: 'Co mówi teoria „bramkowa” bólu?', a: ['W rdzeniu kręgowym działa „bramka”, którą myśli i emocje mogą przymykać lub otwierać', 'Ból jest zawsze proporcjonalny do uszkodzenia', 'Ból czujemy tylko w mózgu, a nie w ciele', 'Bramką dla bólu jest skóra'], why: 'Dlatego relaks, odwrócenie uwagi albo pocieranie bolącego miejsca potrafią przynieść ulgę.' },
           { q: 'Które zdanie o objawach medycznie niewyjaśnionych (MUS) jest prawdziwe?', a: ['To częsty problem — ok. 35–40% konsultacji lekarskich', 'To rzadkość, raz na tysiąc wizyt', 'To zawsze symulacja', 'Wystarczy powiedzieć pacjentowi, że „to nerwy”'], why: 'Objawy są prawdziwe i męczące. W ICD-11 opisuje je m.in. kategoria zaburzeń z cierpieniem cielesnym (6C20).' }
         ] },
@@ -11055,7 +11055,7 @@ Object.assign(SUBJECTS, {
 
   kl_autyzm: {
     name: 'Dom Neuroróżnorodności', subject: 'Spektrum autyzmu', icon: '♾️', color: '#e0b040', zone: 'wyspa_pinela',
-    src: '4 ROK › 8 semestr › Spektrum Autyzmu (skrypty 1–5 i uzupełnienie o neuroróżnorodności)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 8 semestr › Spektrum Autyzmu (skrypty 1–5 i uzupełnienie o neuroróżnorodności)' /*W-PUBLICZNEJ: 'Spektrum autyzmu i neuroróżnorodność' */,
     intro: 'Dom, w którym nikt nie musi udawać. Autyzm to inny sposób odbierania świata, komunikowania się i przetwarzania bodźców — różnica, a nie „choroba do wyleczenia”. Poznasz tu jego historię, kryteria i teorie, a także sposoby wspierania zabawy małego dziecka.',
     rooms: [
       { id: 'historia', name: 'Korytarz Historii', icon: '📜', kind: 'order', light: '#ffd06a',
@@ -11083,7 +11083,7 @@ Object.assign(ZONES, {
   wyspa_pinela: {
     name: 'Wyspa Pinela', icon: '🩺', grid: 'wyspy', gx: 3, gy: 0, mapColor: ['#9fd8e8', '#3a6a9a'], song: 'pinel', particles: 'petals',
     motto: 'Objaw to wiadomość, nie wyrok.',
-    desc: 'Czwarta wyspa Archipelagu: psychopatologia, psychiatria, neuropsychologia, psychosomatyka i spektrum autyzmu — z Twoich notatek z 3. i 4. roku. Nazwa na cześć Philippe’a Pinela, który pod koniec XVIII wieku zaczął leczyć chorych psychicznie rozmową i szacunkiem zamiast łańcuchów. Most z Wyspy Snu albo prom z Portu.',
+    desc: /*W-AKADEMICKIEJ*/ 'Czwarta wyspa Archipelagu: psychopatologia, psychiatria, neuropsychologia, psychosomatyka i spektrum autyzmu — z Twoich notatek z 3. i 4. roku. Nazwa na cześć Philippe’a Pinela, który pod koniec XVIII wieku zaczął leczyć chorych psychicznie rozmową i szacunkiem zamiast łańcuchów. Most z Wyspy Snu albo prom z Portu.' /*W-PUBLICZNEJ: 'Czwarta wyspa Archipelagu: psychopatologia, psychiatria, neuropsychologia, psychosomatyka i spektrum autyzmu. Nazwa na cześć Philippe’a Pinela, który pod koniec XVIII wieku zaczął leczyć chorych psychicznie rozmową i szacunkiem zamiast łańcuchów. Most z Wyspy Snu albo prom z Portu.' */,
     topics: [], isle: true, arrive: [20, 23],
     pal: { grass: '#7ec08a', grass2: '#6aae7a', sand: '#eadcb8', wetsand: '#d0bc92', water: '#3a9ac8', path: '#d8d0c0', planks: '#a8774a' },
     build(B) {
@@ -11237,9 +11237,9 @@ MINIGAMES.pitch = function (ctx) {
 
 /* =====================================================================
    CZĘŚĆ 3 — Archipelag: Wyspa Lewina (psychologia społeczna w działaniu)
-   Źródła: 4 ROK › 7 semestr › Stosowana psychologia społeczna, Zaawansowana psychologia
-   społeczna z elementami politycznej, Prośrodowiskowa; 8 semestr › Psychologia stosunków
-   międzygrupowych, The psychology of human spaceflight; Notatki › Psychologia środowiskowa.
+   Źródła: Stosowana psychologia społeczna, Zaawansowana psychologia społeczna z elementami
+   politycznej, Prośrodowiskowa, Psychologia stosunków międzygrupowych, The psychology of human
+   spaceflight, Psychologia środowiskowa (szczegóły: pola src).
    ===================================================================== */
 ISLE_GRID[0].push('wyspa_lewina');
 
@@ -11280,7 +11280,7 @@ MG_KIND.commons = { name: 'Gra: wspólne pastwisko', icon: '🐑', pass: 0.6 };
 Object.assign(SUBJECTS, {
   sp_stosowana: {
     name: 'Wieża Kontroli', subject: 'Stosowana psychologia społeczna', icon: '🛫', color: '#4a7fd0', zone: 'wyspa_lewina',
-    src: '4 ROK › 7 semestr › Stosowana psychologia społeczna (dr A. Tarnowski: CRM, ćwiczenie „Pustynia”)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 7 semestr › Stosowana psychologia społeczna (dr A. Tarnowski: CRM, ćwiczenie „Pustynia”)' /*W-PUBLICZNEJ: 'Stosowana psychologia społeczna' */,
     intro: 'Teoria to sytuacja, w której wiemy, jak coś działa, ale nie wiemy, czy zadziała — a praktyka odwrotnie. Z wieży kontroli widać, jak psychologia społeczna ratuje życie: w kokpicie, na sali operacyjnej i na pustyni.',
     rooms: [
       { id: 'sa', name: 'Radar Świadomości Sytuacyjnej', icon: '📡', kind: 'order', light: '#8ad0ff',
@@ -11317,7 +11317,7 @@ Object.assign(SUBJECTS, {
 
   sp_grupy: {
     name: 'Ratusz Tajfela', subject: 'Psychologia stosunków międzygrupowych', icon: '🏛️', color: '#b8475f', zone: 'wyspa_lewina',
-    src: '4 ROK › 8 semestr › Psychologia stosunków międzygrupowych (wykłady 1–12; T. Besta „Walcz, protestuj, zmieniaj świat”)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 8 semestr › Psychologia stosunków międzygrupowych (wykłady 1–12; T. Besta „Walcz, protestuj, zmieniaj świat”)' /*W-PUBLICZNEJ: 'Psychologia stosunków międzygrupowych' */,
     intro: '„My” i „oni” — skąd się biorą i co z nich wynika? W ratuszu poznasz tożsamość społeczną, psychologię tłumu, dehumanizację i to, dlaczego ludzie (czasem) wychodzą razem na ulicę.',
     rooms: [
       { id: 'tozsamosc', name: 'Sala Tożsamości', icon: '🪪', kind: 'quiz', light: '#ff9a8a',
@@ -11353,7 +11353,7 @@ Object.assign(SUBJECTS, {
 
   sp_srodowisko: {
     name: 'Oranżeria Kaplanów', subject: 'Psychologia środowiskowa', icon: '🌳', color: '#3f9f5a', zone: 'wyspa_lewina',
-    src: 'Notatki › Psychologia środowiskowa · 4 ROK › 7 semestr › Prośrodowiskowa (A. Wójcik) · wykład „Tragedia wspólnego pastwiska”',
+    src: /*W-AKADEMICKIEJ*/ 'Notatki › Psychologia środowiskowa · 4 ROK › 7 semestr › Prośrodowiskowa (A. Wójcik) · wykład „Tragedia wspólnego pastwiska”' /*W-PUBLICZNEJ: 'Psychologia środowiskowa i zachowania prośrodowiskowe' */,
     intro: 'Otoczenie zmienia zachowanie, a zachowanie zmienia otoczenie. W oranżerii poznasz przestrzeń osobistą, mapy w głowie i regenerującą moc zieleni — i spróbujesz nie zniszczyć wspólnego pastwiska.',
     rooms: [
       { id: 'pastwisko', name: 'Wspólne Pastwisko', icon: '🐑', kind: 'commons',
@@ -11382,7 +11382,7 @@ Object.assign(SUBJECTS, {
 
   sp_polityczna: {
     name: 'Forum Polis', subject: 'Zaawansowana psychologia społeczna i polityczna', icon: '⚖️', color: '#6a5ab8', zone: 'wyspa_lewina',
-    src: '4 ROK › 7 semestr › Zaawansowana psychologia społeczna z elementami psychologii politycznej (wykłady i lista zagadnień)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 7 semestr › Zaawansowana psychologia społeczna z elementami psychologii politycznej (wykłady i lista zagadnień)' /*W-PUBLICZNEJ: 'Psychologia społeczna i polityczna' */,
     intro: 'Po co ludziom grupy, moralność i poglądy? Forum nie ocenia, kto ma rację — pokazuje, jakie psychologiczne mechanizmy stoją za przynależnością, współpracą i różnicami poglądów.',
     rooms: [
       { id: 'fundamenty', name: 'Sala Fundamentów', icon: '🧭', kind: 'sort', light: '#ffd06a',
@@ -11407,7 +11407,7 @@ Object.assign(SUBJECTS, {
 
   sp_kosmos: {
     name: 'Rakieta I.C.E.', subject: 'Psychologia lotów kosmicznych', icon: '🚀', color: '#e05a3a', zone: 'wyspa_lewina',
-    src: '4 ROK › 8 semestr › The psychology of human spaceflight (lista zagadnień na egzamin)',
+    src: /*W-AKADEMICKIEJ*/ '4 ROK › 8 semestr › The psychology of human spaceflight (lista zagadnień na egzamin)' /*W-PUBLICZNEJ: 'Psychologia lotów kosmicznych' */,
     intro: 'Najbardziej ekstremalna grupa na świecie: kilka osób zamkniętych w puszce, daleko od domu. Psychologia lotów kosmicznych bada, jak ludzie pracują i współżyją w warunkach I.C.E. — izolacji, zamknięcia i ekstremalnego środowiska.',
     rooms: [
       { id: 'misja', name: 'Centrum Misji', icon: '🛰️', kind: 'quiz', light: '#ffb070',
@@ -11436,7 +11436,7 @@ Object.assign(ZONES, {
   wyspa_lewina: {
     name: 'Wyspa Lewina', icon: '🤝', grid: 'wyspy', gx: 4, gy: 0, mapColor: ['#f0c070', '#4a6ab8'], song: 'wyspa', particles: 'butterflies',
     motto: 'Nie ma nic bardziej praktycznego niż dobra teoria.',
-    desc: 'Piąta wyspa Archipelagu: psychologia społeczna w działaniu — stosowana, międzygrupowa, środowiskowa i polityczna, a na deser psychologia lotów kosmicznych. Z Twoich notatek z 4. roku. Nazwa na cześć Kurta Lewina, ojca psychologii społecznej. Most z Wyspy Pinela albo prom z Portu.',
+    desc: /*W-AKADEMICKIEJ*/ 'Piąta wyspa Archipelagu: psychologia społeczna w działaniu — stosowana, międzygrupowa, środowiskowa i polityczna, a na deser psychologia lotów kosmicznych. Z Twoich notatek z 4. roku. Nazwa na cześć Kurta Lewina, ojca psychologii społecznej. Most z Wyspy Pinela albo prom z Portu.' /*W-PUBLICZNEJ: 'Piąta wyspa Archipelagu: psychologia społeczna w działaniu — stosowana, międzygrupowa, środowiskowa i polityczna, a na deser psychologia lotów kosmicznych. Nazwa na cześć Kurta Lewina, ojca psychologii społecznej. Most z Wyspy Pinela albo prom z Portu.' */,
     topics: [], isle: true, arrive: [20, 23],
     pal: { grass: '#92c060', grass2: '#82b050', sand: '#ecd8a8', wetsand: '#d2b884', water: '#2f8ec0', path: '#c8b898', planks: '#a8774a' },
     build(B) {
@@ -25688,7 +25688,7 @@ wrap('showSubjectInfo', function (base, sid) {
   if (!S || !S.laik) return;
   const m = document.getElementById('modal');
   m.querySelectorAll('.panel-body p.small.muted').forEach(p => {
-    if (p.textContent.includes('Z Twoich materiałów')) p.innerHTML = `📚 Dla każdej osoby — bez wiedzy specjalistycznej. Na podstawie: <i>${esc(S.src)}</i>`;
+    if (p.textContent.includes(/*W-AKADEMICKIEJ*/ 'Z Twoich materiałów' /*W-PUBLICZNEJ: 'Na podstawie:' */)) p.innerHTML = `📚 Dla każdej osoby — bez wiedzy specjalistycznej. Na podstawie: <i>${esc(S.src)}</i>`;
   });
 });
 
