@@ -1,0 +1,101 @@
+rules_version = '2';
+
+// Akademia Diagnosty — reguły bazy Firestore (Etap 7, 2026-10-19).
+// Wejście do Akademii = oba warunki naraz: potwierdzony e-mail uczelni i osobisty, jednorazowy kod.
+// Absolwenci: kod typu „absolwent” wpuszcza z dowolnym potwierdzonym e-mailem.
+// Opis: Akademia diagnosty/docs/LOGOWANIE_I_WERYFIKACJA.md. Testy: firebase/testy/reguly.test.mjs.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function zalogowany() {
+      return request.auth != null;
+    }
+    function admin() {
+      return zalogowany() && exists(/databases/$(database)/documents/admini/$(request.auth.uid));
+    }
+    function maDostep() {
+      return zalogowany() && exists(/databases/$(database)/documents/studenci/$(request.auth.uid));
+    }
+    function emailPotwierdzony() {
+      return request.auth.token.email_verified == true;
+    }
+    // część adresu po @, np. „stud.umk.pl”
+    function host() {
+      return request.auth.token.email.lower().split('@')[1];
+    }
+    // e-mail uczelni: każda domena .edu.pl albo domena z listy (config/uczelnie) razem z subdomenami.
+    // d.domena to pozycja z listy, do której pasuje adres (gra wpisuje ją sama), albo '' dla .edu.pl.
+    function emailUczelni(d) {
+      return host().matches('.+[.]edu[.]pl')
+        || (d.domena.matches('[a-z0-9-]+([.][a-z0-9-]+)+')
+            && d.domena in get(/databases/$(database)/documents/config/uczelnie).data.domeny
+            && host().matches('(.+[.])?' + d.domena.split('[.]').join('[.]')));
+    }
+    function kod(d) {
+      return get(/databases/$(database)/documents/kody/$(d.kod)).data;
+    }
+    function kodPo(d) {
+      return getAfter(/databases/$(database)/documents/kody/$(d.kod)).data;
+    }
+    // kod wolny, ważny, zużywany w tym samym zapisie przez to konto, z tym samym typem i opisem
+    function kodPasuje(d) {
+      return kod(d).uzyty == false
+        && kod(d).waznyDo > request.time
+        && d.typ == kod(d).typ
+        && d.etykieta == kod(d).etykieta
+        && kodPo(d).uzytyPrzez == request.auth.uid
+        && (kod(d).typ == 'absolwent' || emailUczelni(d));
+    }
+
+    // Osoby z dostępem do Akademii. Dokument powstaje tylko razem ze zużyciem pasującego kodu
+    // (jeden zapis zbiorczy: studenci/{uid} + kody/{kod}).
+    match /studenci/{uid} {
+      allow read: if (zalogowany() && request.auth.uid == uid) || admin();
+      allow create: if zalogowany()
+        && request.auth.uid == uid
+        && emailPotwierdzony()
+        && request.resource.data.keys().hasOnly(['email', 'kod', 'typ', 'etykieta', 'domena', 'kiedy'])
+        && request.resource.data.keys().hasAll(['email', 'kod', 'typ', 'etykieta', 'domena', 'kiedy'])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.kiedy == request.time
+        && request.resource.data.kod is string
+        && request.resource.data.kod.matches('[A-HJKMNP-Z2-9]{12}')
+        && request.resource.data.domena is string
+        && kodPasuje(request.resource.data);
+      // właściciel może zrezygnować z dostępu, admin może go odebrać
+      allow delete: if (zalogowany() && request.auth.uid == uid) || admin();
+    }
+
+    // Kody od prowadzących: listę widzą i kody tworzą tylko admini. Osoba z potwierdzonym e-mailem
+    // może odczytać jeden kod, który zna (żeby zobaczyć jego typ i opis), i zużyć go dla siebie —
+    // w tym samym zapisie, w którym powstaje jej dokument w studenci.
+    match /kody/{kodId} {
+      allow get: if admin() || (zalogowany() && emailPotwierdzony());
+      allow list, create, delete: if admin();
+      allow update: if admin() || (zalogowany()
+        && resource.data.uzyty == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uzyty', 'uzytyPrzez', 'uzytyKiedy'])
+        && request.resource.data.uzyty == true
+        && request.resource.data.uzytyPrzez == request.auth.uid
+        && request.resource.data.uzytyKiedy == request.time
+        && getAfter(/databases/$(database)/documents/studenci/$(request.auth.uid)).data.kod == kodId);
+    }
+
+    // Paczka Akademii (spakowana wersja akademicka): info + części.
+    match /akademia/{czesc} {
+      allow read: if maDostep() || admin();
+      allow write: if admin();
+    }
+
+    // Lista domen uczelni spoza .edu.pl — jawna (gra sprawdza adres jeszcze przed założeniem konta).
+    match /config/{dok} {
+      allow read: if true;
+      allow write: if admin();
+    }
+
+    // Admini: dokumenty dodaje się tylko w konsoli Firebase.
+    match /admini/{uid} {
+      allow read: if zalogowany() && request.auth.uid == uid;
+    }
+  }
+}

@@ -9,11 +9,17 @@ Pikselowa gra o psychologii w miasteczku Freudowice. Gra ma dwie wersje, każda 
 python3 narzedzia/zbuduj_publiczna.py
 ```
 
-To repo jest **prywatne** — wersja akademicka zawiera wiedzę o testach chronioną zawodowo. Wersja publiczna jest do grania w przeglądarce na GitHub Pages, z osobnego publicznego repo `akademia-diagnosty-gra`, do którego trafia tylko plik gry:
+To repo jest **prywatne** — wersja akademicka zawiera wiedzę o testach chronioną zawodowo.
+
+## Strona gry i wejście do Akademii (Etap 7)
+Jedna gra pod jednym adresem na Firebase: wersja publiczna dla każdego, a Akademia po zalogowaniu (potwierdzony e-mail uczelni + osobisty kod od prowadzącego). Folder `strona/` to zawartość hostingu:
 
 ```
-sh narzedzia/opublikuj_publiczna.sh ../akademia-diagnosty-gra
+python3 narzedzia/zbuduj_strone.py                # strona/index.html = wersja publiczna + kontrola, że nie ma tam wersji akademickiej
+firebase deploy --only hosting,firestore:rules    # publikacja (projekt Firebase: docs/LOGOWANIE_I_WERYFIKACJA.md)
 ```
+
+Wersja akademicka nie trafia na hosting — wgrywa się ją do bazy w panelu `admin.html` (Paczka Akademii). Plan, dane, bezpieczeństwo i kroki zakładania projektu: `Akademia diagnosty/docs/LOGOWANIE_I_WERYFIKACJA.md`.
 
 ## Jak uruchomić
 Otwórz plik przez lokalny serwer, np. w folderze `Akademia diagnosty`:
@@ -31,7 +37,9 @@ Przy działającym serwerze (z folderu repo: `python3 -m http.server 8765 --dire
 
 - `python3 tests/etap1_test.py` … `python3 tests/etap6_test.py` — każdy etap osobno (Etap 6 sprawdza obie wersje — najpierw zbuduj publiczną),
 - `python3 tests/czcionki_test.py` — wybór czcionek,
-- `python3 tests/przeglad_test.py` — przegląd całej gry (każda dzielnica, miejsce, mieszkaniec i drzwi); z argumentem `tel` na ekranie telefonu.
+- `python3 tests/przeglad_test.py` — przegląd całej gry (każda dzielnica, miejsce, mieszkaniec i drzwi); z argumentem `tel` na ekranie telefonu,
+- `python3 tests/akademia_test.py` — wejście do Akademii i panel admina (sam buduje `strona/` i włącza serwer na porcie 8766; Firebase udawany),
+- `cd firebase && npm install && npm test` — reguły bazy w emulatorze Firebase (potrzebna Java 11+).
 
 Wszystkie naraz: `sh tests/wszystkie.sh` (zbuduje wersję publiczną, sam włączy serwer, jeśli trzeba, i przejrzy obie wersje). Testy używają Playwright i czystego profilu przeglądarki; zrzuty ekranu i logi trafiają do `tests/out/`.
 
@@ -40,6 +48,7 @@ Wszystkie naraz: `sh tests/wszystkie.sh` (zbuduje wersję publiczną, sam włąc
 - `docs/DO_PRZEJRZENIA.md` — decyzje AI czekające na akceptację autorki
 - `docs/PODZIAL_BAZA_ROZSZERZENIE.md` — podział pytań katedr na wersję publiczną i akademicką (przyjęty 5.10)
 - `docs/ARCHITEKTURA.md` — jak zbudowany jest plik gry (bloki, owijki, stan zapisu) — ściąga do kolejnych zmian
+- `docs/LOGOWANIE_I_WERYFIKACJA.md` — wejście do Akademii: konta, kody, baza, bezpieczeństwo, projekt Firebase (Etap 7)
 - zadania: tablica POPRAWKI w Notion („Gra Akademia Diagnosty”)
 
 ## Stare wersje

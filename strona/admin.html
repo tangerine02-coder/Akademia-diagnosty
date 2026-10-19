@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Akademii — Akademia Diagnosty</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Fraunces:opsz,wght@9..144,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styl.css">
+<style>
+  .siatka { display: grid; grid-template-columns: 110px 1fr 2fr 170px; gap: 8px; align-items: end; }
+  .siatka label { margin-top: 0; }
+  @media (max-width: 760px) { .siatka { grid-template-columns: 1fr 1fr; } }
+  #lista-nowych { min-height: 120px; }
+  td .btn-sm { margin: 0 4px 4px 0; }
+</style>
+<!--
+  Etap 7 (2026-10-19): panel autorki — kody od prowadzących, paczka Akademii, lista uczelni, osoby z dostępem.
+  Wszystko pilnują reguły bazy (firebase/firestore.rules): bez dokumentu w kolekcji „admini” ten panel nic nie zmieni.
+-->
+</head>
+<body>
+<main class="ekran">
+  <div class="karta szeroka">
+    <header class="karta-gl"><h1>🛠️ Panel Akademii</h1><a href="akademia.html">🎓 Akademia</a></header>
+    <section class="karta-tresc" id="tresc"><p class="muted">Ładuję…</p></section>
+  </div>
+</main>
+
+<script type="module">
+const $ = (s, r = document) => r.querySelector(s);
+const tresc = $('#tresc');
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const dataPl = (ts) => (ts && ts.toDate ? ts.toDate().toLocaleDateString('pl-PL') : '');
+let K = null, odpytywanie = null, zakladka = 'kody';
+
+function pokaz(html) { clearInterval(odpytywanie); tresc.innerHTML = html; }
+function komunikat(sel, e, rodzaj = 'blad') {
+  const el = $(sel); if (!el) return;
+  el.className = rodzaj; el.textContent = (e && e.message) || String(e); el.hidden = false;
+}
+
+async function start() {
+  try { K = await import('./konto.js'); }
+  catch (e) { return pokaz('<p class="blad">Nie udało się połączyć z serwerem gry. Sprawdź internet i odśwież stronę.</p>'); }
+  if (!K.SKONFIGUROWANE) return pokaz('<p>Najpierw uzupełnij <code>firebase-config.js</code> (docs/LOGOWANIE_I_WERYFIKACJA.md, krok 4).</p>');
+  K.naZmiane(u => odswiez(u));
+}
+
+async function odswiez(u) {
+  if (!u) return ekranLogowania();
+  if (!u.emailVerified) return ekranPotwierdzenia(u);
+  if (!(await K.czyAdmin())) return ekranNieAdmin(u);
+  ekranPanelu(u);
+}
+
+/* ---------- logowanie ---------- */
+function ekranLogowania() {
+  pokaz(`<p>Panel dla autorki gry: kody od prowadzących, paczka Akademii, lista uczelni i osoby z dostępem.</p>
+    <form id="f" class="ramka" novalidate>
+      <label for="email">E-mail</label><input id="email" type="email" autocomplete="username">
+      <label for="haslo">Hasło</label><input id="haslo" type="password" autocomplete="current-password">
+      <p id="msg" hidden></p>
+      <div class="rzad"><button class="btn btn-green" type="submit">Zaloguj się</button><button class="btn" type="button" id="nowe">Załóż konto</button><span style="flex:1"></span><button class="link" type="button" id="reset">Nie pamiętam hasła</button></div>
+    </form>
+    <p class="tiny muted">Pierwszy raz? Załóż konto, potwierdź mail, a potem dodaj swój UID w konsoli Firebase (kolekcja „admini”).</p>`);
+  $('#f').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    try { await K.zaloguj($('#email').value, $('#haslo').value); } catch (e) { komunikat('#msg', e); }
+  });
+  $('#nowe').addEventListener('click', async () => {
+    try { await K.zalozKonto($('#email').value, $('#haslo').value); } catch (e) { komunikat('#msg', e); }
+  });
+  $('#reset').addEventListener('click', async () => {
+    try { await K.resetHasla($('#email').value); komunikat('#msg', 'Jeśli na ten adres jest konto, wysłaliśmy link do zmiany hasła.', 'info'); }
+    catch (e) { komunikat('#msg', e); }
+  });
+}
+function ekranPotwierdzenia(u) {
+  pokaz(`<p>Wysłaliśmy link na <b>${esc(u.email)}</b>. Kliknij go i wróć tutaj.</p><p id="msg" hidden></p>
+    <div class="rzad"><button class="btn btn-green" id="spr">Sprawdź teraz</button><button class="btn" id="wyslij">Wyślij link jeszcze raz</button><button class="link" id="out">Wyloguj</button></div>`);
+  const spr = async (cicho) => { try { if (await K.sprawdzPotwierdzenie()) return odswiez(K.uzytkownik()); if (!cicho) komunikat('#msg', 'Jeszcze nie widać potwierdzenia.', 'info'); } catch (e) { if (!cicho) komunikat('#msg', e); } };
+  $('#spr').addEventListener('click', () => spr(false));
+  $('#wyslij').addEventListener('click', async () => { try { await K.wyslijLinkPonownie(); komunikat('#msg', 'Wysłaliśmy nowy link.', 'info'); } catch (e) { komunikat('#msg', e); } });
+  $('#out').addEventListener('click', () => K.wyloguj());
+  odpytywanie = setInterval(() => spr(true), 5000);
+}
+function ekranNieAdmin(u) {
+  pokaz(`<h2>To konto nie jest kontem admina</h2>
+    <p>Zalogowano jako <b>${esc(u.email)}</b>. Żeby zostać adminem, w konsoli Firebase otwórz <b>Firestore Database</b> → <b>Rozpocznij kolekcję</b> <code>admini</code> → identyfikator dokumentu:</p>
+    <div class="ramka mono" id="uid">${esc(u.uid)}</div>
+    <p class="small muted">Dodaj dowolne pole, np. <code>imie</code> = „Sylwia”, zapisz i odśwież tę stronę.</p>
+    <div class="rzad"><button class="btn" id="kopiuj">Kopiuj UID</button><button class="btn" id="odswiez">Odśwież</button><button class="link" id="out">Wyloguj</button></div>`);
+  $('#kopiuj').addEventListener('click', () => navigator.clipboard && navigator.clipboard.writeText(u.uid));
+  $('#odswiez').addEventListener('click', () => odswiez(K.uzytkownik()));
+  $('#out').addEventListener('click', () => K.wyloguj());
+}
+
+/* ---------- panel ---------- */
+function ekranPanelu(u) {
+  pokaz(`<div class="rzad" style="margin-top:0"><span class="small muted">Admin: <b>${esc(u.email)}</b></span><span style="flex:1"></span><button class="link" id="out">Wyloguj</button></div>
+    <div class="zakladki">
+      <button type="button" data-z="kody">🎟️ Kody</button><button type="button" data-z="paczka">📦 Paczka Akademii</button>
+      <button type="button" data-z="uczelnie">🏫 Uczelnie</button><button type="button" data-z="osoby">👥 Osoby z dostępem</button>
+    </div>
+    <div id="panel" class="ramka" style="margin-top:0"></div>`);
+  $('#out').addEventListener('click', () => K.wyloguj());
+  tresc.querySelectorAll('[data-z]').forEach(b => b.addEventListener('click', () => pokazZakladke(b.dataset.z)));
+  pokazZakladke(zakladka);
+}
+function pokazZakladke(z) {
+  zakladka = z;
+  tresc.querySelectorAll('[data-z]').forEach(b => b.classList.toggle('on', b.dataset.z === z));
+  ({ kody: zKody, paczka: zPaczka, uczelnie: zUczelnie, osoby: zOsoby })[z]($('#panel'));
+}
+
+/* ---------- 🎟️ kody ---------- */
+function domyslnaWaznosc() { const d = new Date(); d.setFullYear(d.getFullYear() + 1); return d.toISOString().slice(0, 10); }
+async function zKody(P) {
+  P.innerHTML = `<h2>Nowe kody</h2>
+    <div class="siatka">
+      <div><label for="n">Ile</label><input id="n" type="number" min="1" max="200" value="25"></div>
+      <div><label for="typ">Dla kogo</label><select id="typ">${Object.entries(K.TYPY).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}</select></div>
+      <div><label for="opis">Opis (widzi go osoba z kodem)</label><input id="opis" type="text" maxlength="120" placeholder="np. UMK, psychologia, II rok, 2026/27"></div>
+      <div><label for="do">Ważne do</label><input id="do" type="date" value="${domyslnaWaznosc()}"></div>
+    </div>
+    <p class="tiny muted">Kod „student” i „pracownik” wymaga potwierdzonego e-maila uczelni, „absolwent” — dowolnego potwierdzonego adresu. Każdy kod działa raz.</p>
+    <div class="rzad"><button class="btn btn-green" id="gen">Wygeneruj</button></div><p id="g-msg" hidden></p>
+    <div id="nowe" hidden><label for="lista-nowych">Nowe kody — przekaż je prowadzącemu (każda osoba dostaje jeden)</label>
+      <textarea id="lista-nowych" readonly></textarea>
+      <div class="rzad"><button class="btn" id="kopiuj">Kopiuj</button><button class="btn" id="csv">Pobierz CSV</button></div></div>
+    <h2 style="margin-top:18px">Wszystkie kody <span class="tag" id="licz">…</span></h2>
+    <input id="filtr" type="text" placeholder="Szukaj: kod, opis, e-mail…">
+    <div class="tabela" style="margin-top:8px"><table><thead><tr><th>Kod</th><th>Dla kogo</th><th>Opis</th><th>Ważny do</th><th>Stan</th><th></th></tr></thead><tbody id="kody"></tbody></table></div>`;
+  let ostatnie = [];
+  $('#gen', P).addEventListener('click', async (ev) => {
+    const n = Math.max(1, Math.min(200, parseInt($('#n', P).value, 10) || 0));
+    const typ = $('#typ', P).value, opis = $('#opis', P).value.trim(), doKiedy = $('#do', P).value;
+    if (!opis) return komunikat('#g-msg', 'Dopisz opis, np. uczelnię, kierunek i rok — zobaczy go osoba z kodem.');
+    if (!doKiedy) return komunikat('#g-msg', 'Wybierz datę ważności.');
+    ev.target.disabled = true; $('#g-msg', P).hidden = true;
+    try {
+      const kody = await K.generujKody(n, typ, opis, new Date(doKiedy + 'T23:59:59'));
+      ostatnie = kody.map(k => ({ kod: k, typ, opis, doKiedy }));
+      $('#lista-nowych', P).value = kody.map(K.pokazKod).join('\n');
+      $('#nowe', P).hidden = false;
+      komunikat('#g-msg', `Gotowe: ${kody.length} nowych kodów.`, 'info');
+      wczytajKody();
+    } catch (e) { komunikat('#g-msg', e); }
+    ev.target.disabled = false;
+  });
+  $('#kopiuj', P).addEventListener('click', () => navigator.clipboard && navigator.clipboard.writeText($('#lista-nowych', P).value));
+  $('#csv', P).addEventListener('click', () => {
+    const csv = 'kod;dla_kogo;opis;wazny_do\n' + ostatnie.map(x => [K.pokazKod(x.kod), x.typ, '"' + x.opis.replace(/"/g, '""') + '"', x.doKiedy].join(';')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'kody-akademia.csv'; a.click();
+  });
+  let wszystkie = [], osoby = {};
+  const rysuj = () => {
+    const f = $('#filtr', P).value.trim().toLowerCase();
+    const teraz = Date.now();
+    const wiersze = wszystkie
+      .map(k => ({ ...k, email: k.uzytyPrzez && osoby[k.uzytyPrzez] ? osoby[k.uzytyPrzez].email : '' }))
+      .filter(k => !f || [k.kod, K.pokazKod(k.kod), k.etykieta, k.email, k.typ].join(' ').toLowerCase().includes(f))
+      .sort((a, b) => ((b.utworzono && b.utworzono.toMillis()) || 0) - ((a.utworzono && a.utworzono.toMillis()) || 0));
+    $('#licz', P).textContent = `${wszystkie.length} · wolnych ${wszystkie.filter(k => !k.uzyty && k.waznyDo && k.waznyDo.toMillis() > teraz).length}`;
+    $('#kody', P).innerHTML = wiersze.map(k => {
+      const po = k.waznyDo && k.waznyDo.toMillis() <= teraz;
+      const stan = k.uzyty ? `<span class="tag fio">użyty</span> <span class="tiny">${esc(k.email || 'konto usunięte')}${k.uzytyKiedy ? ' · ' + esc(dataPl(k.uzytyKiedy)) : ''}</span>`
+        : po ? '<span class="tag zle">nieważny</span>' : '<span class="tag ok">wolny</span>';
+      const akcje = (!k.uzyty && !po ? `<button class="btn btn-sm" data-uniewaznij="${k.kod}">Unieważnij</button>` : '') + (!k.uzyty ? `<button class="btn btn-sm" data-usun="${k.kod}">Usuń</button>` : '');
+      return `<tr><td class="mono">${esc(K.pokazKod(k.kod))}</td><td>${esc(K.TYPY[k.typ] || k.typ)}</td><td>${esc(k.etykieta)}</td><td>${esc(dataPl(k.waznyDo))}</td><td>${stan}</td><td>${akcje}</td></tr>`;
+    }).join('') || '<tr><td colspan="6" class="muted">Brak kodów.</td></tr>';
+  };
+  const wczytajKody = async () => {
+    try {
+      const [k, o] = await Promise.all([K.listaKodow(), K.listaOsob()]);
+      wszystkie = k; osoby = Object.fromEntries(o.map(x => [x.uid, x]));
+      rysuj();
+    } catch (e) { $('#kody', P).innerHTML = `<tr><td colspan="6" class="blad">${esc(e.message)}</td></tr>`; }
+  };
+  $('#filtr', P).addEventListener('input', rysuj);
+  $('#kody', P).addEventListener('click', async (ev) => {
+    const u = ev.target.dataset.uniewaznij, d = ev.target.dataset.usun;
+    if (!u && !d) return;
+    ev.target.disabled = true;
+    try { if (u) await K.uniewaznijKod(u); else await K.usunKod(d); await wczytajKody(); }
+    catch (e) { komunikat('#g-msg', e); ev.target.disabled = false; }
+  });
+  wczytajKody();
+}
+
+/* ---------- 📦 paczka ---------- */
+async function zPaczka(P) {
+  P.innerHTML = `<h2>Paczka Akademii</h2><div id="info" class="small">…</div>
+    <label for="plik">Plik wersji akademickiej (<code>akademia_diagnosty_miasteczko.html</code>)</label>
+    <input id="plik" type="file" accept=".html,text/html">
+    <div class="pasek" id="pasek" hidden><div></div></div>
+    <div class="rzad"><button class="btn btn-green" id="wgraj">Wgraj</button></div><p id="msg" hidden></p>
+    <p class="tiny muted">Wgraj nowy plik po każdej zmianie w grze. Osoby z dostępem dostaną nową wersję przy następnym wejściu. Plik trafia tylko do bazy (czytają go zweryfikowane konta), nie na publiczny hosting.</p>`;
+  const pokazInfo = async () => {
+    try {
+      const I = await K.infoPaczki();
+      $('#info', P).innerHTML = I ? `Teraz: <b>${esc(I.wersja)}</b> · ${esc(I.plik || '')} · ${Math.round((I.rozmiar || 0) / 1024)} KB (spakowana ${Math.round((I.spakowana || 0) / 1024)} KB, części: ${I.czesci})` : '<span class="tag zle">Paczka nie jest jeszcze wgrana</span>';
+    } catch (e) { $('#info', P).textContent = e.message; }
+  };
+  $('#wgraj', P).addEventListener('click', async (ev) => {
+    const f = $('#plik', P).files[0];
+    if (!f) return komunikat('#msg', 'Wybierz plik.');
+    ev.target.disabled = true; $('#msg', P).hidden = true; $('#pasek', P).hidden = false;
+    try {
+      const w = await K.wgrajPaczke(await f.text(), f.name, x => { $('#pasek > div', P).style.width = Math.round(x * 100) + '%'; });
+      komunikat('#msg', `Wgrane: ${w.wersja}.`, 'info');
+      pokazInfo();
+    } catch (e) { komunikat('#msg', e); }
+    ev.target.disabled = false;
+  });
+  pokazInfo();
+}
+
+/* ---------- 🏫 uczelnie ---------- */
+async function zUczelnie(P) {
+  P.innerHTML = `<h2>Uczelnie spoza domeny .edu.pl</h2>
+    <p class="small">Każdy adres w domenie <b>.edu.pl</b> przechodzi sam. Tu dopisz uczelnie z inną domeną — jedną w wierszu, bez @ (np. <code>umk.pl</code>). Domena obejmuje subdomeny: <code>umk.pl</code> wpuszcza też <code>stud.umk.pl</code>.</p>
+    <textarea id="domeny" spellcheck="false"></textarea>
+    <div class="rzad"><button class="btn" id="start">Dołącz listę startową</button><button class="btn btn-green" id="zapisz">Zapisz</button><span class="tag" id="licz"></span></div>
+    <p id="msg" hidden></p>`;
+  const pole = $('#domeny', P);
+  const licz = () => { $('#licz', P).textContent = pole.value.split('\n').filter(x => x.trim()).length + ' domen'; };
+  pole.addEventListener('input', licz);
+  pole.value = (await K.domenyUczelni(true)).join('\n'); licz();
+  $('#start', P).addEventListener('click', async () => {
+    try {
+      const r = await fetch('uczelnie-start.json', { cache: 'no-cache' });
+      const lista = (await r.json()).domeny || [];
+      const razem = [...new Set([...pole.value.split('\n'), ...lista].map(x => K.normujDomene(x)).filter(Boolean))].sort();
+      pole.value = razem.join('\n'); licz();
+      komunikat('#msg', 'Dołączone — sprawdź listę i kliknij Zapisz.', 'info');
+    } catch (e) { komunikat('#msg', 'Nie udało się wczytać uczelnie-start.json.'); }
+  });
+  $('#zapisz', P).addEventListener('click', async (ev) => {
+    const wiersze = pole.value.split('\n').map(x => x.trim()).filter(Boolean);
+    const zle = wiersze.filter(x => !K.normujDomene(x));
+    if (zle.length) return komunikat('#msg', 'To nie wygląda na domeny: ' + zle.slice(0, 5).join(', '));
+    const lista = [...new Set(wiersze.map(K.normujDomene))].sort();
+    ev.target.disabled = true;
+    try { await K.zapiszDomeny(lista); pole.value = lista.join('\n'); licz(); komunikat('#msg', `Zapisane: ${lista.length} domen.`, 'info'); }
+    catch (e) { komunikat('#msg', e); }
+    ev.target.disabled = false;
+  });
+}
+
+/* ---------- 👥 osoby ---------- */
+async function zOsoby(P) {
+  P.innerHTML = `<h2>Osoby z dostępem <span class="tag" id="licz">…</span></h2>
+    <div class="tabela"><table><thead><tr><th>E-mail</th><th>Dla kogo</th><th>Opis kodu</th><th>Od</th><th>Kod</th><th></th></tr></thead><tbody id="osoby"></tbody></table></div><p id="msg" hidden></p>`;
+  const wczytaj = async () => {
+    try {
+      const o = (await K.listaOsob()).sort((a, b) => ((b.kiedy && b.kiedy.toMillis()) || 0) - ((a.kiedy && a.kiedy.toMillis()) || 0));
+      const ile = (t) => o.filter(x => x.typ === t).length;
+      $('#licz', P).textContent = `${o.length} · studenci ${ile('student')} · pracownicy ${ile('pracownik')} · absolwenci ${ile('absolwent')}`;
+      $('#osoby', P).innerHTML = o.map(x => `<tr><td>${esc(x.email)}</td><td>${esc(K.TYPY[x.typ] || x.typ)}</td><td>${esc(x.etykieta)}</td><td>${esc(dataPl(x.kiedy))}</td><td class="mono">${esc(K.pokazKod(x.kod || ''))}</td><td><button class="btn btn-sm" data-odbierz="${esc(x.uid)}">Odbierz dostęp</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted">Nikt jeszcze nie wszedł.</td></tr>';
+    } catch (e) { komunikat('#msg', e); }
+  };
+  $('#osoby', P).addEventListener('click', async (ev) => {
+    const uid = ev.target.dataset.odbierz; if (!uid) return;
+    if (ev.target.dataset.pewnie !== '1') { ev.target.dataset.pewnie = '1'; ev.target.textContent = 'Na pewno?'; return; }
+    ev.target.disabled = true;
+    try { await K.odbierzDostep(uid); await wczytaj(); } catch (e) { komunikat('#msg', e); ev.target.disabled = false; }
+  });
+  wczytaj();
+}
+
+start();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # 🎯 Akademia Diagnosty — Wizja i Roadmapa
 
-*Dokument żywy. Ostatnia aktualizacja: 2026-10-19 (udostępnianie wersji, nazwy testów w publicznej).*
+*Dokument żywy. Ostatnia aktualizacja: 2026-10-19 (Etap 7: wejście do Akademii; nazwy testów i źródła z zajęć w publicznej).*
 *Sesja brainstorm z AI — decyzje autorki gry.*
 
 > **Jak czytać ten dokument:**
@@ -68,8 +68,17 @@ Kod: trzy bloki „ETAP 6” (przed blokiem PROFIL); blok promotora jest między
 - ⚡ Wersja akademicka: znaczki 🌍 / 🎓 / 🔒 w kompendium.
 - ⚡ Katedra Psychologii Religii i Płci w dawnym Magazynie Pamięci w Porcie: Prof. Teodora Rolska, Pan Zasłyszany, 18 zagadnień (14 🌍, 4 🎓), mini gra „Mit czy fakt?”.
 - ⚡ Promotor (tylko wersja akademicka): etapy magisterki (9) i pracy rocznej (6), konsultacje fragmentów z pytaniami jak na seminarium, harmonogram z prawdziwymi datami, przypomnieniami i plikiem .ics.
-- ✅ Udostępnianie (decyzja 2026-10-19): repozytorium z grą jest prywatne. Wersja publiczna jest grywalna na GitHub Pages z osobnego publicznego repo `akademia-diagnosty-gra` (tylko plik gry). Wersja akademicka na razie tylko u autorki.
+- ✅ Udostępnianie (decyzja 2026-10-19): repozytorium z grą jest prywatne. Jedna gra pod jednym adresem na Firebase — patrz Etap 7.
 - ⚡ Nazwy konkretnych testów poza bazą pytań (kwestie mieszkańców, Wieża Zegarowa, neuro_n1, rodz_n10) są tylko w wersji akademickiej; w publicznej — zamienniki. Skrypt nie zbuduje wersji publicznej, jeśli trafi do niej nazwa testu z listy (2026-10-19).
+- ⚡ Źródła z zajęć (rok, semestr, prowadzący, notatki, egzaminy) są tylko w wersji akademickiej; w publicznej przy domach „📚 Na podstawie: <temat>” (2026-10-19).
+
+### Etap 7 · Wejście do Akademii — ⚡ zbudowane 2026-10-19, czeka na projekt Firebase
+Plan, dane, bezpieczeństwo i kroki dla autorki: `docs/LOGOWANIE_I_WERYFIKACJA.md`. Kod: blok „ETAP 7 · AKADEMIA — WEJŚCIE” w grze i folder `strona/`. Test: `tests/akademia_test.py`; reguły bazy: `firebase/testy/`.
+- ✅ Do Akademii wpuszczają oba warunki naraz: potwierdzony e-mail uczelni i osobisty, jednorazowy kod od prowadzącego. Dla studentów, pracowników i absolwentów wszystkich polskich uczelni (absolwenci: kod „absolwent” i dowolny potwierdzony e-mail).
+- ⚡ `akademia.html`: konto (e-mail i hasło), mail z linkiem, kod, „Konto i dane” z usuwaniem konta. Po weryfikacji pobiera z bazy wersję akademicką i uruchamia ją na całym ekranie; przy pierwszym wejściu proponuje przeniesienie postępu.
+- ⚡ Przycisk 🎓 Akademia na dolnym pasku: w wersji publicznej — czym jest Akademia i przejście do logowania; w Akademii — konto, wylogowanie, powrót do wersji dla każdego.
+- ⚡ `admin.html`: kody (generowanie, CSV, unieważnianie), paczka Akademii (wgranie pliku), lista uczelni, osoby z dostępem.
+- ⚡ Weryfikacja w regułach bazy (`firebase/firestore.rules`), nie w przeglądarce. Wersja akademicka nie trafia na publiczny hosting — `narzedzia/zbuduj_strone.py` tego pilnuje.
 
 ### Później
 - 💭 Rodzina postaci.
@@ -77,7 +86,7 @@ Kod: trzy bloki „ETAP 6” (przed blokiem PROFIL); blok promotora jest między
 ### Otwarte pytania
 - ✅ Mentor i promotor: dwie postacie (decyzja 5.10) — mentorka dla każdego, promotor w wersji akademickiej.
 - ✅ Katedra Teologii i Płci: psychologia religii i płci — badania i mity (decyzja 5.10).
-- ✅ Wersja akademicka: na razie nikomu (decyzja 2026-10-19). Gdy będzie gotowa dla studentów — do wyboru link z kodem dostępu albo plik od prowadzących.
+- ✅ Wersja akademicka: przez logowanie — e-mail uczelni i osobisty kod od prowadzącego naraz (decyzja 2026-10-19, Etap 7).
 
 ---
 
@@ -88,13 +97,13 @@ Kod: trzy bloki „ETAP 6” (przed blokiem PROFIL); blok promotora jest między
 - **Treść:** Pełna, samodzielna gra z własnym łukiem — autorefleksja, emocje, relacje, mity psychologiczne, prawa pacjenta, rozpoznawanie szarlatanerii
 - **Dystrybucja:** Otwarta, do pobrania
 - **Wymóg:** Musi być PEŁNYM doświadczeniem, nie demo ani okrojoną wersją
-- **Status:** ⚡ zbudowana skryptem z wersji akademickiej (Etap 6): 67 zagadnień 🌍, sprawdzian zamiast zajęć; do grania na GitHub Pages (repo `akademia-diagnosty-gra`)
+- **Status:** ⚡ zbudowana skryptem z wersji akademickiej (Etap 6): 67 zagadnień 🌍, sprawdzian zamiast zajęć; strona gry na Firebase Hosting (Etap 7)
 
 ### 📁 Wersja akademicka (BAZA + MODUŁY STUDENCKIE)
 - **Dla kogo:** Studenci psychologii (po min. roku studiów)
 - **Treść:** Wszystko co w bazie PLUS: wiedza o testach, modele procesu, psychometria, ścieżka akademicka (stażysta → diagnosta)
 - **Dystrybucja:** Zamknięty obieg z weryfikacją (uczelnia, promotor, kod dostępu)
-- **Status:** ⚡ 215 zagadnień (🌍 67 · 🎓 100 · 🔒 48), promotor; na razie tylko u autorki (repozytorium prywatne)
+- **Status:** ⚡ 215 zagadnień (🌍 67 · 🎓 100 · 🔒 48), promotor; wejście po zalogowaniu: e-mail uczelni + osobisty kod (Etap 7)
 - **Fabularnie:** Student = mieszkaniec Freudowic, który zapisał się do Akademii
 
 ### Dlaczego dwa pliki, a nie wybór w grze?

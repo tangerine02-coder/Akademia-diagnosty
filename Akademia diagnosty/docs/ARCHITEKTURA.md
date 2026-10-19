@@ -21,8 +21,9 @@ Każda większa zmiana to **osobny blok**, który owija wcześniejsze funkcje. N
 | 15 | ETAP 6 · WERSJE | `const WERSJA`, mapa kategorii `TIERS` (🌍 B / 🎓 A / 🔒 R), 21 nowych zagadnień 🌍, w wersji publicznej sprawdzian zamiast zajęć, znaczki w kompendium (`window.ETAP6`) |
 | 16 | ETAP 6 · KATEDRA PSYCHOLOGII RELIGII I PŁCI | `LOCATIONS.religia`, 18 zagadnień, budynek `e6_katedra` w dawnym Magazynie w Porcie, Prof. Rolska, Pan Zasłyszany |
 | 17 | ETAP 6 · PROMOTOR — między `<!-- TYLKO-AKADEMIA:START … -->` a `<!-- TYLKO-AKADEMIA:END -->` | Prof. Przypis: etapy, konsultacje, harmonogram (tylko wersja akademicka) |
-| 18 | `<!-- PROFIL:START -->` … `<!-- PROFIL:END -->` | moduł PROFIL — **generowany** z `.profil-work/src` (nie edytować w HTML; wnętrze w zamknięciu `(() => {…})()`, więc np. `PR_TABS` i `PR_SPEC` nie są dostępne z zewnątrz) |
-| 19 | `<script type="module">` | chmura (Firebase) |
+| 18 | ETAP 7 · AKADEMIA — WEJŚCIE | przycisk 🎓 (`Game.prototype.openAkademia`): w publicznej — opis i przejście do `akademia.html`; w Akademii — konto i wylogowanie przez `window.parent.AD_AKADEMIA` |
+| 19 | `<!-- PROFIL:START -->` … `<!-- PROFIL:END -->` | moduł PROFIL — **generowany** z `.profil-work/src` (nie edytować w HTML; wnętrze w zamknięciu `(() => {…})()`, więc np. `PR_TABS` i `PR_SPEC` nie są dostępne z zewnątrz) |
+| 20 | `<script type="module">` | chmura (Firebase w Gemini Canvas; poza nim zapis tylko w przeglądarce) |
 
 Gra startuje na zdarzenie `load`, czyli po wykonaniu wszystkich bloków. Dzięki temu owijki działają już przy pierwszym `setZone`.
 
@@ -52,7 +53,13 @@ Gra startuje na zdarzenie `load`, czyli po wykonaniu wszystkich bloków. Dzięki
 - **Inny tekst w każdej wersji** (np. kwestia mieszkańca z nazwą testu), w jednym wierszu: `/*W-AKADEMICKIEJ*/ 'tekst akademicki' /*W-PUBLICZNEJ: 'tekst publiczny' */`. Gra akademicka widzi tylko pierwszy tekst (drugi jest komentarzem), a skrypt zostawia w publicznej tylko drugi. Działa dla każdej wartości: napisu, tablicy, obiektu. Liczba elementów listy musi się zgadzać, więc zamiennik zawsze musi być.
 - **Nazwy testów**: gdy nazwa z listy `ZAKAZANE_W_PUBLICZNEJ` (MMPI, WCST, MMSE, EPQ, Leiter, TMS, KRR/KKM/TSR…) trafi do wersji publicznej, skrypt kończy się błędem. Trzeba wtedy oznaczyć miejsce jak wyżej albo zmienić kategorię zagadnienia w `TIERS`. Celowo dozwolone: narzędzia zdyskredytowane z Archiwum Szarlatanerii, efekt Stroopa, Wechsler jako przykład skali IQ, skale z badań i ocena klinicysty (GAF, SDO, RWA, MBEA).
 - **Źródła z zajęć** (rok, semestr, prowadzący, notatki, egzaminy) są tylko w wersji akademickiej. Nowy dom-przedmiot: `src: /*W-AKADEMICKIEJ*/ '4 ROK › 7 semestr › …' /*W-PUBLICZNEJ: 'Sam temat' */`. Gdy wzorzec z listy `ZAJECIA_W_PUBLICZNEJ` (np. `ROK ›`, „Notatki dysk”, „Z Twoich materiałów”) trafi do wersji publicznej, skrypt kończy się błędem.
-- **Publikacja**: repo z grą jest prywatne. Wersję publiczną do grania w przeglądarce trzyma osobne publiczne repo `tangerine02-coder/akademia-diagnosty-gra` (tylko `index.html` i `.nojekyll`, GitHub Pages z gałęzi `main`). `sh narzedzia/opublikuj_publiczna.sh ../akademia-diagnosty-gra` buduje wersję publiczną, kopiuje ją jako `index.html`, commituje i wysyła. Nic poza tym plikiem nie trafia do repo publicznego.
+- **Publikacja (Etap 7)**: repo z grą jest prywatne. Stronę gry trzyma Firebase Hosting z folderu `strona/`: `python3 narzedzia/zbuduj_strone.py` kopiuje wersję publiczną jako `strona/index.html` i sprawdza, że w `strona/` nie ma wersji akademickiej; potem `firebase deploy --only hosting,firestore:rules`. Wersja akademicka trafia tylko do bazy: panel `admin.html` → Paczka Akademii.
+
+## Strona i wejście do Akademii (Etap 7)
+- `strona/akademia.html` — konto, mail z linkiem, kod; po weryfikacji pobiera paczkę (`akademia/info` + części `akademia/<prefiks>-<n>`: gzip, Bytes, SHA-256), trzyma kopię w IndexedDB (`akademia-diagnosty` → `paczka`) i uruchamia grę w `<iframe id="gra">` z adresem `blob:` tej samej domeny — dzięki temu gra ma zwykły `localStorage` (klucz `akademia_freudowice_v1`) i widzi `window.parent.AD_AKADEMIA` (`email`, `etykieta`, `wyloguj()`, `publiczna()`, `konto()`).
+- `strona/konto.js` — jedyne miejsce z Firebase (SDK 11.6.1 z gstatic): konta, kody, dostęp, paczka, panel admina, komunikaty błędów po polsku. `strona/firebase-config.js` — konfiguracja projektu.
+- `firebase/firestore.rules` — weryfikacja naprawdę dzieje się tu: dokument `studenci/{uid}` powstaje tylko w jednym zapisie zbiorczym ze zużyciem pasującego kodu (`kody/{kod}`), przy potwierdzonym e-mailu uczelni (albo kodzie „absolwent”). Paczkę czytają tylko konta z dostępem i admini (`admini/{uid}`, dodawani w konsoli).
+- Testy: `tests/akademia_test.py` (cały przepływ; Firebase podmieniony na `tests/fake_firebase/` z uproszczoną kopią reguł), `firebase/testy/reguly.test.mjs` (prawdziwe reguły w emulatorze: `cd firebase && npm install && npm test`).
 - Nowe zagadnienie: obiekt na liście `/* PYTANIA */ [ … ]` (albo w `QUESTIONS_DB`) i wpis w `TIERS`. Brak wpisu = 🌍 (zostaje w obu wersjach).
 - Kod tylko dla studentów: osobny `<script>` między komentarzami `<!-- TYLKO-AKADEMIA:START … -->` i `<!-- TYLKO-AKADEMIA:END -->`. Kod wspólny sprawdza `ETAP6.PUB` (albo `WERSJA === 'publiczna'`).
 - W wersji publicznej katedry nie mają zajęć z pytaniami otwartymi; `enterBuilding` prowadzi na ✅ Sprawdzian (`e6Sprawdzian`), który zalicza zagadnienia przez zwykłe `markCorrect`.
@@ -64,4 +71,4 @@ Gra startuje na zdarzenie `load`, czyli po wykonaniu wszystkich bloków. Dzięki
 - Ustawienia urządzenia (nie w zapisie): `ad_font`, `ad_zoom2`.
 
 ## Testy
-`tests/etap1_test.py` … `etap6_test.py` (Etap 6 testuje obie wersje), `czcionki_test.py` i `przeglad_test.py` (przegląd całej gry; `tel` = telefon; `GAME_URL=…publiczna.html` = wersja publiczna). Wszystkie razem uruchamia `tests/wszystkie.sh` — buduje wersję publiczną, sam włącza i wyłącza serwer i przegląda obie wersje.
+`tests/etap1_test.py` … `etap6_test.py` (Etap 6 testuje obie wersje), `czcionki_test.py`, `przeglad_test.py` (przegląd całej gry; `tel` = telefon; `GAME_URL=…publiczna.html` = wersja publiczna) i `akademia_test.py` (Etap 7: wejście do Akademii i panel admina, port 8766). Wszystkie razem uruchamia `tests/wszystkie.sh` — buduje wersję publiczną, sam włącza i wyłącza serwer i przegląda obie wersje.

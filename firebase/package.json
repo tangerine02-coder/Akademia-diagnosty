@@ -1,0 +1,14 @@
+{
+  "name": "akademia-diagnosty-reguly",
+  "private": true,
+  "type": "module",
+  "description": "Testy reguł bazy (firestore.rules) w emulatorze Firebase. Uruchomienie: npm install && npm test",
+  "scripts": {
+    "test": "firebase emulators:exec --config ../firebase.json --only firestore --project demo-akademia \"node --test testy/\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "firebase": "^13.0.0",
+    "firebase-tools": "^15.34.0"
+  }
+}

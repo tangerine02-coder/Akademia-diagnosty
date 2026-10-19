@@ -20599,6 +20599,67 @@ const WERSJA = 'publiczna';   // narzedzia/zbuduj_publiczna.py zamienia na 'publ
 </script>
 
 
+<script>
+/* =====================================================================
+   ETAP 7 · AKADEMIA — WEJŚCIE · 2026-10-19 (docs/LOGOWANIE_I_WERYFIKACJA.md)
+   Przycisk 🎓 na dolnym pasku, w obu wersjach.
+   • Wersja publiczna: czym jest Akademia i przejście do strony akademia.html (konto, mail, kod).
+     W pliku gry nie ma logowania ani treści Akademii — pilnują tego akademia.html i reguły bazy.
+   • Wersja akademicka uruchomiona przez akademia.html (w ramce na całym ekranie): konto,
+     wylogowanie i powrót do wersji publicznej przez window.parent.AD_AKADEMIA.
+   ===================================================================== */
+(() => {
+  const PUB = WERSJA === 'publiczna';
+  const ADRES = 'akademia.html';
+  // strona-rodzic (akademia.html) — ta sama domena, więc można z nią rozmawiać wprost
+  const rodzic = () => { try { return window.parent !== window && window.parent.AD_AKADEMIA ? window.parent.AD_AKADEMIA : null; } catch (e) { return null; } };
+
+  Game.prototype.openAkademia = function () {
+    const A = rodzic();
+    if (PUB) {
+      const body = `<p>🎓 <b>Akademia</b> to wersja gry dla studentów, pracowników i absolwentów psychologii. Dochodzą w niej zajęcia z pytaniami otwartymi, wiedza o testach diagnostycznych, droga diagnosty i promotor.</p>
+        <div class="card mt"><b>Co jest potrzebne</b>
+          <ul class="e7-lista"><li>konto z potwierdzonym adresem e-mail uczelni (absolwenci: dowolnym),</li><li>osobisty kod od prowadzącego zajęcia albo od promotora.</li></ul></div>
+        <p class="small muted mt">Postęp z tej wersji możesz przenieść do Akademii przy pierwszym wejściu.</p>`;
+      const m = this.openModal(this.panel('🎓 Akademia', body, '<button class="btn" data-close>Zamknij</button><button class="btn btn-purple" id="e7-wejdz">Zaloguj się do Akademii</button>', 'narrow'));
+      m.querySelector('#e7-wejdz').addEventListener('click', () => { audio.click(); this.save(); location.href = ADRES; });
+      return m;
+    }
+    const body = A
+      ? `<p>Grasz w <b>wersji akademickiej</b>.</p>
+         <div class="card mt">Konto: <b id="e7-email">${esc(A.email || '')}</b>${A.etykieta ? `<div class="small muted">${esc(A.etykieta)}</div>` : ''}
+           <div class="row mt"><button class="btn btn-sm" id="e7-konto">Konto i dane</button></div></div>
+         <p class="small muted mt">Postęp zapisuje się w tej przeglądarce, osobno dla każdej wersji. Na innym urządzeniu: 💾 Zapis → Pobierz plik zapisu.</p>`
+      : `<p>Grasz w <b>wersji akademickiej</b> z pliku na tym komputerze. Konta i kody działają na stronie gry (akademia.html).</p>`;
+    const foot = A
+      ? '<button class="btn" id="e7-pub">Wersja dla każdego</button><button class="btn" id="e7-out">Wyloguj</button><button class="btn btn-green" data-close>Graj dalej</button>'
+      : '<button class="btn btn-green" data-close>Zamknij</button>';
+    const m = this.openModal(this.panel('🎓 Akademia', body, foot, 'narrow'));
+    if (A) {
+      m.querySelector('#e7-out').addEventListener('click', () => { audio.click(); this.save(); A.wyloguj(); });
+      m.querySelector('#e7-pub').addEventListener('click', () => { audio.click(); this.save(); A.publiczna(); });
+      m.querySelector('#e7-konto').addEventListener('click', () => { audio.click(); this.save(); A.konto(); });
+    }
+    return m;
+  };
+
+  // przycisk 🎓 zaraz za 💾 Zapis
+  const zapis = document.getElementById('t-save');
+  if (zapis && !document.getElementById('t-akademia')) {
+    const b = document.createElement('button');
+    b.className = 'tool'; b.id = 't-akademia';
+    b.title = PUB ? 'Akademia — wersja dla studentów, pracowników i absolwentów psychologii' : 'Akademia: konto i wylogowanie';
+    b.innerHTML = '🎓 <span class="lbl">Akademia</span>';
+    zapis.parentNode.insertBefore(b, zapis.nextSibling);
+    b.addEventListener('click', () => { if (window.game) { audio.click(); window.game.openAkademia(); } });
+  }
+
+  const css = document.createElement('style');
+  css.id = 'etap7-css';
+  css.textContent = `.e7-lista { margin: 6px 0 0 20px; line-height: 1.55; }`;
+  document.head.appendChild(css);
+})();
+</script>
 
 <!-- PROFIL:START -->
 <script>

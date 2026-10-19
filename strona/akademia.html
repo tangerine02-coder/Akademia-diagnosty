@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Akademia — Akademia Diagnosty</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400..700&family=Fraunces:opsz,wght@9..144,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styl.css">
+<!--
+  Etap 7 (2026-10-19): wejście do Akademii — konto (e-mail i hasło), mail z linkiem, osobisty kod.
+  Po weryfikacji strona pobiera z bazy paczkę Akademii (wersję akademicką) i uruchamia ją w ramce
+  na całym ekranie. Ten plik nie zawiera treści Akademii. Opis: docs/LOGOWANIE_I_WERYFIKACJA.md.
+-->
+</head>
+<body>
+<main id="ekran" class="ekran">
+  <div class="karta">
+    <header class="karta-gl"><h1>🎓 Akademia</h1><a href="index.html">← Gra dla każdego</a></header>
+    <section class="karta-tresc" id="tresc" aria-live="polite"><p class="muted">Ładuję…</p></section>
+  </div>
+</main>
+<iframe id="gra" title="Akademia Diagnosty — wersja akademicka" hidden></iframe>
+
+<script type="module">
+const $ = (s) => document.querySelector(s);
+const tresc = $('#tresc');
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const dataPl = (ts) => (ts && ts.toDate ? ts.toDate().toLocaleDateString('pl-PL') : '');
+const ZAPYTANO = 'ad_akademia_postep_zapytano';
+let K = null, odpytywanie = null, nr = 0, poWylogowaniu = null;   // poWylogowaniu: komunikat zamiast ekranu logowania
+
+function pokaz(html) { clearInterval(odpytywanie); tresc.innerHTML = html; }
+function komunikat(sel, e, rodzaj = 'blad') {
+  const el = $(sel); if (!el) return;
+  el.className = rodzaj; el.textContent = (e && e.message) || String(e); el.hidden = false;
+}
+const ukryj = (...s) => s.forEach(x => { const el = $(x); if (el) el.hidden = true; });
+const sprobujPonownie = (msg) => pokaz(`<p class="blad">${esc(msg)}</p><div class="rzad"><button class="btn" id="x-znow">Spróbuj jeszcze raz</button></div>`) || $('#x-znow').addEventListener('click', () => location.reload());
+
+async function start() {
+  try { K = await import('./konto.js'); }
+  catch (e) { console.warn('Akademia: konto.js', e); return sprobujPonownie('Nie udało się połączyć z serwerem gry. Sprawdź internet i odśwież stronę.'); }
+  if (!K.SKONFIGUROWANE) {
+    return pokaz(`<p>Logowanie do Akademii nie jest jeszcze włączone.</p>
+      <p class="small muted">Dla autorki gry: uzupełnij <code>firebase-config.js</code> — instrukcja w <code>docs/LOGOWANIE_I_WERYFIKACJA.md</code>.</p>
+      <div class="rzad"><a class="btn" href="index.html">Zagraj w wersję dla każdego</a></div>`);
+  }
+  K.naZmiane(u => odswiez(u));
+}
+
+async function odswiez(u) {
+  const moje = ++nr;
+  if (!u && poWylogowaniu) { const m = poWylogowaniu; poWylogowaniu = null; return pokaz(m); }
+  if (!u) return ekranLogowania();
+  if (!u.emailVerified) return ekranPotwierdzenia(u);
+  pokaz('<p class="muted">Sprawdzam dostęp…</p>');
+  let d;
+  try { d = await K.dostep(); }
+  catch (e) {
+    if (moje !== nr) return;
+    const kopia = e.kod === 'offline' ? await K.kopiaOffline() : null;
+    if (kopia) return uruchom(kopia.html, { email: u.email, etykieta: 'bez internetu — z kopii w przeglądarce' });
+    return sprobujPonownie(e.message);
+  }
+  if (moje !== nr) return;
+  if (new URLSearchParams(location.search).has('konto')) return ekranKonta(u, d);
+  if (d.student || d.admin) return wejdz(u, d);
+  return ekranKodu(u);
+}
+
+/* ---------- logowanie i zakładanie konta ---------- */
+async function ekranLogowania() {
+  pokaz(`
+    <p>Akademia to wersja gry dla <b>studentów, pracowników i absolwentów psychologii</b>: zajęcia z pytaniami otwartymi, wiedza o testach diagnostycznych, droga diagnosty i promotor.</p>
+    <p class="small muted">Wejdziesz z kontem na potwierdzony adres e-mail uczelni (absolwenci: dowolny) i z osobistym kodem od prowadzącego.</p>
+    <div class="zakladki"><button type="button" data-z="login">Mam konto</button><button type="button" data-z="nowe">Załóż konto</button></div>
+    <form id="f-login" class="ramka" novalidate>
+      <label for="l-email">E-mail</label><input id="l-email" type="email" autocomplete="username">
+      <label for="l-haslo">Hasło</label><input id="l-haslo" type="password" autocomplete="current-password">
+      <p id="l-msg" hidden></p>
+      <div class="rzad"><button class="btn btn-green" type="submit">Zaloguj się</button><span style="flex:1"></span><button class="link" type="button" id="l-reset">Nie pamiętam hasła</button></div>
+    </form>
+    <form id="f-nowe" class="ramka" novalidate hidden>
+      <label for="n-email">E-mail uczelni <span class="tiny muted">(absolwenci: dowolny)</span></label>
+      <input id="n-email" type="email" autocomplete="email" placeholder="np. 123456@stud.umk.pl">
+      <p class="tiny" id="n-domena"></p>
+      <label for="n-haslo">Hasło <span class="tiny muted">(co najmniej 8 znaków)</span></label><input id="n-haslo" type="password" autocomplete="new-password">
+      <label for="n-haslo2">Hasło jeszcze raz</label><input id="n-haslo2" type="password" autocomplete="new-password">
+      <p class="tiny muted">Zapisujemy tylko adres e-mail, datę weryfikacji i kod, którym konto weszło do Akademii — po to, żeby Cię wpuścić. Konto możesz usunąć w każdej chwili.</p>
+      <p id="n-msg" hidden></p>
+      <div class="rzad"><button class="btn btn-green" type="submit">Załóż konto</button></div>
+    </form>`);
+  const zakladka = (z) => {
+    tresc.querySelectorAll('[data-z]').forEach(b => b.classList.toggle('on', b.dataset.z === z));
+    $('#f-login').hidden = z !== 'login'; $('#f-nowe').hidden = z !== 'nowe';
+  };
+  tresc.querySelectorAll('[data-z]').forEach(b => b.addEventListener('click', () => zakladka(b.dataset.z)));
+  zakladka('login');
+
+  $('#f-login').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = ev.target.querySelector('[type=submit]'); btn.disabled = true; ukryj('#l-msg');
+    try { await K.zaloguj($('#l-email').value, $('#l-haslo').value); }
+    catch (e) { komunikat('#l-msg', e); btn.disabled = false; }
+  });
+  $('#l-reset').addEventListener('click', async () => {
+    const email = $('#l-email').value.trim(); ukryj('#l-msg');
+    if (!email) return komunikat('#l-msg', 'Wpisz najpierw adres e-mail.');
+    try { await K.resetHasla(email); komunikat('#l-msg', 'Jeśli na ten adres jest konto, wysłaliśmy link do zmiany hasła.', 'info'); }
+    catch (e) { komunikat('#l-msg', e); }
+  });
+  $('#f-nowe').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = ev.target.querySelector('[type=submit]'); btn.disabled = true; ukryj('#n-msg');
+    try { await K.zalozKonto($('#n-email').value, $('#n-haslo').value, $('#n-haslo2').value); }
+    catch (e) { komunikat('#n-msg', e); btn.disabled = false; }
+  });
+
+  const domeny = await K.domenyUczelni();
+  const pole = $('#n-email');
+  if (!pole) return;
+  pole.addEventListener('input', () => {
+    const t = pole.value.trim(), el = $('#n-domena');
+    if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(t)) { el.textContent = ''; return; }
+    el.textContent = K.domenaUczelni(t, domeny) === null
+      ? '⚠️ To nie wygląda na adres uczelni. Z takim adresem wejdziesz tylko z kodem dla absolwentów. Jeśli to adres Twojej uczelni, daj znać prowadzącemu — dopiszemy domenę.'
+      : '✓ Adres uczelni.';
+  });
+}
+
+/* ---------- potwierdzenie adresu ---------- */
+function ekranPotwierdzenia(u) {
+  pokaz(`<h2>Potwierdź adres e-mail</h2>
+    <p>Wysłaliśmy link na <b>${esc(u.email)}</b>. Kliknij go (zajrzyj też do spamu) i wróć na tę stronę — sama zauważy potwierdzenie.</p>
+    <p id="p-msg" hidden></p>
+    <div class="rzad"><button class="btn btn-green" id="p-spr">Sprawdź teraz</button><button class="btn" id="p-wyslij">Wyślij link jeszcze raz</button><span style="flex:1"></span><button class="link" id="p-out">Wyloguj</button></div>`);
+  const sprawdz = async (cicho) => {
+    try {
+      if (await K.sprawdzPotwierdzenie()) return odswiez(K.uzytkownik());
+      if (!cicho) komunikat('#p-msg', 'Jeszcze nie widać potwierdzenia. Kliknij link w mailu i spróbuj znowu.', 'info');
+    } catch (e) { if (!cicho) komunikat('#p-msg', e); }
+  };
+  $('#p-spr').addEventListener('click', () => sprawdz(false));
+  $('#p-wyslij').addEventListener('click', async () => {
+    try { await K.wyslijLinkPonownie(); komunikat('#p-msg', 'Wysłaliśmy nowy link.', 'info'); }
+    catch (e) { komunikat('#p-msg', e); }
+  });
+  $('#p-out').addEventListener('click', () => K.wyloguj());
+  odpytywanie = setInterval(() => sprawdz(true), 5000);
+}
+
+/* ---------- kod od prowadzącego ---------- */
+function ekranKodu(u) {
+  pokaz(`<h2>Ostatni krok: kod od prowadzącego</h2>
+    <p>Konto: <b>${esc(u.email)}</b> <span id="k-dom"></span></p>
+    <form id="f-kod" novalidate>
+      <label for="k-kod">Kod (12 znaków)</label>
+      <input id="k-kod" class="kod-pole" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX" maxlength="20">
+      <p id="k-msg" hidden></p>
+      <div class="rzad"><button class="btn btn-purple" type="submit">Wejdź do Akademii</button><span style="flex:1"></span><button class="link" type="button" id="k-konto">Konto</button><button class="link" type="button" id="k-out">Wyloguj</button></div>
+    </form>
+    <p class="tiny muted">Każdy kod działa raz i tylko dla jednej osoby. Kod dla studenta albo pracownika wymaga adresu e-mail uczelni, kod dla absolwenta — dowolnego potwierdzonego adresu.</p>`);
+  K.domenyUczelni().then(dom => {
+    const el = $('#k-dom'); if (!el) return;
+    el.innerHTML = K.domenaUczelni(u.email, dom) === null
+      ? '<span class="tag">adres spoza uczelni — zadziała kod dla absolwentów</span>'
+      : '<span class="tag ok">adres uczelni ✓</span>';
+  });
+  $('#k-out').addEventListener('click', () => K.wyloguj());
+  $('#k-konto').addEventListener('click', () => { history.replaceState(null, '', '?konto'); odswiez(K.uzytkownik()); });
+  $('#f-kod').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = ev.target.querySelector('[type=submit]'); btn.disabled = true; ukryj('#k-msg');
+    try {
+      const k = await K.sprawdzKod($('#k-kod').value);
+      await K.aktywujKod(k);
+      odswiez(K.uzytkownik());
+    } catch (e) { komunikat('#k-msg', e); btn.disabled = false; }
+  });
+  $('#k-kod').focus();
+}
+
+/* ---------- konto i dane ---------- */
+function ekranKonta(u, d) {
+  const s = d.student;
+  pokaz(`<h2>Twoje konto</h2>
+    <div class="ramka">E-mail: <b>${esc(u.email)}</b><br>
+      ${s ? `Dostęp: <b>${esc(K.TYPY[s.typ] || s.typ)}</b> — ${esc(s.etykieta)}<br>Od: ${esc(dataPl(s.kiedy))}` : d.admin ? 'Dostęp: <b>admin</b>' : 'Bez dostępu do Akademii (brak kodu).'}</div>
+    <p class="small muted">W bazie są tylko: adres e-mail, data weryfikacji oraz kod z opisem. Usunięcie konta kasuje je razem z kopią Akademii w tej przeglądarce. Zapis gry zostaje w przeglądarce (usuniesz go w grze: 💾 Zapis → Zacznij od nowa).</p>
+    <p id="a-msg" hidden></p>
+    <div class="rzad"><button class="btn btn-purple" id="a-wejdz">${s || d.admin ? 'Wejdź do Akademii' : 'Wpisz kod'}</button><button class="btn" id="a-out">Wyloguj</button><span style="flex:1"></span><button class="btn btn-red btn-sm" id="a-usun">Usuń konto</button></div>`);
+  $('#a-wejdz').addEventListener('click', () => { history.replaceState(null, '', location.pathname); odswiez(K.uzytkownik()); });
+  $('#a-out').addEventListener('click', () => K.wyloguj());
+  let pewnie = false;
+  $('#a-usun').addEventListener('click', async (ev) => {
+    if (!pewnie) { pewnie = true; ev.target.textContent = 'Na pewno? Kliknij jeszcze raz'; return; }
+    ev.target.disabled = true;
+    poWylogowaniu = '<p class="info">Konto i dane w bazie zostały usunięte.</p><div class="rzad"><a class="btn" href="index.html">Wróć do gry</a></div>';
+    try { await K.usunKonto(); history.replaceState(null, '', location.pathname); }
+    catch (e) { poWylogowaniu = null; komunikat('#a-msg', e); ev.target.disabled = false; }
+  });
+}
+
+/* ---------- wejście: paczka, postęp, gra w ramce ---------- */
+async function wejdz(u, d) {
+  pokaz(`<h2>Wchodzę do Akademii…</h2><div class="pasek"><div id="w-pasek"></div></div><p class="small muted" id="w-opis">Sprawdzam wersję gry.</p>`);
+  let p;
+  try {
+    p = await K.pobierzPaczke(x => {
+      const el = $('#w-pasek'); if (el) el.style.width = Math.round(x * 100) + '%';
+      const o = $('#w-opis'); if (o) o.textContent = 'Pobieram Akademię — tylko przy nowej wersji gry.';
+    });
+  } catch (e) { return sprobujPonownie(e.message); }
+  const konto = { email: u.email, etykieta: d.student ? d.student.etykieta : 'admin' };
+  let pytac = false;
+  try { pytac = !!localStorage.getItem(K.KLUCZ_PUBLICZNA) && !localStorage.getItem(K.KLUCZ_AKADEMIA) && !localStorage.getItem(ZAPYTANO); } catch (e) {}
+  if (pytac) return ekranPostepu(p.html, konto);
+  uruchom(p.html, konto);
+}
+
+function ekranPostepu(html, konto) {
+  let opis = '';
+  try {
+    const s = JSON.parse(localStorage.getItem(K.KLUCZ_PUBLICZNA));
+    opis = [s.player && s.player.name ? `postać: ${s.player.name}` : '', s.day ? `dzień ${s.day}` : ''].filter(Boolean).join(', ');
+  } catch (e) {}
+  pokaz(`<h2>Przenieść postęp?</h2>
+    <p>W tej przeglądarce masz postęp z wersji dla każdego${opis ? ` (${esc(opis)})` : ''}. Możesz zacząć z nim Akademię albo zacząć od nowa.</p>
+    <p class="small muted">Zapis wersji dla każdego zostaje bez zmian.</p>
+    <div class="rzad"><button class="btn btn-green" id="z-tak">Przenieś postęp</button><button class="btn" id="z-nie">Zacznij od nowa</button></div>`);
+  const dalej = (przenies) => {
+    try {
+      if (przenies) localStorage.setItem(K.KLUCZ_AKADEMIA, localStorage.getItem(K.KLUCZ_PUBLICZNA));
+      localStorage.setItem(ZAPYTANO, '1');
+    } catch (e) {}
+    uruchom(html, konto);
+  };
+  $('#z-tak').addEventListener('click', () => dalej(true));
+  $('#z-nie').addEventListener('click', () => dalej(false));
+}
+
+function uruchom(html, konto) {
+  // gra w ramce rozmawia ze stroną przez window.parent.AD_AKADEMIA (przycisk 🎓 w grze)
+  window.AD_AKADEMIA = {
+    email: konto.email,
+    etykieta: konto.etykieta,
+    wyloguj: async () => { try { await K.wyloguj(); } finally { location.replace(location.pathname); } },
+    publiczna: () => { location.href = 'index.html'; },
+    konto: () => { location.href = location.pathname + '?konto'; },
+  };
+  const f = $('#gra');
+  if (f.dataset.url) URL.revokeObjectURL(f.dataset.url);
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  f.dataset.url = url;
+  f.addEventListener('load', () => { try { f.contentWindow.focus(); } catch (e) {} }, { once: true });
+  f.src = url;
+  f.hidden = false;
+  $('#ekran').hidden = true;
+  document.title = 'Akademia Diagnosty — Freudowice Zdrój (Akademia)';
+}
+
+start();
+</script>
+</body>
+</html>

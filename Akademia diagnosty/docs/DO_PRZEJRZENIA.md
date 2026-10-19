@@ -1,6 +1,6 @@
 # Decyzje do przejrzenia
 
-*Zebrane 2026-10-04 ze wszystkich dokumentów projektu (`[do przejrzenia]`), uzupełniane po każdym etapie (ostatnio: 2026-10-19 — decyzje 73, 74 i nowy punkt 84).*
+*Zebrane 2026-10-04 ze wszystkich dokumentów projektu (`[do przejrzenia]`), uzupełniane po każdym etapie (ostatnio: 2026-10-19 — decyzje 73, 74, punkt 84 i Etap 7: punkty 85–91).*
 *To decyzje podjęte przez AI podczas pracy bez autorki. Przy każdej wystarczy: ✅ zostaje / ✏️ zmień na… / ❌ usuń.*
 
 ## Sklep, kawiarnia, dom (noc 1.10)
@@ -108,10 +108,20 @@
     - Jak to działa: znaczniki `/*W-AKADEMICKIEJ*/ … /*W-PUBLICZNEJ: … */` (14 miejsc) i lista `ZAKAZANE_W_PUBLICZNEJ` w skrypcie — gdy nazwa testu z listy trafi do wersji publicznej, budowanie się zatrzymuje.
     - Celowo zostają w publicznej: Archiwum Szarlatanerii (Lüscher, Szondi, Rorschach, Bender, Wechsler do diagnozy osobowości), efekt Stroopa, Wechsler jako przykład skali IQ na Błoniach. **✅ Decyzja 19.10:** zostają też skale z badań i ocena klinicysty — GAF (quiz w jednym z domów), SDO i RWA (uprzedzenia), MBEA (Dom Muzyki).
 74. ⚠️ **Repozytorium na GitHubie jest publiczne**, więc wersja akademicka z treściami 🔒 jest dostępna dla każdego, kto ma link. Jeśli „zamknięty obieg” ma działać, repozytorium trzeba będzie ustawić jako prywatne albo trzymać plik akademicki poza nim (sposób udostępniania: decyzja „później”).
-    - **✅ Decyzja 19.10:** repozytorium z grą jest prywatne (razem z historią). Wersja publiczna: osobne publiczne repo `akademia-diagnosty-gra` z samym plikiem `index.html`, grywalna na GitHub Pages; publikuje `sh narzedzia/opublikuj_publiczna.sh`. Wersja akademicka: na razie nikomu — gra tylko u autorki; link z kodem albo plik od prowadzących do rozważenia, gdy będzie gotowa dla studentów. Uwaga: linki raw.githack nie działają przy prywatnym repo.
+    - **✅ Decyzja 19.10:** repozytorium z grą jest prywatne (razem z historią); linki raw.githack już nie działają. Bez osobnego publicznego repo: jedna gra pod jednym adresem na Firebase (Hosting + logowanie + baza). Wersja publiczna dla każdego, Akademia po zalogowaniu — e-mail uczelni i osobisty kod naraz (Etap 7, `docs/LOGOWANIE_I_WERYFIKACJA.md`, punkty 85–91).
 
 ## Przed publikacją wersji publicznej (19.10)
 84. **Źródła z zajęć tylko w wersji akademickiej** (✅ decyzja autorki 19.10). W publicznej pulpit w domu pokazuje „📚 Na podstawie: <temat>” zamiast „📁 Z Twoich materiałów: 4 ROK › 7 semestr › … (prowadzący, notatki, egzamin)”. Nazwy tematów wybrało AI, np. „Psychologia lotów kosmicznych”, „Psychologia społeczna i polityczna”, „Uczenie się i plastyczność zachowań zwierząt”. Z tego samego powodu w publicznej nie ma: „z Twoich notatek z 3. i 4. roku” w opisach trzech wysp, „blok przedmiotów z Twoich studiów” u Kapitana, „w stylu Twojego kolokwium z 2024 roku” (teraz „jak na prawdziwym kolokwium”), „z listy przygotowań do egzaminu” przy psychiatrii, „według slajdów” w Psychosomatyce i dopisku „Pytanie z kolokwium 2024”. Zostały źródła naukowe (np. LaBerge, Walker) i żarty o notatkach i kolokwiach w fabule. Skrypt pilnuje listy `ZAJECIA_W_PUBLICZNEJ`.
+
+## Etap 7 — wejście do Akademii (19.10)
+Decyzje autorki: e-mail uczelni i osobisty kod naraz; studenci, pracownicy i absolwenci wszystkich polskich uczelni; kody jednorazowe dla każdej osoby. Poniżej propozycje AI. Szczegóły: `docs/LOGOWANIE_I_WERYFIKACJA.md`.
+85. **Absolwenci**: kod typu „absolwent” wpuszcza z dowolnym potwierdzonym e-mailem (uczelnie zwykle zamykają skrzynkę po studiach). Kody „student” i „pracownik” wymagają e-maila uczelni.
+86. **E-mail uczelni** = każdy adres `.edu.pl` oraz lista domen uczelni spoza `.edu.pl` razem z subdomenami (`umk.pl` wpuszcza `stud.umk.pl`). Lista startowa: 30 domen w `strona/uczelnie-start.json` — do sprawdzenia; zmienia się ją w panelu admina, bez kodu.
+87. **Konto**: e-mail i hasło (min. 8 znaków) plus mail z linkiem. Logowanie samym linkiem odpada: na darmowym planie Firebase to 5 maili dziennie.
+88. **Kody**: 12 znaków bez liter i cyfr do pomylenia (I, L, O, 0, 1), zapis `XXXX-XXXX-XXXX`; typ, opis widoczny dla osoby z kodem, data ważności (domyślnie rok). Osoba z potwierdzonym e-mailem może odczytać znany sobie kod (typ, opis) przed aktywacją; listę kodów widzi tylko admin.
+89. **Wejście**: `akademia.html` pobiera z bazy spakowaną wersję akademicką i uruchamia ją w ramce na całym ekranie. Kopia zostaje w przeglądarce (kolejne wejścia bez pobierania; bez internetu do 14 dni od ostatniego sprawdzenia dostępu). Wylogowanie kasuje kopię.
+90. **Postęp**: przy pierwszym wejściu pytanie „Przenieść postęp z wersji dla każdego?” (ta sama przeglądarka); zapisy wersji dalej są osobne.
+91. **Dane**: zapisujemy tylko e-mail, datę, kod i jego opis; „Konto i dane” w Akademii pozwala usunąć konto. Do decyzji autorki: kto jest administratorem danych i czy dodać politykę prywatności przed szerszym udostępnieniem.
 
 ## Etap 6 — Katedra Psychologii Religii i Płci (5.10)
 75. **Nazwa**: „Katedra Psychologii Religii i Płci” zamiast „Teologii i Płci” — psychologia bada przeżycia i zachowania ludzi, a nie prawdziwość wiary. Mistrzyni: **Prof. Teodora Rolska** (Teo- jak teologia, Rolska jak role płciowe). Obok kręci się **Pan Zasłyszany**, który powtarza mity, a z okna katedry pada źródło.

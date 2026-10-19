@@ -1,2 +1,7 @@
 tests/out/
 __pycache__/
+# Etap 7: strona/index.html buduje narzedzia/zbuduj_strone.py (kopia wersji publicznej)
+strona/index.html
+firebase/node_modules/
+.firebase/
+*-debug.log

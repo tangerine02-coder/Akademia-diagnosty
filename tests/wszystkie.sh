@@ -13,7 +13,7 @@ if ! python3 -c "import urllib.request; urllib.request.urlopen('http://localhost
   sleep 1
 fi
 FAIL=0
-for t in etap1_test etap2_test etap3_test etap4_test etap5_test etap6_test czcionki_test przeglad_test; do
+for t in etap1_test etap2_test etap3_test etap4_test etap5_test etap6_test czcionki_test przeglad_test akademia_test; do
   printf '%-22s ' "$t"
   if python3 "tests/$t.py" > "tests/out/$t.log" 2>&1; then echo "OK"; else echo "BŁĄD (szczegóły: tests/out/$t.log)"; FAIL=1; fi
 done
