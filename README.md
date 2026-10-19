@@ -39,7 +39,7 @@ Przy działającym serwerze (z folderu repo: `python3 -m http.server 8765 --dire
 - `python3 tests/czcionki_test.py` — wybór czcionek,
 - `python3 tests/przeglad_test.py` — przegląd całej gry (każda dzielnica, miejsce, mieszkaniec i drzwi); z argumentem `tel` na ekranie telefonu,
 - `python3 tests/akademia_test.py` — wejście do Akademii i panel admina (sam buduje `strona/` i włącza serwer na porcie 8766; Firebase udawany),
-- `cd firebase && npm install && npm test` — reguły bazy w emulatorze Firebase (potrzebna Java 11+).
+- `cd firebase && npm install && npm test` — reguły bazy w emulatorze Firebase (potrzebna Java 21); to samo robi GitHub Actions po każdej zmianie w `firebase/` (`.github/workflows/reguly.yml`).
 
 Wszystkie naraz: `sh tests/wszystkie.sh` (zbuduje wersję publiczną, sam włączy serwer, jeśli trzeba, i przejrzy obie wersje). Testy używają Playwright i czystego profilu przeglądarki; zrzuty ekranu i logi trafiają do `tests/out/`.
 

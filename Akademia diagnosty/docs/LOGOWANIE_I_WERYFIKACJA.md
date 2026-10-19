@@ -56,7 +56,7 @@
 
 ## Testy
 - `tests/akademia_test.py` — cały przepływ w przeglądarce z udawanym Firebase (`tests/fake_firebase/`): konto, mail, kod (dobry, zużyty, nie pasujący do e-maila, absolwenta), paczka, przeniesienie postępu, wylogowanie z gry, panel admina.
-- `firebase/testy/reguly.test.mjs` — testy reguł w emulatorze Firebase. Tutaj emulatora nie da się pobrać (zablokowane), więc uruchamia się je u Ciebie: `cd firebase && npm install && npm test`.
+- `firebase/testy/reguly.test.mjs` — 13 testów prawdziwych reguł w emulatorze Firebase. Uruchamia je **GitHub Actions** (`.github/workflows/reguly.yml`) po każdej zmianie w `firebase/` albo ręcznie (Actions → „Reguły bazy (emulator)” → Run workflow); 19.10: 13/13 ✅. Lokalnie: `cd firebase && npm install && npm test` (Java 21).
 
 ## Limity darmowego planu (Spark)
 - 1000 maili z linkiem potwierdzającym dziennie, 150 resetów hasła dziennie.
@@ -66,7 +66,8 @@
 
 ## Stan
 - ⚡ Zbudowane 19.10: reguły bazy z testami, `strona/akademia.html`, `strona/admin.html`, `strona/konto.js`, przycisk 🎓 w grze (blok „ETAP 7 · AKADEMIA — WEJŚCIE”), `narzedzia/zbuduj_strone.py`. `tests/akademia_test.py` przechodzi (67 sprawdzeń z udawanym Firebase).
-- ⏳ Czeka na autorkę: projekt Firebase (kroki 1–8) i uruchomienie testów reguł w emulatorze.
+- ✅ Reguły bazy sprawdzone w emulatorze (GitHub Actions, 13/13, 19.10).
+- ⏳ Czeka na autorkę: projekt Firebase (kroki 1–8).
 - 💭 Później: konto także dla graczy wersji publicznej (zapis w chmurze na wielu urządzeniach); automatyczna publikacja po każdej zmianie (GitHub Actions).
 
 ## Pliki

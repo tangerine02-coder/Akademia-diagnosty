@@ -73,7 +73,7 @@ Kod: trzy bloki „ETAP 6” (przed blokiem PROFIL); blok promotora jest między
 - ⚡ Źródła z zajęć (rok, semestr, prowadzący, notatki, egzaminy) są tylko w wersji akademickiej; w publicznej przy domach „📚 Na podstawie: <temat>” (2026-10-19).
 
 ### Etap 7 · Wejście do Akademii — ⚡ zbudowane 2026-10-19, czeka na projekt Firebase
-Plan, dane, bezpieczeństwo i kroki dla autorki: `docs/LOGOWANIE_I_WERYFIKACJA.md`. Kod: blok „ETAP 7 · AKADEMIA — WEJŚCIE” w grze i folder `strona/`. Test: `tests/akademia_test.py`; reguły bazy: `firebase/testy/`.
+Plan, dane, bezpieczeństwo i kroki dla autorki: `docs/LOGOWANIE_I_WERYFIKACJA.md`. Kod: blok „ETAP 7 · AKADEMIA — WEJŚCIE” w grze i folder `strona/`. Test: `tests/akademia_test.py`; reguły bazy: `firebase/testy/` (GitHub Actions, 13/13 ✅).
 - ✅ Do Akademii wpuszczają oba warunki naraz: potwierdzony e-mail uczelni i osobisty, jednorazowy kod od prowadzącego. Dla studentów, pracowników i absolwentów wszystkich polskich uczelni (absolwenci: kod „absolwent” i dowolny potwierdzony e-mail).
 - ⚡ `akademia.html`: konto (e-mail i hasło), mail z linkiem, kod, „Konto i dane” z usuwaniem konta. Po weryfikacji pobiera z bazy wersję akademicką i uruchamia ją na całym ekranie; przy pierwszym wejściu proponuje przeniesienie postępu.
 - ⚡ Przycisk 🎓 Akademia na dolnym pasku: w wersji publicznej — czym jest Akademia i przejście do logowania; w Akademii — konto, wylogowanie, powrót do wersji dla każdego.
