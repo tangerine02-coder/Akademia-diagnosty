@@ -1,6 +1,6 @@
 # 🎯 Akademia Diagnosty — Wizja i Roadmapa
 
-*Dokument żywy. Ostatnia aktualizacja: 2026-10-19 (Etap 7: wejście do Akademii; nazwy testów i źródła z zajęć w publicznej).*
+*Dokument żywy. Ostatnia aktualizacja: 2026-11-05 (czcionka Jersey 15).*
 *Sesja brainstorm z AI — decyzje autorki gry.*
 
 > **Jak czytać ten dokument:**
@@ -51,7 +51,7 @@ Kod: osobny `<script>` „ETAP 3 · 2026-10-05” (przed blokiem PROFIL). Test: 
 - ⚡ Poletko Doświadczalne na Wzgórzu Hipotez (Pani Losowska): eksperyment z grupą kontrolną na 8 poletkach. Zabiegi: kompost, ściółka, muzyka dla roślin, rozmowa z roślinami. Przydział ręczny, losowy albo losowy w rzędach (bloki). Wyniki: słupki, średnie, test permutacyjny, lekcja o zakłóceniu i „prawda gry”. Plony trafiają do koszyka.
 - ⚡ Rozbudowa domu: misja Brygadzisty w Porcie od 4. i od 8. poziomu (materiały, prowiant z ogródka, opanowane zagadnienia, egzamin kierownika budowy raz dziennie). Nagroda: nowy pokój za ścianką z przejściem, z oknem i kinkietem — więcej miejsca na meble.
 - ⚡ Osobowość z wyborów: 6 nowych obserwacji w zakładce 🧠 Osobowość (systematyczność, troska o siebie, pomaganie, czekanie na nagrodę, myślenie badawcze, długie cele). Gracz ich nie zmienia — może się tylko nie zgodzić.
-- ⚡ Poza planem: nowa para czcionek (Pixelify Sans + Fraunces) i przycisk „Aa” z wyborem: Nowa, Książkowa, Wyraźna, Klasyczna (dawna).
+- ⚡ Poza planem: nowa para czcionek (Pixelify Sans + Fraunces) i przycisk „Aa” z wyborem: Nowa, Książkowa, Wyraźna, Klasyczna (dawna). Od 2026-11-05 domyślna jest Jersey 15.
 
 ### Etap 5 · Wersja akademicka
 - ⚡ Podział na BAZĘ i ROZSZERZENIE (zrobione 2026-10-05, Etap 6): propozycja z `docs/PODZIAL_BAZA_ROZSZERZENIE.md` przyjęta bez zmian. Testy (pytania 🎓 i 🔒) tylko w wersji dla studentów.
@@ -79,6 +79,9 @@ Plan, dane, bezpieczeństwo i kroki dla autorki: `docs/LOGOWANIE_I_WERYFIKACJA.m
 - ⚡ Przycisk 🎓 Akademia na dolnym pasku: w wersji publicznej — czym jest Akademia i przejście do logowania; w Akademii — konto, wylogowanie, powrót do wersji dla każdego.
 - ⚡ `admin.html`: kody (generowanie, CSV, unieważnianie), paczka Akademii (wgranie pliku), lista uczelni, osoby z dostępem.
 - ⚡ Weryfikacja w regułach bazy (`firebase/firestore.rules`), nie w przeglądarce. Wersja akademicka nie trafia na publiczny hosting — `narzedzia/zbuduj_strone.py` tego pilnuje.
+
+### Poza planem
+- ⚡ Czcionka Jersey 15 (2026-11-05): domyślnie w całej grze i na stronach logowania, wbudowana w plik gry, litery większe o 30%. Pod „Aa” zostają Książkowa (Jersey 15 + Literata), Wyraźna i Klasyczna. Szczegóły: `docs/DO_PRZEJRZENIA.md`, punkty 92–94.
 
 ### Później
 - 💭 Rodzina postaci.
