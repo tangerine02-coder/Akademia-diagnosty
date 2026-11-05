@@ -5,7 +5,7 @@ Uruchomienie (w folderze repo):
     python3 tests/czcionki_test.py
 
 Sprawdza zmienne CSS, stałe dla canvasa (PIXEL_FONT, WORLD_FONT) i localStorage.
-Same pliki czcionek przychodzą z Google Fonts — bez internetu przeglądarka pokaże zastępcze.
+Jersey 15 jest wbudowana w plik gry. Pozostałe czcionki przychodzą z Google Fonts — bez internetu przeglądarka pokaże zastępcze.
 """
 import asyncio, os, sys
 from playwright.async_api import async_playwright
@@ -42,9 +42,16 @@ async def main():
         pg.on('pageerror', lambda e: errs.append(str(e)))
         await start_game(pg)
         r = await pg.evaluate(STATE)
-        check(r['id'] == 'nowa' and 'Pixelify Sans' in r['pix'] and 'Fraunces' in r['body'] and 'Fraunces' in r['bodyFF'], f'domyślnie nowa para: Pixelify Sans + Fraunces ({r["id"]})')
-        check('Pixelify Sans' in r['P'] and 'Fraunces' in r['W'], 'canvas: PIXEL_FONT i WORLD_FONT z nowej pary')
+        check(r['id'] == 'nowa' and 'Jersey 15' in r['pix'] and 'Jersey 15' in r['body'] and 'Jersey 15' in r['bodyFF'], f'domyślnie nowa: Jersey 15 w całej grze ({r["id"]})')
+        check('Jersey 15' in r['P'] and 'Jersey 15' in r['W'], 'canvas: PIXEL_FONT i WORLD_FONT z nowej pary')
         check('Vollkorn' in r['body'] and 'Tiny5' in r['pix'], 'dawne czcionki zostają jako zapas w stosie')
+        r = await pg.evaluate("""async () => {
+          await document.fonts.load("16px 'Jersey 15'", 'Zażółć gęślą jaźń ĄĆĘŁŃÓŚŹŻ');
+          const ff = [...document.fonts].filter(f => f.family.replace(/["']/g, '') === 'Jersey 15');
+          const szer = (font) => { const c = document.createElement('canvas').getContext('2d'); c.font = font; return c.measureText('Zażółć gęślą jaźń ĄĆĘŁŃÓŚŹŻ').width; };
+          return { n: ff.length, ok: ff.every(f => f.status === 'loaded'), wlasna: szer("20px 'Jersey 15', monospace") !== szer('20px monospace'),
+            link: !!document.querySelector('link[href*="Jersey"]'), css: document.getElementById('czcionka-jersey15').textContent.includes('data:font/woff2;base64,') }; }""")
+        check(r['n'] == 2 and r['ok'] and r['wlasna'] and r['css'] and not r['link'], f'Jersey 15 wbudowana w plik i wczytana, z polskimi znakami ({r})')
         btn = await pg.query_selector('#bar #t-font')
         check(btn is not None, 'przycisk „Aa” na dolnym pasku')
         await pg.evaluate("() => game.closeModal(true)")
@@ -56,7 +63,7 @@ async def main():
         await pg.click('[data-font-id="klasyczna"]')
         r = await pg.evaluate(STATE)
         check(r['id'] == 'klasyczna' and r['pix'].strip().startswith("'Tiny5'") and r['body'].strip().startswith("'Vollkorn'") and r['ls'] == 'klasyczna', 'klasyczna: Tiny5 + Vollkorn, zapisane w przeglądarce')
-        check('Vollkorn' in r['W'] and 'Tiny5' in r['P'] and 'Fraunces' not in r['W'], 'klasyczna: napisy na canvasie też wracają do Vollkorn')
+        check('Vollkorn' in r['W'] and 'Tiny5' in r['P'] and 'Jersey 15' not in r['W'], 'klasyczna: napisy na canvasie też wracają do Vollkorn')
         sel = await pg.evaluate("() => document.querySelector('.cz-opt.sel').dataset.fontId")
         check(sel == 'klasyczna', 'zaznaczenie przechodzi na wybraną parę')
         await pg.click('[data-font-id="wyrazna"]')
@@ -64,14 +71,14 @@ async def main():
         check('Atkinson Hyperlegible' in r['pix'] and 'Atkinson Hyperlegible' in r['body'] and 'Atkinson' in r['W'], 'wyraźna: Atkinson Hyperlegible wszędzie')
         await pg.click('[data-font-id="ksiazkowa"]')
         r = await pg.evaluate(STATE)
-        check('Literata' in r['body'] and 'Pixelify Sans' in r['pix'] and 'Literata' in r['W'], 'książkowa: Pixelify Sans + Literata')
+        check('Literata' in r['body'] and 'Jersey 15' in r['pix'] and 'Literata' in r['W'], 'książkowa: Jersey 15 + Literata')
         await pg.reload(); await pg.wait_for_timeout(1800)
         r = await pg.evaluate(STATE)
         check(r['id'] == 'ksiazkowa' and 'Literata' in r['W'], f'wybór zostaje po odświeżeniu ({r["id"]})')
         await pg.evaluate("() => { game.closeModal(true); localStorage.setItem('ad_font', 'zepsuta'); }")
         await pg.reload(); await pg.wait_for_timeout(1800)
         r = await pg.evaluate(STATE)
-        check('Fraunces' in r['W'] and 'Fraunces' in r['body'], f'nieznana wartość → nowa para ({r["id"]})')
+        check('Jersey 15' in r['W'] and 'Jersey 15' in r['body'], f'nieznana wartość → nowa para ({r["id"]})')
         await pg.evaluate("() => { game.closeModal(true); CZCIONKI.apply('nowa'); }")
         # telefon: pasek mieści się na szerokość
         mob = await b.new_page(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True)

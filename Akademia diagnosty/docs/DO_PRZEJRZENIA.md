@@ -1,6 +1,6 @@
 # Decyzje do przejrzenia
 
-*Zebrane 2026-10-04 ze wszystkich dokumentów projektu (`[do przejrzenia]`), uzupełniane po każdym etapie (ostatnio: 2026-10-19 — decyzje 73, 74, punkt 84 i Etap 7: punkty 85–91).*
+*Zebrane 2026-10-04 ze wszystkich dokumentów projektu (`[do przejrzenia]`), uzupełniane po każdym etapie (ostatnio: 2026-11-05 — czcionka Jersey 15: punkty 92–94).*
 *To decyzje podjęte przez AI podczas pracy bez autorki. Przy każdej wystarczy: ✅ zostaje / ✏️ zmień na… / ❌ usuń.*
 
 ## Sklep, kawiarnia, dom (noc 1.10)
@@ -72,6 +72,12 @@
 53. **Nowy pokój**: 6 kratek na wschód, za ścianką z przejściem, z oknem i kinkietem. Meble nie stają na ściance ani na nowym oknie. Z zewnątrz dom się nie zmienia (Brygadzista: „W środku zawsze jest więcej, niż się wydaje. Jak w ludziach.”). Dom Pani Haliny zostaje 14×10. Czy chcemy trzecią rozbudowę (np. od 12. poziomu)?
 54. **Osobowość z wyborów**: 6 nowych obserwacji — Systematyczność (dni podlewania + sesje Leitnera), Troska o siebie (ćwiczenia w Ogrodzie Uważności), Pomaganie (spełnione prośby mieszkańców), Czekanie na nagrodę (długie vs szybkie uprawy, sprzedaż przy dobrej vs słabej cenie; ciekawostka: Kidd, Palmeri i Aslin, 2013), Myślenie badawcze (poletko), Długie cele (zlecenie Brygadzisty). Nowość dla całej zakładki: to, co gra już zauważyła, jest na górze listy, a „??? — jeszcze nie wiem” na dole.
 55. **„Zapisane w katedrze osobowości”** (notatka w Notion): w grze nie ma Katedry Osobowości — obserwacje są w Profilu → 🧠 Osobowość. Czy dodać taki budynek (np. z mistrzem, który komentuje profil)?
+
+## Czcionka Jersey 15 (5.11)
+Krój wybrała autorka z porównania w interfejsie gry. Pixelify Sans myliła Z z 2, B z G i 5 z S. Punkt 56 jest w tej części nieaktualny.
+92. **Jersey 15 w całej grze**, także w dialogach, pytaniach i napisach w mieście, jak na obrazku porównawczym. Pikselowe nagłówki z szeryfową do czytania zostają pod „Aa” → Książkowa (Jersey 15 + Literata). Pixelify Sans i Fraunces usunięte z gry i ze stron logowania.
+93. **Litery większe o 30%** (`size-adjust`), bo Jersey 15 jest drobna, a czcionka **wbudowana w plik gry**, więc działa bez internetu. Pliki i licencja SIL OFL: `strona/czcionki/`.
+94. **Wyróżnienia w tekście** (`<b>`) pogrubia cień 0,6 px, bo krój ma jedną grubość. **Listy** zostają w dawnej kaligrafii (Jacquarda Bastarda 9).
 
 ## Czcionki (5.10)
 56. **Nowa domyślna para czcionek** (Notion: „ta jest zbyt generyczna”; decyzja z 1.10: „próbuję innej pary, zostaje kopia starej”): **Pixelify Sans** (nagłówki, przyciski, pasek u góry) + **Fraunces** (pytania, dialogi, wyjaśnienia, napisy w mieście). Przycisk **„Aa”** na dolnym pasku pozwala wybrać: Nową, Książkową (Pixelify Sans + Literata), Wyraźną (Atkinson Hyperlegible — krój dla osób słabowidzących) albo Klasyczną (dawne Tiny5 + Vollkorn). Wybór pamięta przeglądarka, nie plik zapisu. Listy w skrzynce zostają w Jacquarda Bastarda 9, a wykres w Profilu diagnosty w Vollkorn (moduł PROFIL).
